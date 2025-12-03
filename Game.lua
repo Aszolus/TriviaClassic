@@ -176,6 +176,10 @@ function Game:HandleChatAnswer(msg, sender)
       s.lastWinnerName = sender
       s.lastWinnerTime = math.max(0.01, GetTime() - (s.questionStartTime or GetTime()))
       recordSessionWin(s, sender, s.currentQuestion.points, s.lastWinnerTime)
+      -- Track fastest across the session
+      if not s.fastest or s.lastWinnerTime < s.fastest.time then
+        s.fastest = { name = sender, time = s.lastWinnerTime }
+      end
       local entry = ensureLeaderboardEntry(self.store, sender)
       entry.points = entry.points + (s.currentQuestion.points or 1)
       entry.correct = entry.correct + 1
@@ -220,7 +224,12 @@ function Game:GetSessionScoreboard()
     end
     return (a.points or 0) > (b.points or 0)
   end)
-  return list
+  local fastestName, fastestTime = nil, nil
+  if self.state.fastest then
+    fastestName = self.state.fastest.name
+    fastestTime = self.state.fastest.time
+  end
+  return list, fastestName, fastestTime
 end
 
 function Game:GetLeaderboard(limit)

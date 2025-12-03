@@ -5,13 +5,15 @@ local TriviaClassic = {}
 _G.TriviaClassic = TriviaClassic
 
 local DEFAULT_TIMER = 20
+local SCHEMA_VERSION = 1
 
 TriviaClassic.repo = TriviaClassic_CreateRepo()
 TriviaClassic.chat = TriviaClassic_CreateChat()
 TriviaClassic.game = nil
 
 local function initDatabase()
-  TriviaClassicCharacterDB = TriviaClassicCharacterDB or { scores = {}, leaderboard = {} }
+  TriviaClassicCharacterDB = TriviaClassicCharacterDB or {}
+  TriviaClassicCharacterDB.schema = TriviaClassicCharacterDB.schema or SCHEMA_VERSION
   TriviaClassicCharacterDB.scores = TriviaClassicCharacterDB.scores or {}
   TriviaClassicCharacterDB.leaderboard = TriviaClassicCharacterDB.leaderboard or {}
 end
@@ -149,7 +151,7 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
       if addonPrivate and addonPrivate[1] then
         TriviaClassic.repo:RegisterTriviaBotSet("Embedded Sets", addonPrivate)
       end
-      if not next(TriviaClassic.repo.sets) and _G.TriviaBot_Questions and _G.TriviaBot_Questions[1] then
+      if _G.TriviaBot_Questions and _G.TriviaBot_Questions[1] then
         TriviaClassic.repo:RegisterTriviaBotSet("TriviaBot Import", _G.TriviaBot_Questions)
       end
     end

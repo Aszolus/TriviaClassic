@@ -1,17 +1,10 @@
 local UI = {}
 TriviaClassicUI = UI
 
-local channels = {
-  { key = "GUILD", label = "Guild" },
-  { key = "PARTY", label = "Party" },
-  { key = "RAID", label = "Raid" },
-  { key = "SAY", label = "Say" },
-  { key = "YELL", label = "Yell" },
-  { key = "CUSTOM", label = "Custom" },
-}
-
 local CONST = TriviaClassic_UI_GetConstants()
 local trim = TriviaClassic_UI_Trim
+local channels = TriviaClassic_GetChannels()
+local channelMap = TriviaClassic_GetChannelMap()
 local channelLabels = {}
 for _, ch in ipairs(channels) do
   channelLabels[ch.key] = ch.label
@@ -37,7 +30,7 @@ local function formatScoreLines(rows)
 end
 
 function UI:SetChannel(key)
-  key = key or "GUILD"
+  key = key or TriviaClassic_GetDefaultChannel()
   self.channelKey = key
 
   if key == "CUSTOM" then
@@ -81,12 +74,16 @@ function UI:UpdateSessionBoard()
   if not self.sessionBoard then
     return
   end
-  local rows = TriviaClassic:GetSessionScoreboard()
-  self.sessionBoard:SetText(formatScoreLines(rows))
+  local rows, fastestName, fastestTime = TriviaClassic:GetSessionScoreboard()
+  local text = formatScoreLines(rows)
+  if fastestName and fastestTime then
+    text = text .. "\nFastest answer: " .. fastestName .. " (" .. string.format("%.2f", fastestTime) .. "s)"
+  end
+  self.sessionBoard:SetText(text)
 end
 
 function UI:ShowSessionScores()
-  local rows = TriviaClassic:GetSessionScoreboard()
+  local rows, fastestName, fastestTime = TriviaClassic:GetSessionScoreboard()
   local chat = TriviaClassic.chat
   chat:Send("[Trivia] Current game scores:")
   if not rows or #rows == 0 then
@@ -94,7 +91,10 @@ function UI:ShowSessionScores()
     return
   end
   for _, entry in ipairs(rows) do
-    chat:Send(string.format("[Trivia] %s - %d pts (%d correct)", entry.name, entry.points or 0, entry.correct or 0))
+    chat:Send(string.format("[Trivia] %s - %d pts (%d correct, best %.2fs)", entry.name, entry.points or 0, entry.correct or 0, (entry.bestTime or 0)))
+  end
+  if fastestName and fastestTime then
+    chat:Send(string.format("[Trivia] Speed record this game: %s (%.2fs)", fastestName, fastestTime))
   end
 end
 
@@ -247,6 +247,9 @@ function UI:AnnounceQuestion()
   self.timerBar:SetStatusBarColor(0.2, 0.8, 0.2)
   self.timerText:SetText(string.format("Time: %ds", TriviaClassic.DEFAULT_TIMER))
   self.warningButton:Enable()
+  if self.hintButton then
+    self.hintButton:Enable()
+  end
   self.nextButton:SetText("Waiting for Answer")
   self.nextButton:Disable()
   if self.skipButton then
@@ -369,6 +372,9 @@ function UI:SkipQuestion()
     self.timerText:SetText("Time: skipped")
     self.timerBar:SetStatusBarColor(0.95, 0.7, 0.2)
     self.warningButton:Disable()
+    if self.hintButton then
+      self.hintButton:Disable()
+    end
     self.nextButton:SetText("Next Question")
     self.nextButton:Enable()
     if self.skipButton then
@@ -388,7 +394,10 @@ end
 function UI:OnWinnerFound(winnerName, elapsed)
   self.timerRunning = false
   self.warningButton:Disable()
-  self.frame.statusText:SetText(string.format("%s answered correctly in %.1fs. Click 'Announce Winner' to broadcast.", winnerName, elapsed or 0))
+  if self.hintButton then
+    self.hintButton:Disable()
+  end
+  self.frame.statusText:SetText(string.format("%s answered correctly in %.2fs. Click 'Announce Winner' to broadcast.", winnerName, elapsed or 0))
   self.nextButton:SetText("Announce Winner")
   self.nextButton:Enable()
   self:UpdateSessionBoard()
@@ -407,6 +416,9 @@ function UI:UpdateTimer(elapsed)
     self.timerText:SetText("Time: 0s")
     self.timerBar:SetStatusBarColor(0.7, 0.1, 0.1)
     self.warningButton:Disable()
+    if self.hintButton then
+      self.hintButton:Disable()
+    end
     self.nextButton:SetText("Announce No Winner")
     self.nextButton:Enable()
     self.frame.statusText:SetText("Time expired. Click 'Announce No Winner' to continue.")
@@ -430,12 +442,13 @@ function UI:BuildUI()
     return
   end
 
-  self.channelKey = "GUILD"
+  self.channelKey = TriviaClassic_GetDefaultChannel()
 
   local frame = TriviaClassic_UI_BuildLayout(self)
   self:SetChannel(self.channelKey)
 
   UIDropDownMenu_SetSelectedValue(self.dropDown, self.channelKey)
+  UIDropDownMenu_SetText(self.dropDown, channelLabels[self.channelKey] or self.channelKey)
   UIDropDownMenu_Initialize(self.dropDown, function(_, _, _)
     for _, ch in ipairs(channels) do
       local info = UIDropDownMenu_CreateInfo()
@@ -470,6 +483,11 @@ function UI:BuildUI()
   self.warningButton:SetScript("OnClick", function()
     self:SendWarning()
   end)
+  if self.hintButton then
+    self.hintButton:SetScript("OnClick", function()
+      self:AnnounceHint()
+    end)
+  end
   self.sessionBtn:SetScript("OnClick", function()
     self:ShowSessionScores()
   end)
@@ -504,5 +522,23 @@ function UI:BuildUI()
     else
       self.frame:Show()
     end
+  end
+end
+
+function UI:AnnounceHint()
+  local q = TriviaClassic:GetCurrentQuestion()
+  if not q then
+    self.frame.statusText:SetText("No active question to hint.")
+    return
+  end
+  local hint = q.hint or (q.hints and q.hints[1])
+  if hint and hint ~= "" then
+    TriviaClassic.chat:SendHint(hint)
+    self.frame.statusText:SetText("Hint announced.")
+  else
+    self.frame.statusText:SetText("No hint available for this question.")
+  end
+  if self.hintButton then
+    self.hintButton:Disable()
   end
 end

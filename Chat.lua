@@ -1,15 +1,8 @@
 local Chat = {}
 Chat.__index = Chat
 
-local CHANNEL_EVENTS = {
-  GUILD = "CHAT_MSG_GUILD",
-  PARTY = "CHAT_MSG_PARTY",
-  RAID = "CHAT_MSG_RAID",
-  SAY = "CHAT_MSG_SAY",
-  YELL = "CHAT_MSG_YELL",
-  WHISPER = "CHAT_MSG_WHISPER",
-  CUSTOM = "CHAT_MSG_CHANNEL",
-}
+local channelMap = TriviaClassic_GetChannelMap()
+local channels = TriviaClassic_GetChannels()
 
 local function baseChannelName(raw)
   if not raw then
@@ -23,22 +16,24 @@ local function baseChannelName(raw)
 end
 
 local function shouldAccept(event, key, channelName, customTarget)
-  if key == "RAID" and (event == "CHAT_MSG_RAID" or event == "CHAT_MSG_RAID_LEADER") then
-    return true
-  end
-  if key == "PARTY" and (event == "CHAT_MSG_PARTY" or event == "CHAT_MSG_PARTY_LEADER") then
-    return true
+  local entry = channelMap[key]
+  if not entry then
+    return false
   end
   if key == "CUSTOM" then
     return event == "CHAT_MSG_CHANNEL" and baseChannelName(channelName) == (customTarget or "")
   end
-  return event == CHANNEL_EVENTS[key]
+  for _, ev in ipairs(entry.events or {}) do
+    if ev == event then
+      return true
+    end
+  end
+  return false
 end
 
 function Chat:new()
   local o = {
-    channelKey = "GUILD",
-    channelEvent = CHANNEL_EVENTS.GUILD,
+    channelKey = TriviaClassic_GetDefaultChannel(),
     customName = nil,
     customNameLower = nil,
     customId = nil,
@@ -48,8 +43,8 @@ function Chat:new()
 end
 
 function Chat:SetChannel(key)
-  self.channelKey = key or "GUILD"
-  self.channelEvent = CHANNEL_EVENTS[self.channelKey] or CHANNEL_EVENTS.GUILD
+  local entry = channelMap[key or TriviaClassic_GetDefaultChannel()]
+  self.channelKey = entry and entry.key or TriviaClassic_GetDefaultChannel()
   if key ~= "CUSTOM" then
     self.customName = nil
     self.customNameLower = nil
@@ -62,7 +57,6 @@ function Chat:SetCustomChannel(name)
     return
   end
   self.channelKey = "CUSTOM"
-  self.channelEvent = CHANNEL_EVENTS.CUSTOM
   self.customName = name
   self.customNameLower = name:lower()
   JoinChannelByName(name)
@@ -86,16 +80,37 @@ function Chat:AcceptsEvent(event, channelName)
   return shouldAccept(event, self.channelKey, channelName, self.customNameLower)
 end
 
+local function safeSendMessage(msg, entry, customId)
+  if entry.key == "CUSTOM" then
+    SendChatMessage(msg, "CHANNEL", nil, customId)
+  else
+    SendChatMessage(msg, entry.sendKey or entry.key or "GUILD")
+  end
+end
+
 function Chat:Send(msg)
+  local entry = channelMap[self.channelKey]
+  if not entry then
+    DEFAULT_CHAT_FRAME:AddMessage("|cffff5050[Trivia]|r Invalid channel configured.")
+    return
+  end
+  if self.channelKey == "RAID" and not IsInRaid() then
+    DEFAULT_CHAT_FRAME:AddMessage("|cffff5050[Trivia]|r You are not in a raid.")
+    return
+  end
+  if self.channelKey == "PARTY" and not IsInGroup() then
+    DEFAULT_CHAT_FRAME:AddMessage("|cffff5050[Trivia]|r You are not in a party.")
+    return
+  end
+
   if self.channelKey == "CUSTOM" then
     if not self:EnsureCustomChannel() then
       DEFAULT_CHAT_FRAME:AddMessage("|cffff5050[Trivia]|r Could not join custom channel '" .. (self.customName or "?") .. "'.")
       return
     end
-    SendChatMessage(msg, "CHANNEL", nil, self.customId)
-  else
-    SendChatMessage(msg, self.channelKey or "GUILD")
   end
+
+  safeSendMessage(msg, entry, self.customId)
 end
 
 local function formatNames(setNames)
@@ -118,8 +133,14 @@ function Chat:SendWarning()
   self:Send("[Trivia] 10 seconds remaining!")
 end
 
+function Chat:SendHint(text)
+  if text and text ~= "" then
+    self:Send("[Trivia] Hint: " .. text)
+  end
+end
+
 function Chat:SendWinner(name, elapsed, points)
-  self:Send(string.format("[Trivia] %s answered correctly in %.1fs! (+%s pts)", name, elapsed or 0, tostring(points or 1)))
+  self:Send(string.format("[Trivia] %s answered correctly in %.2fs! (+%s pts)", name, elapsed or 0, tostring(points or 1)))
 end
 
 function Chat:SendNoWinner(answersText)

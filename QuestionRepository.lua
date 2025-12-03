@@ -36,12 +36,16 @@ function Repo:RegisterTriviaBotSet(label, triviaTable)
   if type(triviaTable) ~= "table" then
     return
   end
-  triviaTable.__tcRegistered = true
 
   local setIndices = {}
   for k in pairs(triviaTable) do
     if type(k) == "number" then
       table.insert(setIndices, k)
+    elseif type(k) == "string" then
+      local n = tonumber(k)
+      if n then
+        table.insert(setIndices, n)
+      end
     end
   end
   table.sort(setIndices)
@@ -60,6 +64,11 @@ function Repo:RegisterTriviaBotSet(label, triviaTable)
     for k in pairs(block["Question"] or {}) do
       if type(k) == "number" then
         table.insert(keys, k)
+      elseif type(k) == "string" then
+        local n = tonumber(k)
+        if n then
+          table.insert(keys, n)
+        end
       end
     end
     table.sort(keys)
@@ -87,6 +96,9 @@ function Repo:RegisterTriviaBotSet(label, triviaTable)
       for k in pairs(categories) do
         if type(k) == "number" then
           table.insert(catKeys, k)
+        elseif type(k) == "string" then
+          local n = tonumber(k)
+          if n then table.insert(catKeys, n) end
         end
       end
       table.sort(catKeys)
@@ -95,7 +107,17 @@ function Repo:RegisterTriviaBotSet(label, triviaTable)
       end
     end
 
-    local setId = meta.title .. " #" .. idx
+    local baseId = (meta.title or label or ("Set " .. idx)) .. " #" .. idx
+    local setId = baseId
+    local suffix = 2
+    while self.sets[setId] do
+      -- If same title, reuse this id and overwrite (e.g., re-registering with more data).
+      if self.sets[setId].title == meta.title then
+        break
+      end
+      setId = baseId .. " (" .. suffix .. ")"
+      suffix = suffix + 1
+    end
     self.sets[setId] = {
       id = setId,
       title = meta.title,
