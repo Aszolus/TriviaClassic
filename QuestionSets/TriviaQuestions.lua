@@ -199,12 +199,6 @@ TriviaBot_Questions[1]['Category'][26] = 1
 TriviaBot_Questions[1]['Points'][26] = "1"
 TriviaBot_Questions[1]['Hints'][26] = {}
 
--- Ensure the global table exists and register with TriviaClassic if present
-_G.TriviaBot_Questions = TriviaBot_Questions
-if TriviaClassic and TriviaClassic.RegisterTriviaBotSet then
-  TriviaClassic:RegisterTriviaBotSet("Deadliest of Azeroth", TriviaBot_Questions)
-end
-
 -- Question 27
 TriviaBot_Questions[1]['Question'][27] = "What non-elite quest in Stranglethorn vale spawns multiple waves of Mistvale Gorillas?"
 TriviaBot_Questions[1]['Answers'][27] = {"Stranglethorn Fever"}
@@ -1199,3 +1193,9 @@ TriviaBot_Questions[1]['Answers'][187] = {"Grommash Hellscream", "Grom Hellscrea
 TriviaBot_Questions[1]['Category'][187] = 3
 TriviaBot_Questions[1]['Points'][187] = "1"
 TriviaBot_Questions[1]['Hints'][187] = {}
+
+-- Ensure the global table exists and register with TriviaClassic if present
+_G.TriviaBot_Questions = TriviaBot_Questions
+if TriviaClassic and TriviaClassic.RegisterTriviaBotSet then
+  TriviaClassic:RegisterTriviaBotSet("Deadliest of Azeroth", TriviaBot_Questions)
+end

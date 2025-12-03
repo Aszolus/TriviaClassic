@@ -73,12 +73,41 @@ function Repo:RegisterTriviaBotSet(label, triviaTable)
     end
     table.sort(keys)
 
+    -- Track actually used category names to ensure the set's category list reflects questions accurately
+    local usedCategoryOrder, usedCategorySet = {}, {}
+
     for _, i in ipairs(keys) do
       local qText = block["Question"][i]
       local categoryIndex = block["Category"] and block["Category"][i]
-      local categoryName = categories and categories[categoryIndex] or "General"
+      -- Derive the category name robustly:
+      -- - If it's a number, use Categories[number]
+      -- - If it's a numeric-like string, tonumber and use Categories[n]
+      -- - If it's a non-numeric string, treat it directly as a category name
+      -- - Otherwise, fallback to "General"
+      local categoryName
+      if type(categoryIndex) == "number" then
+        categoryName = categories and categories[categoryIndex]
+      elseif type(categoryIndex) == "string" then
+        local n = tonumber(categoryIndex)
+        if n then
+          categoryName = categories and categories[n]
+        else
+          -- Direct category label supplied per-question
+          categoryName = trim(categoryIndex)
+        end
+      end
+      if not categoryName or categoryName == "" then
+        categoryName = "General"
+      end
+
       local categoryKey = normalizeCategory(categoryName)
       local rawAnswers = block["Answers"] and block["Answers"][i]
+
+      if not usedCategorySet[categoryKey] then
+        usedCategorySet[categoryKey] = true
+        table.insert(usedCategoryOrder, categoryName)
+      end
+
       table.insert(questions, {
         question = qText,
         answers = normalizeAnswers(rawAnswers),
@@ -90,7 +119,10 @@ function Repo:RegisterTriviaBotSet(label, triviaTable)
       })
     end
 
-    local catList = {}
+    -- Build the visible category list for this set.
+    -- Start with the Categories array in numeric order, then append any per-question
+    -- category labels that weren't present there.
+    local catList, presentKeys = {}, {}
     if type(categories) == "table" then
       local catKeys = {}
       for k in pairs(categories) do
@@ -103,7 +135,20 @@ function Repo:RegisterTriviaBotSet(label, triviaTable)
       end
       table.sort(catKeys)
       for _, k in ipairs(catKeys) do
-        table.insert(catList, trim(categories[k]))
+        local name = trim(categories[k])
+        local key = normalizeCategory(name)
+        if name ~= "" and not presentKeys[key] then
+          table.insert(catList, name)
+          presentKeys[key] = true
+        end
+      end
+    end
+    -- Append any used categories not already included
+    for _, name in ipairs(usedCategoryOrder or {}) do
+      local key = normalizeCategory(name)
+      if not presentKeys[key] then
+        table.insert(catList, name)
+        presentKeys[key] = true
       end
     end
 
@@ -143,13 +188,33 @@ end
 function Repo:BuildPool(selectedIds, allowedCategories)
   local questions = {}
   local names = {}
+  -- Determine if allowedCategories is a global set of category keys or
+  -- a per-set map: { [setId] = { [catKey]=true } }
+  local perSet = nil
+  if type(allowedCategories) == "table" then
+    -- Heuristic: if any value is a table, treat as per-set map
+    for _, v in pairs(allowedCategories) do
+      if type(v) == "table" then
+        perSet = allowedCategories
+        break
+      end
+    end
+  end
   for _, id in ipairs(selectedIds) do
     local set = self.sets[id]
     if set then
       table.insert(names, set.title or id)
       for _, q in ipairs(set.questions or {}) do
         local catKey = q.categoryKey or (q.category and q.category:lower())
-        if not allowedCategories or (catKey and allowedCategories[catKey]) then
+        local allow
+        if perSet then
+          local allowedForSet = perSet[id]
+          -- Default-deny per set: only include if this set has an explicit map and the category is selected
+          allow = (allowedForSet and catKey and allowedForSet[catKey]) or false
+        else
+          allow = (not allowedCategories) or (catKey and allowedCategories[catKey])
+        end
+        if allow then
           table.insert(questions, q)
         end
       end

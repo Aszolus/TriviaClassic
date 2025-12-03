@@ -16,3 +16,4 @@ UI/Layout.lua
 QuestionLoader.lua
 UI.lua
 QuestionSets/TriviaQuestions.lua
+QuestionSets/LoreWalkersOfSilvermoon.lua

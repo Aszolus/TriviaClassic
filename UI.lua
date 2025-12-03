@@ -121,6 +121,8 @@ function UI:RefreshSetList()
   end
 
   self.setItems = {}
+  -- Initialize per-set selection storage if missing
+  self.selectedBySet = self.selectedBySet or {}
   local sets = TriviaClassic:GetAllSets()
   local yOffset = 0
 
@@ -133,16 +135,29 @@ function UI:RefreshSetList()
     yOffset = yOffset + 18
 
     if set.categories then
+      -- Ensure a bucket exists for this set
+      local bucket = self.selectedBySet[set.id]
+      if not bucket then
+        bucket = { keys = {}, names = {} }
+        self.selectedBySet[set.id] = bucket
+      end
       for _, cat in ipairs(set.categories) do
-        local check = TriviaClassic_UI_CreateCheckbox(self.setContainer, "  - " .. cat, -yOffset, function(checked)
-          self.selectedCategories = self.selectedCategories or {}
-          self.selectedCategoryKeys = self.selectedCategoryKeys or {}
-          local key = normalizeCategoryName(cat)
-          self.selectedCategories[cat] = checked or nil
-          self.selectedCategoryKeys[key] = checked or nil
+        -- Important: capture the category value per-iteration to avoid Lua closure rebinding issues
+        local catName = cat
+        local catKey = normalizeCategoryName(catName)
+        local check = TriviaClassic_UI_CreateCheckbox(self.setContainer, "  - " .. catName, -yOffset, function(checked)
+          -- Track per-set selections
+          if checked then
+            bucket.names[catName] = true
+            bucket.keys[catKey] = true
+          else
+            bucket.names[catName] = nil
+            bucket.keys[catKey] = nil
+          end
           self:UpdateQuestionCount()
         end)
-        check:SetChecked(self.selectedCategories and self.selectedCategories[cat] or false)
+        -- Checked state from per-set bucket
+        check:SetChecked(bucket.names[catName] or false)
         table.insert(self.setItems, check)
         yOffset = yOffset + 20
       end
@@ -152,15 +167,17 @@ function UI:RefreshSetList()
   self:UpdateQuestionCount()
 end
 
-function UI:CategorySelected(category)
-  if not self.selectedCategories or next(self.selectedCategories) == nil then
-    return true
+function UI:CategorySelected(category, setId)
+  -- Default-deny: if nothing selected for this set, do not include any questions
+  local bucket = self.selectedBySet and self.selectedBySet[setId]
+  if not bucket or (not bucket.keys or next(bucket.keys) == nil) then
+    return false
   end
   if not category then
-    return true
+    return false
   end
   local key = normalizeCategoryName(category)
-  return (self.selectedCategoryKeys and self.selectedCategoryKeys[key]) or self.selectedCategories[category] or self.selectedCategories[category:lower()]
+  return (bucket.keys and bucket.keys[key]) or (bucket.names and (bucket.names[category] or bucket.names[category:lower()]))
 end
 
 function UI:UpdateQuestionCount()
@@ -168,7 +185,7 @@ function UI:UpdateQuestionCount()
   for _, set in ipairs(TriviaClassic:GetAllSets()) do
     if set.questions then
       for _, q in ipairs(set.questions) do
-        if self:CategorySelected(q.categoryKey or q.category) then
+        if self:CategorySelected(q.categoryKey or q.category, set.id) then
           total = total + 1
         end
       end
@@ -186,25 +203,24 @@ function UI:StartGame()
   end
 
   local desiredCount = tonumber(self.questionCountInput and self.questionCountInput:GetText() or "")
-  local categories
-  if self.selectedCategoryKeys and next(self.selectedCategoryKeys) then
-    categories = {}
-    for key, checked in pairs(self.selectedCategoryKeys) do
-      if checked then
-        categories[key] = true
+  -- Build per-set categories map for all sets (default-deny when empty)
+  local categoriesBySet = {}
+  for _, set in ipairs(TriviaClassic:GetAllSets()) do
+    categoriesBySet[set.id] = {}
+    local bucket = self.selectedBySet and self.selectedBySet[set.id]
+    if bucket and bucket.keys then
+      for key, checked in pairs(bucket.keys) do
+        if checked then categoriesBySet[set.id][key] = true end
       end
     end
-    if next(categories) == nil then
-      categories = nil
-    end
   end
-  local meta = TriviaClassic:StartGame(selectedIds, desiredCount, categories)
+  local meta = TriviaClassic:StartGame(selectedIds, desiredCount, categoriesBySet)
   if not meta then
     print("|cffff5050TriviaClassic: No questions available.|r")
     return
   end
 
-  self.nextButton:SetText("Next Question")
+  self.nextButton:SetText("Next")
   self.nextButton:Enable()
   if self.skipButton then
     self.skipButton:Enable()
@@ -230,7 +246,7 @@ function UI:AnnounceQuestion()
   local q, index, total = TriviaClassic:NextQuestion()
   if not q then
     self.frame.statusText:SetText("No more questions. End the game.")
-    self.nextButton:SetText("End Game")
+    self.nextButton:SetText("End")
     return
   end
 
@@ -250,7 +266,7 @@ function UI:AnnounceQuestion()
   if self.hintButton then
     self.hintButton:Enable()
   end
-  self.nextButton:SetText("Waiting for Answer")
+  self.nextButton:SetText("Waiting...")
   self.nextButton:Disable()
   if self.skipButton then
     self.skipButton:Enable()
@@ -272,9 +288,9 @@ function UI:AnnounceWinner()
   self.frame.statusText:SetText("Winner announced. Click Next for the next question.")
   local finished = TriviaClassic:CompleteWinnerBroadcast()
   if finished then
-    self.nextButton:SetText("End Game")
+    self.nextButton:SetText("End")
   else
-    self.nextButton:SetText("Next Question")
+    self.nextButton:SetText("Next")
   end
   self.nextButton:Enable()
   if self.skipButton then
@@ -293,9 +309,9 @@ function UI:AnnounceNoWinner()
   TriviaClassic.chat:SendNoWinner(answersText)
   local finished = TriviaClassic:CompleteNoWinnerBroadcast()
   if finished then
-    self.nextButton:SetText("End Game")
+    self.nextButton:SetText("End")
   else
-    self.nextButton:SetText("Next Question")
+    self.nextButton:SetText("Next")
   end
   self.nextButton:Enable()
   if self.skipButton then
@@ -308,7 +324,7 @@ function UI:EndGame()
   TriviaClassic.chat:SendEnd(rows)
   TriviaClassic:EndGame()
   self.frame.statusText:SetText("Game ended. Press Start to begin a new game.")
-  self.nextButton:SetText("Next Question")
+  self.nextButton:SetText("Next")
   self.nextButton:Disable()
   if self.skipButton then
     self.skipButton:Disable()
@@ -323,7 +339,7 @@ function UI:OnNextPressed()
     return
   end
 
-  if self.nextButton:GetText() == "End Game" then
+  if self.nextButton:GetText() == "End" then
     self:EndGame()
     return
   end
@@ -345,7 +361,7 @@ function UI:OnNextPressed()
   end
 
   if not TriviaClassic:HasMoreQuestions() then
-    self.nextButton:SetText("End Game")
+    self.nextButton:SetText("End")
     return
   end
 
@@ -375,7 +391,7 @@ function UI:SkipQuestion()
     if self.hintButton then
       self.hintButton:Disable()
     end
-    self.nextButton:SetText("Next Question")
+    self.nextButton:SetText("Next")
     self.nextButton:Enable()
     if self.skipButton then
       self.skipButton:Disable()
@@ -446,6 +462,22 @@ function UI:BuildUI()
 
   local frame = TriviaClassic_UI_BuildLayout(self)
   self:SetChannel(self.channelKey)
+
+  -- Tab switching
+  local function showPage(which)
+    if which == "options" then
+      self.optionsPage:Show()
+      self.gamePage:Hide()
+      PanelTemplates_SetTab(self.frame, 2)
+    else
+      self.optionsPage:Hide()
+      self.gamePage:Show()
+      PanelTemplates_SetTab(self.frame, 1)
+    end
+  end
+  self.tabGame:SetScript("OnClick", function() showPage("game") end)
+  self.tabOptions:SetScript("OnClick", function() showPage("options") end)
+  showPage("game")
 
   UIDropDownMenu_SetSelectedValue(self.dropDown, self.channelKey)
   UIDropDownMenu_SetText(self.dropDown, channelLabels[self.channelKey] or self.channelKey)
