@@ -1,0 +1,14 @@
+## Interface: 11502
+## Title: TriviaClassic
+## Notes: Local trivia game for WoW Classic Era with timer, per-character scores, and TriviaBot-style question set support.
+## Author: ChatGPT
+## Version: 1.0.0
+## SavedVariablesPerCharacter: TriviaClassicCharacterDB
+
+QuestionRepository.lua
+Game.lua
+Chat.lua
+Core.lua
+QuestionLoader.lua
+UI.lua
+QuestionSets/TriviaQuestions.lua
