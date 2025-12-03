@@ -60,8 +60,8 @@ function Game:new(repo, store)
   return o
 end
 
-function Game:Start(selectedIds, desiredCount)
-  local pool, names = self.repo:BuildPool(selectedIds)
+function Game:Start(selectedIds, desiredCount, allowedCategories)
+  local pool, names = self.repo:BuildPool(selectedIds, allowedCategories)
   if #pool == 0 then
     return nil
   end
@@ -127,6 +127,26 @@ function Game:MarkTimeout()
   end
   s.questionOpen = false
   s.pendingNoWinner = true
+end
+
+function Game:SkipCurrent()
+  local s = self.state
+  if not s.questionOpen then
+    return
+  end
+  local idx = s.askedCount
+  if idx > 0 then
+    local skipped = table.remove(s.gameQuestions, idx)
+    if skipped then
+      table.insert(s.gameQuestions, skipped) -- move skipped question to the end
+    end
+    s.totalQuestions = #s.gameQuestions
+    s.askedCount = s.askedCount - 1 -- so the next NextQuestion reuses this slot number
+  end
+  s.questionOpen = false
+  s.pendingWinner = false
+  s.pendingNoWinner = false
+  s.currentQuestion = nil
 end
 
 local function recordSessionWin(state, playerName, points, elapsed)

@@ -10,23 +10,105 @@ local channels = {
   { key = "CUSTOM", label = "Custom" },
 }
 
-local function trim(text)
-  return (text or ""):gsub("^%s+", ""):gsub("%s+$", "")
+local CONST = TriviaClassic_UI_GetConstants()
+local trim = TriviaClassic_UI_Trim
+local channelLabels = {}
+for _, ch in ipairs(channels) do
+  channelLabels[ch.key] = ch.label
 end
 
-local function createButton(parent, label, width, height)
-  local btn = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
-  btn:SetSize(width, height)
-  btn:SetText(label)
-  return btn
+local function normalizeCategoryName(name)
+  return trim(name or ""):lower()
 end
 
-local function createCheckbox(parent, label, yOffset, onClick)
-  local check = CreateFrame("CheckButton", nil, parent, "ChatConfigCheckButtonTemplate")
-  check:SetPoint("TOPLEFT", 0, yOffset)
-  check.Text:SetText(label)
-  check:SetScript("OnClick", function(self) onClick(self:GetChecked()) end)
-  return check
+local function formatScoreLines(rows)
+  if not rows or #rows == 0 then
+    return "No answers yet."
+  end
+  local lines = {}
+  for i, entry in ipairs(rows) do
+    if i > 12 then
+      break
+    end
+    local best = entry.bestTime and string.format(" (best %.1fs)", entry.bestTime) or ""
+    table.insert(lines, string.format("%d) %s - %d pts (%d correct)%s", i, entry.name, entry.points or 0, entry.correct or 0, best))
+  end
+  return table.concat(lines, "\n")
+end
+
+function UI:SetChannel(key)
+  key = key or "GUILD"
+  self.channelKey = key
+
+  if key == "CUSTOM" then
+    if self.customLabel then self.customLabel:Show() end
+    if self.customInput then self.customInput:Show() end
+    local name = trim(self.customInput and self.customInput:GetText() or "")
+    self:SetCustomChannel(name ~= "" and name or nil)
+  else
+    if self.customLabel then self.customLabel:Hide() end
+    if self.customInput then self.customInput:Hide() end
+    TriviaClassic:SetChannel(key)
+    if self.channelStatus then
+      self.channelStatus:SetText("Channel: " .. (channelLabels[key] or key))
+    end
+  end
+end
+
+function UI:SetCustomChannel(name)
+  name = trim(name or "")
+  self.channelKey = "CUSTOM"
+  if self.dropDown then
+    UIDropDownMenu_SetSelectedValue(self.dropDown, "CUSTOM")
+  end
+  if name == "" then
+    TriviaClassic:SetChannel("CUSTOM", nil)
+    if self.channelStatus then
+      self.channelStatus:SetText("Channel: Custom (enter a name)")
+    end
+    return
+  end
+  if self.customInput and self.customInput:GetText() ~= name then
+    self.customInput:SetText(name)
+  end
+  TriviaClassic:SetChannel("CUSTOM", name)
+  if self.channelStatus then
+    self.channelStatus:SetText("Channel: Custom - " .. name)
+  end
+end
+
+function UI:UpdateSessionBoard()
+  if not self.sessionBoard then
+    return
+  end
+  local rows = TriviaClassic:GetSessionScoreboard()
+  self.sessionBoard:SetText(formatScoreLines(rows))
+end
+
+function UI:ShowSessionScores()
+  local rows = TriviaClassic:GetSessionScoreboard()
+  local chat = TriviaClassic.chat
+  chat:Send("[Trivia] Current game scores:")
+  if not rows or #rows == 0 then
+    chat:Send("[Trivia] No answers yet.")
+    return
+  end
+  for _, entry in ipairs(rows) do
+    chat:Send(string.format("[Trivia] %s - %d pts (%d correct)", entry.name, entry.points or 0, entry.correct or 0))
+  end
+end
+
+function UI:ShowAllTimeScores()
+  local rows = TriviaClassic:GetLeaderboard(10)
+  local chat = TriviaClassic.chat
+  chat:Send("[Trivia] All-time scores:")
+  if not rows or #rows == 0 then
+    chat:Send("[Trivia] No scores recorded.")
+    return
+  end
+  for i, entry in ipairs(rows) do
+    chat:Send(string.format("[Trivia] %d) %s - %d pts (%d correct)", i, entry.name, entry.points or 0, entry.correct or 0))
+  end
 end
 
 function UI:RefreshSetList()
@@ -39,140 +121,84 @@ function UI:RefreshSetList()
   end
 
   self.setItems = {}
-  self.selectedSets = self.selectedSets or {}
-  local shouldSelectAll = (next(self.selectedSets) == nil)
   local sets = TriviaClassic:GetAllSets()
   local yOffset = 0
-  local questionCount = 0
 
   for _, set in ipairs(sets) do
-    local check = createCheckbox(self.setContainer, set.title, -yOffset, function(checked)
-      if checked then
-        self.selectedSets[set.id] = true
-      else
-        self.selectedSets[set.id] = false
+    local title = self.setContainer:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    title:SetPoint("TOPLEFT", 0, -yOffset)
+    title:SetText(set.title or "Set")
+    title:SetJustifyH("LEFT")
+    table.insert(self.setItems, title)
+    yOffset = yOffset + 18
+
+    if set.categories then
+      for _, cat in ipairs(set.categories) do
+        local check = TriviaClassic_UI_CreateCheckbox(self.setContainer, "  - " .. cat, -yOffset, function(checked)
+          self.selectedCategories = self.selectedCategories or {}
+          self.selectedCategoryKeys = self.selectedCategoryKeys or {}
+          local key = normalizeCategoryName(cat)
+          self.selectedCategories[cat] = checked or nil
+          self.selectedCategoryKeys[key] = checked or nil
+          self:UpdateQuestionCount()
+        end)
+        check:SetChecked(self.selectedCategories and self.selectedCategories[cat] or false)
+        table.insert(self.setItems, check)
+        yOffset = yOffset + 20
       end
-    end)
-    if shouldSelectAll then
-      self.selectedSets[set.id] = true
     end
-    check:SetChecked(self.selectedSets[set.id] or false)
-    check.tooltip = set.description or set.title
-    if self.selectedSets[set.id] and set.questions then
-      questionCount = questionCount + #set.questions
-    end
-    table.insert(self.setItems, check)
-    yOffset = yOffset + 24
   end
 
+  self:UpdateQuestionCount()
+end
+
+function UI:CategorySelected(category)
+  if not self.selectedCategories or next(self.selectedCategories) == nil then
+    return true
+  end
+  if not category then
+    return true
+  end
+  local key = normalizeCategoryName(category)
+  return (self.selectedCategoryKeys and self.selectedCategoryKeys[key]) or self.selectedCategories[category] or self.selectedCategories[category:lower()]
+end
+
+function UI:UpdateQuestionCount()
+  local total = 0
+  for _, set in ipairs(TriviaClassic:GetAllSets()) do
+    if set.questions then
+      for _, q in ipairs(set.questions) do
+        if self:CategorySelected(q.categoryKey or q.category) then
+          total = total + 1
+        end
+      end
+    end
+  end
   if self.setCountLabel then
-    self.setCountLabel:SetText(string.format("Questions selected: %d", questionCount))
-  end
-end
-
-local function showCustomControls(self, show)
-  if not self.customLabel or not self.customInput then
-    return
-  end
-  if show then
-    self.customLabel:Show()
-    self.customInput:Show()
-  else
-    self.customLabel:Hide()
-    self.customInput:Hide()
-  end
-end
-
-function UI:SetChannel(key)
-  self.channelKey = key
-  if key == "CUSTOM" then
-    showCustomControls(self, true)
-    local name = trim(self.customInput:GetText())
-    if name ~= "" then
-      TriviaClassic:SetChannel("CUSTOM", name)
-    end
-  else
-    showCustomControls(self, false)
-    TriviaClassic:SetChannel(key)
-  end
-  if self.channelStatus then
-    local label = key == "CUSTOM" and ("Custom: " .. (self.customInput:GetText() or "")) or key:sub(1,1) .. key:sub(2):lower()
-    self.channelStatus:SetText("Channel: " .. label)
-  end
-end
-
-function UI:SetCustomChannel(name)
-  name = trim(name or "")
-  if name == "" then
-    return
-  end
-  self.customInput:SetText(name)
-  self.channelKey = "CUSTOM"
-  showCustomControls(self, true)
-  TriviaClassic:SetChannel("CUSTOM", name)
-  if self.channelStatus then
-    self.channelStatus:SetText("Channel: Custom - " .. name)
-  end
-end
-
-local function formatSetNames(names)
-  if not names or #names == 0 then
-    return "unknown sets"
-  end
-  return table.concat(names, ", ")
-end
-
-function UI:UpdateSessionBoard()
-  local rows = {}
-  for idx, entry in ipairs(TriviaClassic:GetSessionScoreboard()) do
-    local timeInfo = entry.bestTime and string.format(" (best %.1fs)", entry.bestTime) or ""
-    table.insert(rows, string.format("%d) %s - %d pts (%d correct)%s", idx, entry.name, entry.points, entry.correct, timeInfo))
-  end
-  if #rows == 0 then
-    rows[1] = "No answers yet."
-  end
-  self.sessionBoard:SetText(table.concat(rows, "\n"))
-end
-
-function UI:ShowSessionScores()
-  local rows = TriviaClassic:GetSessionScoreboard()
-  DEFAULT_CHAT_FRAME:AddMessage("|cffffff00[Trivia]|r Current game scores:")
-  if #rows == 0 then
-    DEFAULT_CHAT_FRAME:AddMessage("|cffffff00[Trivia]|r No answers yet.")
-  else
-    for _, entry in ipairs(rows) do
-      DEFAULT_CHAT_FRAME:AddMessage(string.format("|cffffff00[Trivia]|r %s - %d pts (%d correct)", entry.name, entry.points, entry.correct))
-    end
-  end
-end
-
-function UI:ShowAllTimeScores()
-  local rows = TriviaClassic:GetLeaderboard(20)
-  DEFAULT_CHAT_FRAME:AddMessage("|cffffff00[Trivia]|r All-time scores:")
-  if #rows == 0 then
-    DEFAULT_CHAT_FRAME:AddMessage("|cffffff00[Trivia]|r No scores yet.")
-  else
-    for _, entry in ipairs(rows) do
-      DEFAULT_CHAT_FRAME:AddMessage(string.format("|cffffff00[Trivia]|r %s - %d pts (%d correct)", entry.name, entry.points or 0, entry.correct or 0))
-    end
+    self.setCountLabel:SetText(string.format("Questions selected: %d", total))
   end
 end
 
 function UI:StartGame()
   local selectedIds = {}
-  for id, checked in pairs(self.selectedSets or {}) do
-    if checked then
-      table.insert(selectedIds, id)
-    end
-  end
-
-  if #selectedIds == 0 then
-    print("|cffff5050TriviaClassic: Select at least one question set.|r")
-    return
+  for _, set in ipairs(TriviaClassic:GetAllSets()) do
+    table.insert(selectedIds, set.id)
   end
 
   local desiredCount = tonumber(self.questionCountInput and self.questionCountInput:GetText() or "")
-  local meta = TriviaClassic:StartGame(selectedIds, desiredCount)
+  local categories
+  if self.selectedCategoryKeys and next(self.selectedCategoryKeys) then
+    categories = {}
+    for key, checked in pairs(self.selectedCategoryKeys) do
+      if checked then
+        categories[key] = true
+      end
+    end
+    if next(categories) == nil then
+      categories = nil
+    end
+  end
+  local meta = TriviaClassic:StartGame(selectedIds, desiredCount, categories)
   if not meta then
     print("|cffff5050TriviaClassic: No questions available.|r")
     return
@@ -194,7 +220,7 @@ function UI:StartGame()
   self.questionNumber = 0
   self:UpdateSessionBoard()
 
-  TriviaClassic.chat:SendStart({ total = meta.total, setNames = formatSetNames(meta.setNames) })
+  TriviaClassic.chat:SendStart({ total = meta.total, setNames = meta.setNames })
   if self.endButton then
     self.endButton:Enable()
   end
@@ -225,9 +251,6 @@ function UI:AnnounceQuestion()
   self.nextButton:Disable()
   if self.skipButton then
     self.skipButton:Enable()
-  end
-  if self.skipButton then
-    self.skipButton:Disable()
   end
 
   TriviaClassic.chat:SendQuestion(index, total, q)
@@ -272,6 +295,9 @@ function UI:AnnounceNoWinner()
     self.nextButton:SetText("Next Question")
   end
   self.nextButton:Enable()
+  if self.skipButton then
+    self.skipButton:Disable()
+  end
 end
 
 function UI:EndGame()
@@ -281,6 +307,9 @@ function UI:EndGame()
   self.frame.statusText:SetText("Game ended. Press Start to begin a new game.")
   self.nextButton:SetText("Next Question")
   self.nextButton:Disable()
+  if self.skipButton then
+    self.skipButton:Disable()
+  end
   self.warningButton:Disable()
   self.timerRunning = false
 end
@@ -325,11 +354,20 @@ function UI:SkipQuestion()
     return
   end
   if TriviaClassic:IsQuestionOpen() then
-    TriviaClassic:MarkTimeout()
+    TriviaClassic:SkipCurrentQuestion()
+    TriviaClassic.chat:SendSkipped()
     self.frame.statusText:SetText("Question skipped. Click Next for the next question.")
+    -- Reset local question number so the next announcement reuses the same slot number.
+    local idx = select(1, TriviaClassic:GetCurrentQuestionIndex()) or 0
+    if idx > 0 then
+      self.questionNumber = idx - 1
+    else
+      self.questionNumber = 0
+    end
     self.timerRunning = false
     self.timerBar:SetValue(0)
     self.timerText:SetText("Time: skipped")
+    self.timerBar:SetStatusBarColor(0.95, 0.7, 0.2)
     self.warningButton:Disable()
     self.nextButton:SetText("Next Question")
     self.nextButton:Enable()
@@ -375,13 +413,12 @@ function UI:UpdateTimer(elapsed)
     return
   end
   self.timerBar:SetValue(self.timerRemaining)
-  local pct = self.timerRemaining / (TriviaClassic.DEFAULT_TIMER or self.timerRemaining)
-  if pct > 0.66 then
-    self.timerBar:SetStatusBarColor(0.2, 0.8, 0.2)
-  elseif pct > 0.33 then
+  if self.timerRemaining <= 5 then
+    self.timerBar:SetStatusBarColor(0.9, 0.2, 0.2)
+  elseif self.timerRemaining <= 10 then
     self.timerBar:SetStatusBarColor(0.95, 0.7, 0.2)
   else
-    self.timerBar:SetStatusBarColor(0.9, 0.2, 0.2)
+    self.timerBar:SetStatusBarColor(0.2, 0.8, 0.2)
   end
   self.timerText:SetText(string.format("Time: %ds", math.ceil(self.timerRemaining)))
 end
@@ -394,206 +431,54 @@ function UI:BuildUI()
   end
 
   self.channelKey = "GUILD"
-  TriviaClassic:SetChannel(self.channelKey)
 
-  local frame = CreateFrame("Frame", "TriviaClassicFrame", UIParent, "BasicFrameTemplateWithInset")
-  frame:SetSize(620, 420)
-  frame:SetPoint("CENTER")
-  frame:SetMovable(true)
-  frame:EnableMouse(true)
-  frame:RegisterForDrag("LeftButton")
-  frame:SetScript("OnDragStart", frame.StartMoving)
-  frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
-  frame.TitleText:SetText("TriviaClassic - Host Panel")
-  self.frame = frame
+  local frame = TriviaClassic_UI_BuildLayout(self)
+  self:SetChannel(self.channelKey)
 
-  local setLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  setLabel:SetPoint("TOPLEFT", 16, -34)
-  setLabel:SetText("Question Sets (auto-select all):")
-
-  local setContainer = CreateFrame("Frame", nil, frame)
-  setContainer:SetPoint("TOPLEFT", setLabel, "BOTTOMLEFT", 0, -6)
-  setContainer:SetSize(260, 140)
-  self.setContainer = setContainer
-
-  -- Channel + custom input
-  local channelLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  channelLabel:SetPoint("TOPLEFT", setContainer, "TOPRIGHT", 20, 0)
-  channelLabel:SetText("Announce / listen channel:")
-
-  local dropDown = CreateFrame("Frame", "TriviaClassicChannelDropDown", frame, "UIDropDownMenuTemplate")
-  dropDown:SetPoint("LEFT", channelLabel, "RIGHT", 4, -2)
-  UIDropDownMenu_SetWidth(dropDown, 110)
-  UIDropDownMenu_SetSelectedValue(dropDown, self.channelKey)
-  UIDropDownMenu_Initialize(dropDown, function(_, _, _)
+  UIDropDownMenu_SetSelectedValue(self.dropDown, self.channelKey)
+  UIDropDownMenu_Initialize(self.dropDown, function(_, _, _)
     for _, ch in ipairs(channels) do
       local info = UIDropDownMenu_CreateInfo()
       info.text = ch.label
       info.value = ch.key
       info.func = function()
-        UIDropDownMenu_SetSelectedValue(dropDown, ch.key)
+        UIDropDownMenu_SetSelectedValue(self.dropDown, ch.key)
         self:SetChannel(ch.key)
       end
       info.checked = (self.channelKey == ch.key)
       UIDropDownMenu_AddButton(info)
     end
   end)
-  self.dropDown = dropDown
 
-  local customLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  customLabel:SetPoint("TOPLEFT", channelLabel, "BOTTOMLEFT", 0, -6)
-  customLabel:SetText("Custom channel:")
-  self.customLabel = customLabel
-
-  local customInput = CreateFrame("EditBox", nil, frame, "InputBoxTemplate")
-  customInput:SetSize(160, 20)
-  customInput:SetPoint("LEFT", customLabel, "RIGHT", 6, 0)
-  customInput:SetAutoFocus(false)
-  customInput:SetScript("OnEnterPressed", function(box)
+  self.customInput:SetScript("OnEnterPressed", function(box)
     self:SetCustomChannel(box:GetText())
     box:ClearFocus()
   end)
-  customInput:SetScript("OnEditFocusLost", function(box)
+  self.customInput:SetScript("OnEditFocusLost", function(box)
     self:SetCustomChannel(box:GetText())
   end)
-  self.customInput = customInput
-  showCustomControls(self, false)
 
-  -- Question count + totals
-  local setCountLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  setCountLabel:SetPoint("TOPLEFT", setContainer, "BOTTOMLEFT", 0, -8)
-  setCountLabel:SetText("Questions selected: 0")
-  self.setCountLabel = setCountLabel
-
-  local channelStatus = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-  channelStatus:SetPoint("TOPLEFT", setCountLabel, "BOTTOMLEFT", 0, -6)
-  channelStatus:SetText("Channel: Guild")
-  self.channelStatus = channelStatus
-
-  local questionCountLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  questionCountLabel:SetPoint("TOPLEFT", channelStatus, "BOTTOMLEFT", 0, -6)
-  questionCountLabel:SetText("Questions this game:")
-
-  local questionCountInput = CreateFrame("EditBox", nil, frame, "InputBoxTemplate")
-  questionCountInput:SetSize(60, 20)
-  questionCountInput:SetPoint("LEFT", questionCountLabel, "RIGHT", 6, 0)
-  questionCountInput:SetAutoFocus(false)
-  questionCountInput:SetNumeric(true)
-  questionCountInput:SetMaxLetters(3)
-  questionCountInput:SetText("")
-  self.questionCountInput = questionCountInput
-
-  local hintCount = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-  hintCount:SetPoint("LEFT", questionCountInput, "RIGHT", 6, 0)
-  hintCount:SetText("(blank = 10-20 random)")
-  self.questionCountHint = hintCount
-
-  -- Control bar
-  local startButton = createButton(frame, "Start Game", 110, 26)
-  startButton:SetPoint("TOPLEFT", questionCountLabel, "BOTTOMLEFT", 0, -10)
-  startButton:SetScript("OnClick", function()
+  self.startButton:SetScript("OnClick", function()
     self:StartGame()
   end)
-  self.startButton = startButton
-
-  local nextButton = createButton(frame, "Next Question", 120, 28)
-  nextButton:SetPoint("LEFT", startButton, "RIGHT", 8, 0)
-  nextButton:SetScript("OnClick", function()
+  self.nextButton:SetScript("OnClick", function()
     self:OnNextPressed()
   end)
-  nextButton:Disable()
-  self.nextButton = nextButton
-
-  local skipButton = createButton(frame, "Skip", 80, 24)
-  skipButton:SetPoint("LEFT", nextButton, "RIGHT", 6, 0)
-  skipButton:SetScript("OnClick", function()
+  self.skipButton:SetScript("OnClick", function()
     self:SkipQuestion()
   end)
-  skipButton:Disable()
-  self.skipButton = skipButton
-
-  local warningButton = createButton(frame, "10s Remaining", 120, 24)
-  warningButton:SetPoint("LEFT", skipButton, "RIGHT", 8, 0)
-  warningButton:SetScript("OnClick", function()
+  self.warningButton:SetScript("OnClick", function()
     self:SendWarning()
   end)
-  warningButton:Disable()
-  self.warningButton = warningButton
-
-  local sessionBtn = createButton(frame, "Show Game Scores", 140, 24)
-  sessionBtn:SetPoint("TOPLEFT", startButton, "BOTTOMLEFT", 0, -6)
-  sessionBtn:SetScript("OnClick", function()
+  self.sessionBtn:SetScript("OnClick", function()
     self:ShowSessionScores()
   end)
-  self.sessionBtn = sessionBtn
-
-  local allTimeBtn = createButton(frame, "Show All-Time Scores", 160, 24)
-  allTimeBtn:SetPoint("LEFT", sessionBtn, "RIGHT", 8, 0)
-  allTimeBtn:SetScript("OnClick", function()
+  self.allTimeBtn:SetScript("OnClick", function()
     self:ShowAllTimeScores()
   end)
-  self.allTimeBtn = allTimeBtn
-
-  local endButton = createButton(frame, "End Game", 100, 24)
-  endButton:SetPoint("LEFT", allTimeBtn, "RIGHT", 8, 0)
-  endButton:SetScript("OnClick", function()
+  self.endButton:SetScript("OnClick", function()
     self:EndGame()
   end)
-  endButton:Disable()
-  self.endButton = endButton
-
-  -- Question area
-  local questionLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-  questionLabel:SetPoint("TOPLEFT", sessionBtn, "BOTTOMLEFT", 0, -12)
-  questionLabel:SetJustifyH("LEFT")
-  questionLabel:SetJustifyV("TOP")
-  questionLabel:SetWidth(400)
-  questionLabel:SetHeight(70)
-  questionLabel:SetText("Press Start to begin.")
-  self.questionLabel = questionLabel
-
-  local categoryLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  categoryLabel:SetPoint("TOPLEFT", questionLabel, "BOTTOMLEFT", 0, -6)
-  categoryLabel:SetText("")
-  self.categoryLabel = categoryLabel
-
-  local timerBar = CreateFrame("StatusBar", nil, frame)
-  timerBar:SetPoint("TOPLEFT", categoryLabel, "BOTTOMLEFT", 0, -10)
-  timerBar:SetSize(320, 16)
-  timerBar:SetStatusBarTexture("Interface\\TARGETINGFRAME\\UI-StatusBar")
-  timerBar:SetStatusBarColor(0.2, 0.8, 0.2)
-  timerBar:SetMinMaxValues(0, TriviaClassic.DEFAULT_TIMER)
-  timerBar:SetValue(TriviaClassic.DEFAULT_TIMER)
-  self.timerBar = timerBar
-
-  local timerText = timerBar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-  timerText:SetPoint("LEFT", timerBar, "RIGHT", 8, 0)
-  timerText:SetText(string.format("Time: %ds", TriviaClassic.DEFAULT_TIMER))
-  self.timerText = timerText
-
-  -- Scoreboard panel
-  local sessionLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  sessionLabel:SetPoint("TOPLEFT", questionLabel, "TOPRIGHT", 40, 0)
-  sessionLabel:SetText("Current game scores:")
-
-  local sessionBoardBg = CreateFrame("Frame", nil, frame, "InsetFrameTemplate")
-  sessionBoardBg:SetPoint("TOPLEFT", sessionLabel, "BOTTOMLEFT", -4, -6)
-  sessionBoardBg:SetSize(260, 140)
-
-  local sessionBoard = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  sessionBoard:SetPoint("TOPLEFT", sessionBoardBg, "TOPLEFT", 8, -8)
-  sessionBoard:SetWidth(240)
-  sessionBoard:SetJustifyH("LEFT")
-  sessionBoard:SetJustifyV("TOP")
-  sessionBoard:SetText("No answers yet.")
-  self.sessionBoard = sessionBoard
-
-  local statusText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  statusText:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 16, 16)
-  statusText:SetWidth(360)
-  statusText:SetJustifyH("LEFT")
-  statusText:SetText("Load a set and press Start.")
-  frame.statusText = statusText
 
   local ticker = CreateFrame("Frame", nil, frame)
   ticker:SetScript("OnUpdate", function(_, elapsed)

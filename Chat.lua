@@ -130,6 +130,10 @@ function Chat:SendNoWinner(answersText)
   end
 end
 
+function Chat:SendSkipped()
+  self:Send("[Trivia] Question skipped by host. Moving on.")
+end
+
 function Chat:SendEnd(rows)
   self:Send("[Trivia] Game over! Final scores:")
   if not rows or #rows == 0 then

@@ -40,8 +40,8 @@ function TriviaClassic:GetChannelKey()
   return self.chat.channelKey
 end
 
-function TriviaClassic:StartGame(selectedIds, desiredCount)
-  return self.game:Start(selectedIds, desiredCount)
+function TriviaClassic:StartGame(selectedIds, desiredCount, allowedCategories)
+  return self.game:Start(selectedIds, desiredCount, allowedCategories)
 end
 
 function TriviaClassic:NextQuestion()
@@ -50,6 +50,10 @@ end
 
 function TriviaClassic:MarkTimeout()
   return self.game:MarkTimeout()
+end
+
+function TriviaClassic:SkipCurrentQuestion()
+  return self.game:SkipCurrent()
 end
 
 function TriviaClassic:IsPendingWinner()
@@ -106,33 +110,16 @@ end
 
 TriviaClassic.DEFAULT_TIMER = DEFAULT_TIMER
 
-local debugLog = {}
-local function logDebug(message)
-  table.insert(debugLog, message)
-  if #debugLog > 50 then
-    table.remove(debugLog, 1)
-  end
-end
-
 local function handleIncomingChat(event, msg, sender, languageName, channelNameFull, _, _, _, _, channelBase)
   -- channelNameFull example: "1. Custom"; channelBase example: "Custom"
   local channelName = channelBase or channelNameFull
   if not TriviaClassic.chat:AcceptsEvent(event, channelName) then
-    logDebug(string.format("Ignored: event=%s channel=%s sender=%s", tostring(event), tostring(channelName), tostring(sender)))
     return
   end
-  logDebug(string.format("Check: event=%s channel=%s sender=%s msg=%s", tostring(event), tostring(channelName), tostring(sender), tostring(msg)))
   local winner = TriviaClassic.game:HandleChatAnswer(msg, sender)
   if winner and TriviaClassicUI and TriviaClassicUI.OnWinnerFound then
     TriviaClassicUI:OnWinnerFound(winner.winner, winner.elapsed)
-    logDebug(string.format("Winner: %s time=%.2f", winner.winner, winner.elapsed or 0))
-  elseif winner then
-    logDebug("Winner detected but UI not ready")
   end
-end
-
-function TriviaClassic_GetDebugLog()
-  return debugLog
 end
 
 local channelEvents = {
@@ -159,8 +146,11 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
     if name == addonName then
       initDatabase()
       initGame()
-      if not next(TriviaClassic.repo.sets) and addonPrivate and not addonPrivate.__tcRegistered and addonPrivate[1] then
+      if addonPrivate and addonPrivate[1] then
         TriviaClassic.repo:RegisterTriviaBotSet("Embedded Sets", addonPrivate)
+      end
+      if not next(TriviaClassic.repo.sets) and _G.TriviaBot_Questions and _G.TriviaBot_Questions[1] then
+        TriviaClassic.repo:RegisterTriviaBotSet("TriviaBot Import", _G.TriviaBot_Questions)
       end
     end
   elseif event == "PLAYER_LOGIN" then
