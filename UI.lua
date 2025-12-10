@@ -264,7 +264,13 @@ function UI:AnnounceQuestion()
   self.timerText:SetText(string.format("Time: %ds", TriviaClassic.DEFAULT_TIMER))
   self.warningButton:Enable()
   if self.hintButton then
-    self.hintButton:Enable()
+    -- Enable hint button only if this question actually has a hint
+    local hint = q.hint or (q.hints and q.hints[1])
+    if hint and hint ~= "" then
+      self.hintButton:Enable()
+    else
+      self.hintButton:Disable()
+    end
   end
   self.nextButton:SetText("Waiting...")
   self.nextButton:Disable()

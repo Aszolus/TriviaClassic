@@ -1080,7 +1080,7 @@ TriviaBot_Questions[1]['Category'][170] = 1
 TriviaBot_Questions[1]['Points'][170] = "1"
 TriviaBot_Questions[1]['Hints'][170] = {}
 
-TriviaBot_Questions[1]['Question'][170] = "Before declaring you worthy of his company, Hemet Nesingwary tests your mastery at hunter panthers, tigers, and what other type of creature?"
+TriviaBot_Questions[1]['Question'][170] = "Before declaring you worthy of his company, Hemet Nesingwary tests your mastery at hunting panthers, tigers, and what other type of creature?"
 TriviaBot_Questions[1]['Answers'][170] = {"raptor", "raptors"}
 TriviaBot_Questions[1]['Category'][170] = 1
 TriviaBot_Questions[1]['Points'][170] = "1"

@@ -44,6 +44,7 @@ function Game:new(repo, store)
       activeSets = {},
       gameActive = false,
       gameQuestions = {},
+      reserveQuestions = {},
       totalQuestions = 0,
       askedCount = 0,
       currentQuestion = nil,
@@ -86,6 +87,12 @@ function Game:Start(selectedIds, desiredCount, allowedCategories)
   local s = self.state
   s.activeSets = selectedIds
   s.gameQuestions = gameQuestions
+  -- Build a reserve from the remainder of the shuffled pool. This can be large,
+  -- which is fine — we only draw from it when replacing skipped questions.
+  s.reserveQuestions = {}
+  for i = count + 1, #pool do
+    table.insert(s.reserveQuestions, pool[i])
+  end
   s.totalQuestions = #gameQuestions
   s.askedCount = 0
   s.currentQuestion = nil
@@ -137,10 +144,21 @@ function Game:SkipCurrent()
   local idx = s.askedCount
   if idx > 0 then
     local skipped = table.remove(s.gameQuestions, idx)
-    if skipped then
-      table.insert(s.gameQuestions, skipped) -- move skipped question to the end
+    -- Prefer a fresh replacement from reserve to avoid repeats while keeping
+    -- the total number of questions constant for this game.
+    local replacement = nil
+    if s.reserveQuestions and #s.reserveQuestions > 0 then
+      replacement = table.remove(s.reserveQuestions, 1)
     end
-    s.totalQuestions = #s.gameQuestions
+
+    if replacement then
+      table.insert(s.gameQuestions, replacement)
+    elseif skipped then
+      -- Fallback when reserve is exhausted: keep total constant by moving the
+      -- skipped question to the end so we can still reach the planned total.
+      table.insert(s.gameQuestions, skipped)
+    end
+    -- totalQuestions remains the same length; step back so NextQuestion reuses this slot
     s.askedCount = s.askedCount - 1 -- so the next NextQuestion reuses this slot number
   end
   s.questionOpen = false
