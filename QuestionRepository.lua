@@ -116,6 +116,8 @@ function Repo:RegisterTriviaBotSet(label, triviaTable)
         category = categoryName,
         categoryKey = categoryKey,
         points = tonumber(block["Points"] and block["Points"][i]) or 1,
+        -- Keep original numeric key to build a stable per-question id later
+        sourceIndex = i,
       })
     end
 
@@ -163,6 +165,14 @@ function Repo:RegisterTriviaBotSet(label, triviaTable)
       setId = baseId .. " (" .. suffix .. ")"
       suffix = suffix + 1
     end
+    -- Attach a stable question id to each question for cross-game/session tracking.
+    -- Id format: <setId>::<originalIndex>
+    for _, q in ipairs(questions) do
+      if not q.qid then
+        q.qid = tostring(setId) .. "::" .. tostring(q.sourceIndex or "?")
+      end
+    end
+
     self.sets[setId] = {
       id = setId,
       title = meta.title,

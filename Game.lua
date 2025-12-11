@@ -55,6 +55,8 @@ function Game:new(repo, store)
       lastWinnerTime = nil,
       questionStartTime = 0,
       gameScores = {},
+      -- Per-session registry of asked question ids (not persisted). Prevents repeats when changing sets mid-session.
+      askedRegistry = {},
     },
   }
   setmetatable(o, self)
@@ -63,6 +65,20 @@ end
 
 function Game:Start(selectedIds, desiredCount, allowedCategories)
   local pool, names = self.repo:BuildPool(selectedIds, allowedCategories)
+  if #pool == 0 then
+    return nil
+  end
+
+  -- Filter out questions that have already been asked this session
+  local asked = self.state.askedRegistry or {}
+  local filtered = {}
+  for _, q in ipairs(pool) do
+    local id = q.qid or q.id
+    if not id or not asked[id] then
+      table.insert(filtered, q)
+    end
+  end
+  pool = filtered
   if #pool == 0 then
     return nil
   end
@@ -118,6 +134,10 @@ function Game:NextQuestion()
   end
   s.askedCount = s.askedCount + 1
   s.currentQuestion = s.gameQuestions[s.askedCount]
+  -- Mark this question as asked for the current session to avoid repeats across games
+  if s.currentQuestion and s.currentQuestion.qid then
+    s.askedRegistry[s.currentQuestion.qid] = true
+  end
   s.questionOpen = true
   s.pendingWinner = false
   s.pendingNoWinner = false
@@ -198,6 +218,13 @@ function Game:HandleChatAnswer(msg, sender)
       if not s.fastest or s.lastWinnerTime < s.fastest.time then
         s.fastest = { name = sender, time = s.lastWinnerTime }
       end
+      -- Track all-time fastest (persisted)
+      if self.store then
+        local best = self.store.fastest
+        if not best or (s.lastWinnerTime and s.lastWinnerTime < (best.time or math.huge)) then
+          self.store.fastest = { name = sender, time = s.lastWinnerTime }
+        end
+      end
       local entry = ensureLeaderboardEntry(self.store, sender)
       entry.points = entry.points + (s.currentQuestion.points or 1)
       entry.correct = entry.correct + 1
@@ -266,9 +293,19 @@ function Game:GetLeaderboard(limit)
     for i = 1, limit do
       trimmed[i] = list[i]
     end
-    return trimmed
+    local fastestName, fastestTime = nil, nil
+    if self.store and self.store.fastest then
+      fastestName = self.store.fastest.name
+      fastestTime = self.store.fastest.time
+    end
+    return trimmed, fastestName, fastestTime
   end
-  return list
+  local fastestName, fastestTime = nil, nil
+  if self.store and self.store.fastest then
+    fastestName = self.store.fastest.name
+    fastestTime = self.store.fastest.time
+  end
+  return list, fastestName, fastestTime
 end
 
 function Game:IsPendingWinner()

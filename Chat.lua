@@ -155,7 +155,7 @@ function Chat:SendSkipped()
   self:Send("[Trivia] Question skipped by host. Moving on.")
 end
 
-function Chat:SendEnd(rows)
+function Chat:SendEnd(rows, fastestName, fastestTime)
   self:Send("[Trivia] Game over! Final scores:")
   if not rows or #rows == 0 then
     self:Send("[Trivia] No correct answers recorded.")
@@ -164,6 +164,9 @@ function Chat:SendEnd(rows)
       local line = string.format("%s - %d pts (%d correct)", entry.name, entry.points, entry.correct)
       self:Send("[Trivia] " .. line)
     end
+  end
+  if fastestName and fastestTime then
+    self:Send(string.format("[Trivia] Speed record this game: %s (%.2fs)", fastestName, fastestTime))
   end
   self:Send("[Trivia] Thanks for playing!")
 end

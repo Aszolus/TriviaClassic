@@ -99,7 +99,7 @@ function UI:ShowSessionScores()
 end
 
 function UI:ShowAllTimeScores()
-  local rows = TriviaClassic:GetLeaderboard(10)
+  local rows, fastestName, fastestTime = TriviaClassic:GetLeaderboard(10)
   local chat = TriviaClassic.chat
   chat:Send("[Trivia] All-time scores:")
   if not rows or #rows == 0 then
@@ -109,11 +109,26 @@ function UI:ShowAllTimeScores()
   for i, entry in ipairs(rows) do
     chat:Send(string.format("[Trivia] %d) %s - %d pts (%d correct)", i, entry.name, entry.points or 0, entry.correct or 0))
   end
+  if fastestName and fastestTime then
+    chat:Send(string.format("[Trivia] All-time fastest: %s (%.2fs)", fastestName, fastestTime))
+  end
 end
 
 function UI:RefreshSetList()
   if not self.setContainer then
     return
+  end
+
+  -- Reset scroll to top if present
+  if self.setScroll then
+    local sb = self.setScroll.ScrollBar or _G[(self.setScroll:GetName() or "") .. "ScrollBar"]
+    if sb and sb.GetMinMaxValues then
+      local min = select(1, sb:GetMinMaxValues())
+      if min then sb:SetValue(min) end
+    end
+    if self.setScroll.SetVerticalScroll then
+      self.setScroll:SetVerticalScroll(0)
+    end
   end
 
   for _, item in ipairs(self.setItems or {}) do
@@ -162,6 +177,11 @@ function UI:RefreshSetList()
         yOffset = yOffset + 20
       end
     end
+  end
+
+  -- Update content height so the scrollbar knows the scrollable range
+  if self.setContainer and self.setContainer.SetHeight then
+    self.setContainer:SetHeight(math.max(1, yOffset))
   end
 
   self:UpdateQuestionCount()
@@ -326,8 +346,8 @@ function UI:AnnounceNoWinner()
 end
 
 function UI:EndGame()
-  local rows = TriviaClassic:GetSessionScoreboard()
-  TriviaClassic.chat:SendEnd(rows)
+  local rows, fastestName, fastestTime = TriviaClassic:GetSessionScoreboard()
+  TriviaClassic.chat:SendEnd(rows, fastestName, fastestTime)
   TriviaClassic:EndGame()
   self.frame.statusText:SetText("Game ended. Press Start to begin a new game.")
   self.nextButton:SetText("Next")

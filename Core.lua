@@ -16,6 +16,11 @@ local function initDatabase()
   TriviaClassicCharacterDB.schema = TriviaClassicCharacterDB.schema or SCHEMA_VERSION
   TriviaClassicCharacterDB.scores = TriviaClassicCharacterDB.scores or {}
   TriviaClassicCharacterDB.leaderboard = TriviaClassicCharacterDB.leaderboard or {}
+  -- Track all-time fastest correct answer across all games for this character
+  -- Format: { name = "Player", time = 1.23 }
+  if not TriviaClassicCharacterDB.fastest then
+    TriviaClassicCharacterDB.fastest = nil
+  end
 end
 
 local function initGame()
