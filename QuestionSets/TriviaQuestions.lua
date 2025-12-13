@@ -1506,6 +1506,12 @@ TriviaBot_Questions[1]['Category'][239] = 4
 TriviaBot_Questions[1]['Points'][239] = "1"
 TriviaBot_Questions[1]['Hints'][239] = {}
 
+TriviaBot_Questions[1]['Question'][240] = "What is the name of the zone inside the Mage Tower in Stormwind’s Mage Quarter that serves as the portal arrival point to Stormwind?"
+TriviaBot_Questions[1]['Answers'][240] = {"Wizard's Sanctum"}
+TriviaBot_Questions[1]['Category'][240] = 2
+TriviaBot_Questions[1]['Points'][240] = "1"
+TriviaBot_Questions[1]['Hints'][240] = {}
+
 
 -- Ensure the global table exists and register with TriviaClassic if present
 _G.TriviaBot_Questions = TriviaBot_Questions
