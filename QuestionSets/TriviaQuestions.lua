@@ -1194,6 +1194,319 @@ TriviaBot_Questions[1]['Category'][187] = 3
 TriviaBot_Questions[1]['Points'][187] = "1"
 TriviaBot_Questions[1]['Hints'][187] = {}
 
+TriviaBot_Questions[1]['Question'][188] = "Which elite gnoll in Elwynn Forest is notorious for killing low-level players near the Riverpaw camps?"
+TriviaBot_Questions[1]['Answers'][188] = {"Hogger"}
+TriviaBot_Questions[1]['Category'][188] = 1
+TriviaBot_Questions[1]['Points'][188] = "1"
+TriviaBot_Questions[1]['Hints'][188] = {}
+
+TriviaBot_Questions[1]['Question'][189] = "Who created Stitches, the abomination in Duskwood, as a gift for Lord Ello Ebonlocke, the mayer of Darkshire?"
+TriviaBot_Questions[1]['Answers'][189] = {"Abercrombie the Embalmer", "Abercrombie"}
+TriviaBot_Questions[1]['Category'][189] = 1
+TriviaBot_Questions[1]['Points'][189] = "1"
+TriviaBot_Questions[1]['Hints'][189] = {}
+
+TriviaBot_Questions[1]['Question'][190] = "How many elite worgen called \"Son of Arugal\" can be found in Silverpine Forest?"
+TriviaBot_Questions[1]['Answers'][190] = {"3", "three"}
+TriviaBot_Questions[1]['Category'][190] = 1
+TriviaBot_Questions[1]['Points'][190] = "1"
+TriviaBot_Questions[1]['Hints'][190] = {}
+
+TriviaBot_Questions[1]['Question'][191] = "What is the name of the lava-filled raid deep inside Blackrock Mountain where players face elemental forces?"
+TriviaBot_Questions[1]['Answers'][191] = {"Molten Core"}
+TriviaBot_Questions[1]['Category'][191] = 1
+TriviaBot_Questions[1]['Points'][191] = "1"
+TriviaBot_Questions[1]['Hints'][191] = {}
+
+TriviaBot_Questions[1]['Question'][192] = "Who is the final boss of the Molten Core raid?"
+TriviaBot_Questions[1]['Answers'][192] = {"Ragnaros"}
+TriviaBot_Questions[1]['Category'][192] = 1
+TriviaBot_Questions[1]['Points'][192] = "1"
+TriviaBot_Questions[1]['Hints'][192] = {}
+
+TriviaBot_Questions[1]['Question'][193] = "What key item is used to open the door into Upper Blackrock Spire?"
+TriviaBot_Questions[1]['Answers'][193] = {"Seal of Ascension"}
+TriviaBot_Questions[1]['Category'][193] = 1
+TriviaBot_Questions[1]['Points'][193] = "1"
+TriviaBot_Questions[1]['Hints'][193] = {}
+
+TriviaBot_Questions[1]['Question'][194] = "What is the name of the key required to access multiple wings of Dire Maul?"
+TriviaBot_Questions[1]['Answers'][194] = {"Crescent Key"}
+TriviaBot_Questions[1]['Category'][194] = 1
+TriviaBot_Questions[1]['Points'][194] = "1"
+TriviaBot_Questions[1]['Hints'][194] = {}
+
+TriviaBot_Questions[1]['Question'][195] = "What is the name of the undead city dungeon in the Eastern Plaguelands that was famously attacked by Arthas Menethil?"
+TriviaBot_Questions[1]['Answers'][195] = {"Stratholme"}
+TriviaBot_Questions[1]['Category'][195] = 1
+TriviaBot_Questions[1]['Points'][195] = "1"
+TriviaBot_Questions[1]['Hints'][195] = {}
+
+TriviaBot_Questions[1]['Question'][196] = "What is the name of the raid lair where the broodmother dragon Onyxia is fought?"
+TriviaBot_Questions[1]['Answers'][196] = {"Onyxia's Lair"}
+TriviaBot_Questions[1]['Category'][196] = 1
+TriviaBot_Questions[1]['Points'][196] = "1"
+TriviaBot_Questions[1]['Hints'][196] = {}
+
+TriviaBot_Questions[1]['Question'][197] = "What is the name of the rare mount that can drop from Baron Rivendare in Stratholme?"
+TriviaBot_Questions[1]['Answers'][197] = {"Deathcharger's Reins", "Baron's Deathcharger"}
+TriviaBot_Questions[1]['Category'][197] = 1
+TriviaBot_Questions[1]['Points'][197] = "1"
+TriviaBot_Questions[1]['Hints'][197] = {}
+
+TriviaBot_Questions[1]['Question'][198] = "Which elite black drake is notorious for wiping travelers as it patrols near the Blasted Lands and Swamp of Sorrows routes?"
+TriviaBot_Questions[1]['Answers'][198] = {"Teremus the Devourer", "Teremus"}
+TriviaBot_Questions[1]['Category'][198] = 1
+TriviaBot_Questions[1]['Points'][198] = "1"
+TriviaBot_Questions[1]['Hints'][198] = {}
+
+TriviaBot_Questions[1]['Question'][199] = "Which Horde capital city is built beneath the ruins of the former human capital of Lordaeron?"
+TriviaBot_Questions[1]['Answers'][199] = {"Undercity"}
+TriviaBot_Questions[1]['Category'][199] = 3
+TriviaBot_Questions[1]['Points'][199] = "1"
+TriviaBot_Questions[1]['Hints'][199] = {}
+
+TriviaBot_Questions[1]['Question'][200] = "What is the name of the Tauren capital city built atop mesas connected by bridges?"
+TriviaBot_Questions[1]['Answers'][200] = {"Thunder Bluff"}
+TriviaBot_Questions[1]['Category'][200] = 3
+TriviaBot_Questions[1]['Points'][200] = "1"
+TriviaBot_Questions[1]['Hints'][200] = {}
+
+TriviaBot_Questions[1]['Question'][201] = "In which zone is the Horde capital Orgrimmar located?"
+TriviaBot_Questions[1]['Answers'][201] = {"Durotar"}
+TriviaBot_Questions[1]['Category'][201] = 3
+TriviaBot_Questions[1]['Points'][201] = "1"
+TriviaBot_Questions[1]['Hints'][201] = {}
+
+TriviaBot_Questions[1]['Question'][202] = "What is the name of the starting zone for undead characters in Classic WoW?"
+TriviaBot_Questions[1]['Answers'][202] = {"Tirisfal Glades"}
+TriviaBot_Questions[1]['Category'][202] = 3
+TriviaBot_Questions[1]['Points'][202] = "1"
+TriviaBot_Questions[1]['Hints'][202] = {}
+
+TriviaBot_Questions[1]['Question'][203] = "What is the name of the Horde-only dungeon located inside Orgrimmar?"
+TriviaBot_Questions[1]['Answers'][203] = {"Ragefire Chasm"}
+TriviaBot_Questions[1]['Category'][203] = 3
+TriviaBot_Questions[1]['Points'][203] = "1"
+TriviaBot_Questions[1]['Hints'][203] = {}
+
+TriviaBot_Questions[1]['Question'][204] = "What is the name of the main Horde quest hub town in the Barrens with a central flight path?"
+TriviaBot_Questions[1]['Answers'][204] = {"The Crossroads", "Crossroads"}
+TriviaBot_Questions[1]['Category'][204] = 3
+TriviaBot_Questions[1]['Points'][204] = "1"
+TriviaBot_Questions[1]['Hints'][204] = {}
+
+TriviaBot_Questions[1]['Question'][205] = "Which Barrens quest giver is famous for the meme about finding his missing wife?"
+TriviaBot_Questions[1]['Answers'][205] = {"Mankrik"}
+TriviaBot_Questions[1]['Category'][205] = 3
+TriviaBot_Questions[1]['Points'][205] = "1"
+TriviaBot_Questions[1]['Hints'][205] = {}
+
+TriviaBot_Questions[1]['Question'][206] = "Which NPC at Blackrock Mountain can teleport attuned players directly into Molten Core?"
+TriviaBot_Questions[1]['Answers'][206] = {"Lothos Riftwaker"}
+TriviaBot_Questions[1]['Category'][206] = 1
+TriviaBot_Questions[1]['Points'][206] = "1"
+TriviaBot_Questions[1]['Hints'][206] = {}
+
+TriviaBot_Questions[1]['Question'][207] = "Who is the regent lord of Stormwind during the events of Vanilla WoW?"
+TriviaBot_Questions[1]['Answers'][207] = {"Bolvar Fordragon", "Bolvar"}
+TriviaBot_Questions[1]['Category'][207] = 2
+TriviaBot_Questions[1]['Points'][207] = "1"
+TriviaBot_Questions[1]['Hints'][207] = {}
+
+TriviaBot_Questions[1]['Question'][208] = "What is the name of the human capital city in Elwynn Forest?"
+TriviaBot_Questions[1]['Answers'][208] = {"Stormwind City", "Stormwind"}
+TriviaBot_Questions[1]['Category'][208] = 2
+TriviaBot_Questions[1]['Points'][208] = "1"
+TriviaBot_Questions[1]['Hints'][208] = {}
+
+TriviaBot_Questions[1]['Question'][209] = "Which city is canonically higher (elevation): Thunderbluff or Darnassus?"
+TriviaBot_Questions[1]['Answers'][209] = {"Darnassus"}
+TriviaBot_Questions[1]['Category'][209] = 2
+TriviaBot_Questions[1]['Points'][209] = "1"
+TriviaBot_Questions[1]['Hints'][209] = {}
+
+TriviaBot_Questions[1]['Question'][210] = "What is the name of the dwarven capital city carved into the mountains of Dun Morogh?"
+TriviaBot_Questions[1]['Answers'][210] = {"Ironforge"}
+TriviaBot_Questions[1]['Category'][210] = 2
+TriviaBot_Questions[1]['Points'][210] = "1"
+TriviaBot_Questions[1]['Hints'][210] = {}
+
+TriviaBot_Questions[1]['Question'][211] = "What is the name of the irradiated gnome city that becomes a dungeon in Vanilla WoW?"
+TriviaBot_Questions[1]['Answers'][211] = {"Gnomeregan"}
+TriviaBot_Questions[1]['Category'][211] = 2
+TriviaBot_Questions[1]['Points'][211] = "1"
+TriviaBot_Questions[1]['Hints'][211] = {}
+
+TriviaBot_Questions[1]['Question'][212] = "What is the name of the Alliance harbor town in the Wetlands that connects to Kalimdor by boat?"
+TriviaBot_Questions[1]['Answers'][212] = {"Menethil Harbor", "Menethil"}
+TriviaBot_Questions[1]['Category'][212] = 2
+TriviaBot_Questions[1]['Points'][212] = "1"
+TriviaBot_Questions[1]['Hints'][212] = {}
+
+TriviaBot_Questions[1]['Question'][213] = "What is the night elf racial mount type called in Classic WoW?"
+TriviaBot_Questions[1]['Answers'][213] = {"Nightsaber", "Nightsabers"}
+TriviaBot_Questions[1]['Category'][213] = 2
+TriviaBot_Questions[1]['Points'][213] = "1"
+TriviaBot_Questions[1]['Hints'][213] = {}
+
+TriviaBot_Questions[1]['Question'][214] = "Which Alliance questing zone is home to the Defias Brotherhood and the Deadmines storyline?"
+TriviaBot_Questions[1]['Answers'][214] = {"Westfall"}
+TriviaBot_Questions[1]['Category'][214] = 2
+TriviaBot_Questions[1]['Points'][214] = "1"
+TriviaBot_Questions[1]['Hints'][214] = {}
+
+TriviaBot_Questions[1]['Question'][215] = "What is the name of Arthas Menethil's cursed runeblade in Warcraft lore?"
+TriviaBot_Questions[1]['Answers'][215] = {"Frostmourne"}
+TriviaBot_Questions[1]['Category'][215] = 4
+TriviaBot_Questions[1]['Points'][215] = "1"
+TriviaBot_Questions[1]['Hints'][215] = {}
+
+TriviaBot_Questions[1]['Question'][216] = "Which demon lord bound Ner'zhul's spirit to create the Lich King?"
+TriviaBot_Questions[1]['Answers'][216] = {"Kil'jaeden", "Kiljaeden"}
+TriviaBot_Questions[1]['Category'][216] = 4
+TriviaBot_Questions[1]['Points'][216] = "1"
+TriviaBot_Questions[1]['Hints'][216] = {}
+
+TriviaBot_Questions[1]['Question'][217] = "Which Old God is imprisoned beneath Ahn'Qiraj and serves as the final boss of the Temple of Ahn'Qiraj raid?"
+TriviaBot_Questions[1]['Answers'][217] = {"C'Thun"}
+TriviaBot_Questions[1]['Category'][217] = 4
+TriviaBot_Questions[1]['Points'][217] = "1"
+TriviaBot_Questions[1]['Hints'][217] = {}
+
+TriviaBot_Questions[1]['Question'][218] = "What is the name of the red dragon Aspect known as the Life-Binder?"
+TriviaBot_Questions[1]['Answers'][218] = {"Alexstrasza"}
+TriviaBot_Questions[1]['Category'][218] = 4
+TriviaBot_Questions[1]['Points'][218] = "1"
+TriviaBot_Questions[1]['Hints'][218] = {}
+
+TriviaBot_Questions[1]['Question'][219] = "What is the name of Deathwing's eldest son who leads Blackwing Lair?"
+TriviaBot_Questions[1]['Answers'][219] = {"Nefarian", "Lord Victor Nefarius"}
+TriviaBot_Questions[1]['Category'][219] = 4
+TriviaBot_Questions[1]['Points'][219] = "1"
+TriviaBot_Questions[1]['Hints'][219] = {}
+
+TriviaBot_Questions[1]['Question'][220] = "What is the name of Illidan Stormrage's twin brother?"
+TriviaBot_Questions[1]['Answers'][220] = {"Malfurion Stormrage", "Malfurion"}
+TriviaBot_Questions[1]['Category'][220] = 4
+TriviaBot_Questions[1]['Points'][220] = "1"
+TriviaBot_Questions[1]['Hints'][220] = {}
+
+TriviaBot_Questions[1]['Question'][221] = "What title is Illidan Stormrage most famously known by in Warcraft lore?"
+TriviaBot_Questions[1]['Answers'][221] = {"The Betrayer"}
+TriviaBot_Questions[1]['Category'][221] = 4
+TriviaBot_Questions[1]['Points'][221] = "1"
+TriviaBot_Questions[1]['Hints'][221] = {}
+
+TriviaBot_Questions[1]['Question'][222] = "Who serves as the final boss of Maraudon and is also the target of the killing quest \"Corruption of Earth and Seed\"? (Full NPC Name)"
+TriviaBot_Questions[1]['Answers'][222] = {"Princess Theradras"}
+TriviaBot_Questions[1]['Category'][222] = 4
+TriviaBot_Questions[1]['Points'][222] = "1"
+TriviaBot_Questions[1]['Hints'][222] = {}
+
+TriviaBot_Questions[1]['Question'][223] = "What is the name of the elite undead knight that stalks Raven Hill Cemetery in Duskwood?"
+TriviaBot_Questions[1]['Answers'][223] = {"Mor'ladim", "Morladim"}
+TriviaBot_Questions[1]['Category'][223] = 1
+TriviaBot_Questions[1]['Points'][223] = "1"
+TriviaBot_Questions[1]['Hints'][223] = {}
+
+TriviaBot_Questions[1]['Question'][224] = "What is the name of the infamous cave in Durotar that is a common cause of early Hardcore deaths?"
+TriviaBot_Questions[1]['Answers'][224] = {"Skull Rock"}
+TriviaBot_Questions[1]['Category'][224] = 1
+TriviaBot_Questions[1]['Points'][224] = "1"
+TriviaBot_Questions[1]['Hints'][224] = {}
+
+TriviaBot_Questions[1]['Question'][225] = "What is the debuff called that you receive after resurrecting at a Spirit Healer in Classic WoW?"
+TriviaBot_Questions[1]['Answers'][225] = {"Resurrection Sickness"}
+TriviaBot_Questions[1]['Category'][225] = 1
+TriviaBot_Questions[1]['Points'][225] = "1"
+TriviaBot_Questions[1]['Hints'][225] = {}
+
+TriviaBot_Questions[1]['Question'][226] = "Which Vanilla dungeon inside Blackrock Mountain is famous for being enormous, maze-like, and full of deadly pulls?"
+TriviaBot_Questions[1]['Answers'][226] = {"Blackrock Depths", "BRD"}
+TriviaBot_Questions[1]['Category'][226] = 1
+TriviaBot_Questions[1]['Points'][226] = "1"
+TriviaBot_Questions[1]['Hints'][226] = {}
+
+TriviaBot_Questions[1]['Question'][227] = "Who is the emperor and final boss encounter of Blackrock Depths in Vanilla WoW?"
+TriviaBot_Questions[1]['Answers'][227] = {"Emperor Dagran Thaurissan", "Dagran Thaurissan"}
+TriviaBot_Questions[1]['Category'][227] = 1
+TriviaBot_Questions[1]['Points'][227] = "1"
+TriviaBot_Questions[1]['Hints'][227] = {}
+
+TriviaBot_Questions[1]['Question'][228] = "What is the name of the Alliance-only camp in northern Stranglethorn Vale that serves as a quest hub?"
+TriviaBot_Questions[1]['Answers'][228] = {"Rebel Camp"}
+TriviaBot_Questions[1]['Category'][228] = 2
+TriviaBot_Questions[1]['Points'][228] = "1"
+TriviaBot_Questions[1]['Hints'][228] = {}
+
+TriviaBot_Questions[1]['Question'][229] = "What is the name of the main Horde-only quest hub in Stranglethorn Vale? (Full name)"
+TriviaBot_Questions[1]['Answers'][229] = {"Grom'gol Base Camp"}
+TriviaBot_Questions[1]['Category'][229] = 3
+TriviaBot_Questions[1]['Points'][229] = "1"
+TriviaBot_Questions[1]['Hints'][229] = {}
+
+TriviaBot_Questions[1]['Question'][230] = "Whose spirit was bound into the Helm of Domination to become the Lich King?"
+TriviaBot_Questions[1]['Answers'][230] = {"Ner'zhul", "Nerzhul"}
+TriviaBot_Questions[1]['Category'][230] = 4
+TriviaBot_Questions[1]['Points'][230] = "1"
+TriviaBot_Questions[1]['Hints'][230] = {}
+
+TriviaBot_Questions[1]['Question'][231] = "What item did players need to obtain (via a long quest chain) to attune themselves and gain access to Onyxia’s Lair?"
+TriviaBot_Questions[1]['Answers'][231] = {"Drakefire Amulet"}
+TriviaBot_Questions[1]['Category'][231] = 4
+TriviaBot_Questions[1]['Points'][231] = "1"
+TriviaBot_Questions[1]['Hints'][231] = {}
+
+TriviaBot_Questions[1]['Question'][232] = "What player's name became a famous meme after he charged into battle yelling his own name in Upper Blackrock Spire?"
+TriviaBot_Questions[1]['Answers'][232] = {"Leeroy Jenkins"}
+TriviaBot_Questions[1]['Category'][232] = 1
+TriviaBot_Questions[1]['Points'][232] = "1"
+TriviaBot_Questions[1]['Hints'][232] = {}
+
+TriviaBot_Questions[1]['Question'][233] = "Which low-level dungeon in the Barrens is a sprawling cave system with the boss Mutanus the Devourer?"
+TriviaBot_Questions[1]['Answers'][233] = {"Wailing Caverns", "WC"}
+TriviaBot_Questions[1]['Category'][233] = 1
+TriviaBot_Questions[1]['Points'][233] = "1"
+TriviaBot_Questions[1]['Hints'][233] = {}
+
+TriviaBot_Questions[1]['Question'][234] = "What is the name of the Alliance faction in Alterac Valley?"
+TriviaBot_Questions[1]['Answers'][234] = {"Stormpike Guard", "Stormpike"}
+TriviaBot_Questions[1]['Category'][234] = 2
+TriviaBot_Questions[1]['Points'][234] = "1"
+TriviaBot_Questions[1]['Hints'][234] = {}
+
+TriviaBot_Questions[1]['Question'][235] = "What is the name of the Horde faction in Alterac Valley?"
+TriviaBot_Questions[1]['Answers'][235] = {"Frostwolf Clan", "Frostwolf"}
+TriviaBot_Questions[1]['Category'][235] = 3
+TriviaBot_Questions[1]['Points'][235] = "1"
+TriviaBot_Questions[1]['Hints'][235] = {}
+
+TriviaBot_Questions[1]['Question'][236] = "What is the name of the free-for-all PvP arena in Stranglethorn Vale where players battle for a treasure chest that periodically appears?"
+TriviaBot_Questions[1]['Answers'][236] = {"Gurubashi Arena"}
+TriviaBot_Questions[1]['Category'][236] = 4
+TriviaBot_Questions[1]['Points'][236] = "1"
+TriviaBot_Questions[1]['Hints'][236] = {}
+
+TriviaBot_Questions[1]['Question'][237] = "During the Gates of Ahn’Qiraj opening event, what unique title was given to players who rang the gong to open the gates?"
+TriviaBot_Questions[1]['Answers'][237] = {"Scarab Lord"}
+TriviaBot_Questions[1]['Category'][237] = 4
+TriviaBot_Questions[1]['Points'][237] = "1"
+TriviaBot_Questions[1]['Hints'][237] = {}
+
+TriviaBot_Questions[1]['Question'][238] = "Originally in Vanilla WoW, how many debuffs could a single enemy have on it at one time (the debuff limit)?"
+TriviaBot_Questions[1]['Answers'][238] = {"8", "eight"}
+TriviaBot_Questions[1]['Category'][238] = 4
+TriviaBot_Questions[1]['Points'][238] = "1"
+TriviaBot_Questions[1]['Hints'][238] = {}
+
+TriviaBot_Questions[1]['Question'][239] = "Which legendary item is often jokingly spammed in chat with the phrase “Did someone say [item name]?” due to its famously long name? (Full Item Name)"
+TriviaBot_Questions[1]['Answers'][239] = {"Thunderfury, Blessed Blade of the Windseeker", "[Thunderfury, Blessed Blade of the Windseeker]"}
+TriviaBot_Questions[1]['Category'][239] = 4
+TriviaBot_Questions[1]['Points'][239] = "1"
+TriviaBot_Questions[1]['Hints'][239] = {}
+
+
 -- Ensure the global table exists and register with TriviaClassic if present
 _G.TriviaBot_Questions = TriviaBot_Questions
 if TriviaClassic and TriviaClassic.RegisterTriviaBotSet then
