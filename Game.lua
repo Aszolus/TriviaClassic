@@ -119,6 +119,7 @@ function Game:Start(selectedIds, desiredCount, allowedCategories)
   s.lastWinnerTime = nil
   s.gameActive = true
   s.gameScores = {}
+  s.fastest = nil
 
   return {
     total = #gameQuestions,
