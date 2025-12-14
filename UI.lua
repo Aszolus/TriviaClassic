@@ -69,6 +69,20 @@ local function renderSelectableList(listFrame, items, pool, selectedMap)
   return pool
 end
 
+function UI:RefreshPrimaryButton()
+  if not self.nextButton then
+    return
+  end
+  local action = TriviaClassic:GetPrimaryAction()
+  local label = (action and action.label) or "Next"
+  self.nextButton:SetText(label)
+  if action and action.enabled == false then
+    self.nextButton:Disable()
+  else
+    self.nextButton:Enable()
+  end
+end
+
 function UI:SetChannel(key)
   key = key or TriviaClassic_GetDefaultChannel()
   self.channelKey = key
@@ -385,7 +399,7 @@ function UI:ShowSessionScores()
 end
 
 function UI:ShowAllTimeScores()
-  local rows, fastestName, fastestTime = TriviaClassic:GetLeaderboard(10)
+  local rows, fastestName, fastestTime = TriviaClassic:GetLeaderboard(5)
   local chat = TriviaClassic.chat
   chat:Send("[Trivia] All-time scores:")
   if not rows or #rows == 0 then
@@ -529,8 +543,7 @@ function UI:StartGame()
     return
   end
 
-  self.nextButton:SetText("Next")
-  self.nextButton:Enable()
+  self:RefreshPrimaryButton()
   if self.skipButton then
     self.skipButton:Enable()
   end
@@ -551,10 +564,13 @@ function UI:StartGame()
 end
 
 function UI:AnnounceQuestion()
-  local q, index, total = TriviaClassic:NextQuestion()
+  local result = TriviaClassic:PerformPrimaryAction("announce_question")
+  local q = result and result.question
+  local index = result and result.index
+  local total = result and result.total
   if not q then
     self.frame.statusText:SetText("No more questions. End the game.")
-    self.nextButton:SetText("End")
+    self:RefreshPrimaryButton()
     return
   end
 
@@ -581,13 +597,12 @@ function UI:AnnounceQuestion()
       self.hintButton:Disable()
     end
   end
-  self.nextButton:SetText("Waiting...")
-  self.nextButton:Disable()
   if self.skipButton then
     self.skipButton:Enable()
   end
 
   TriviaClassic.chat:SendQuestion(index, total, q)
+  self:RefreshPrimaryButton()
 end
 
 function UI:AnnounceWinner()
@@ -606,37 +621,38 @@ function UI:AnnounceWinner()
       self:AnnounceNoWinner()
       return
     end
-    local finished = TriviaClassic:CompleteWinnerBroadcast()
+    local result = TriviaClassic:PerformPrimaryAction("announce_winner")
+    local finished = result and result.finished
     if finished then
-      self.nextButton:SetText("End")
-    else
-      self.nextButton:SetText("Next")
+      self.frame.statusText:SetText("Results announced. Click End to finish.")
     end
     self.nextButton:Enable()
     if self.skipButton then
       self.skipButton:Disable()
     end
     self:UpdateSessionBoard()
+    self:RefreshPrimaryButton()
     return
   end
 
-  local winnerName, elapsed = TriviaClassic:GetLastWinner()
+  local winnerName, elapsed, teamName, teamMembers = TriviaClassic:GetLastWinner()
   if not winnerName then
     return
   end
   local q = TriviaClassic:GetCurrentQuestion()
-  TriviaClassic.chat:SendWinner(winnerName, elapsed or 0, q and q.points)
-  self.frame.statusText:SetText("Winner announced. Click Next for the next question.")
-  local finished = TriviaClassic:CompleteWinnerBroadcast()
-  if finished then
-    self.nextButton:SetText("End")
+  TriviaClassic.chat:SendWinner(winnerName, elapsed or 0, q and q.points, teamName, teamMembers)
+  if teamName then
+    local memberText = (teamMembers and #teamMembers > 0) and (" (" .. table.concat(teamMembers, ", ") .. ")") or ""
+    self.frame.statusText:SetText(string.format("%s answered correctly in %.2fs. Click Next for the next question.", teamName .. memberText, elapsed or 0))
   else
-    self.nextButton:SetText("Next")
+    self.frame.statusText:SetText("Winner announced. Click Next for the next question.")
   end
+  TriviaClassic:PerformPrimaryAction("announce_winner")
   self.nextButton:Enable()
   if self.skipButton then
     self.skipButton:Disable()
   end
+  self:RefreshPrimaryButton()
 end
 
 function UI:AnnounceNoWinner()
@@ -648,16 +664,12 @@ function UI:AnnounceNoWinner()
     answersText = table.concat(q.answers, ", ")
   end
   TriviaClassic.chat:SendNoWinner(answersText)
-  local finished = TriviaClassic:CompleteNoWinnerBroadcast()
-  if finished then
-    self.nextButton:SetText("End")
-  else
-    self.nextButton:SetText("Next")
-  end
+  TriviaClassic:PerformPrimaryAction("announce_no_winner")
   self.nextButton:Enable()
   if self.skipButton then
     self.skipButton:Disable()
   end
+  self:RefreshPrimaryButton()
 end
 
 function UI:EndGame()
@@ -665,8 +677,7 @@ function UI:EndGame()
   TriviaClassic.chat:SendEnd(rows, fastestName, fastestTime)
   TriviaClassic:EndGame()
   self.frame.statusText:SetText("Game ended. Press Start to begin a new game.")
-  self.nextButton:SetText("Next")
-  self.nextButton:Disable()
+  self:RefreshPrimaryButton()
   if self.skipButton then
     self.skipButton:Disable()
   end
@@ -680,33 +691,23 @@ function UI:OnNextPressed()
     return
   end
 
-  if self.nextButton:GetText() == "End" then
-    self:EndGame()
-    return
-  end
-
-  if TriviaClassic:IsPendingWinner() then
-    self:AnnounceWinner()
-    self:UpdateSessionBoard()
-    return
-  end
-
-  if TriviaClassic:IsPendingNoWinner() then
-    self:AnnounceNoWinner()
-    return
-  end
-
-  if TriviaClassic:IsQuestionOpen() then
+  local action = TriviaClassic:GetPrimaryAction()
+  if not action or action.command == "waiting" or action.command == "wait" or action.enabled == false then
     self.frame.statusText:SetText("A question is already active.")
     return
   end
 
-  if not TriviaClassic:HasMoreQuestions() then
-    self.nextButton:SetText("End")
-    return
+  if action.command == "announce_question" then
+    self:AnnounceQuestion()
+  elseif action.command == "announce_winner" then
+    self:AnnounceWinner()
+    self:UpdateSessionBoard()
+  elseif action.command == "announce_no_winner" then
+    self:AnnounceNoWinner()
+  elseif action.command == "end_game" then
+    self:EndGame()
   end
-
-  self:AnnounceQuestion()
+  self:RefreshPrimaryButton()
 end
 
 function UI:SkipQuestion()
@@ -732,8 +733,7 @@ function UI:SkipQuestion()
     if self.hintButton then
       self.hintButton:Disable()
     end
-    self.nextButton:SetText("Next")
-    self.nextButton:Enable()
+    self:RefreshPrimaryButton()
     if self.skipButton then
       self.skipButton:Disable()
     end
@@ -755,6 +755,8 @@ function UI:OnWinnerFound(result)
   local winnerName = result.winner
   local elapsed = result.elapsed
   local mode = result.mode or TriviaClassic:GetGameMode()
+  local teamName = result.teamName
+  local teamMembers = result.teamMembers
   if mode == "ALL_CORRECT" then
     local total = result.totalWinners or 1
     local suffix = (total == 1) and "" or "s"
@@ -768,9 +770,13 @@ function UI:OnWinnerFound(result)
   if self.hintButton then
     self.hintButton:Disable()
   end
-  self.frame.statusText:SetText(string.format("%s answered correctly in %.2fs. Click 'Announce Winner' to broadcast.", winnerName, elapsed or 0))
-  self.nextButton:SetText("Announce Winner")
-  self.nextButton:Enable()
+  if teamName then
+    local memberText = (teamMembers and #teamMembers > 0) and (" (" .. table.concat(teamMembers, ", ") .. ")") or ""
+    self.frame.statusText:SetText(string.format("%s answered correctly in %.2fs. Click 'Announce Winner' to broadcast.", teamName .. memberText, elapsed or 0))
+  else
+    self.frame.statusText:SetText(string.format("%s answered correctly in %.2fs. Click 'Announce Winner' to broadcast.", winnerName, elapsed or 0))
+  end
+  self:RefreshPrimaryButton()
   if self.skipButton then
     self.skipButton:Disable()
   end
@@ -797,13 +803,11 @@ function UI:UpdateTimer(elapsed)
       self.skipButton:Disable()
     end
     if TriviaClassic:IsPendingWinner() then
-      self.nextButton:SetText("Announce Results")
       self.frame.statusText:SetText("Time expired. Announce results for this question.")
     else
-      self.nextButton:SetText("Announce No Winner")
       self.frame.statusText:SetText("Time expired. Click 'Announce No Winner' to continue.")
     end
-    self.nextButton:Enable()
+    self:RefreshPrimaryButton()
     return
   end
   self.timerBar:SetValue(self.timerRemaining)
@@ -829,6 +833,7 @@ function UI:BuildUI()
     self:RefreshSetList()
     self:UpdateSessionBoard()
     self:UpdateTeamUI()
+    self:RefreshPrimaryButton()
     return
   end
 
@@ -964,6 +969,7 @@ function UI:BuildUI()
 
   self:RefreshSetList()
   self:UpdateSessionBoard()
+  self:RefreshPrimaryButton()
 
   frame:Hide()
   SLASH_TRIVIACLASSIC1 = "/trivia"

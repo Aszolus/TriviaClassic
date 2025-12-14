@@ -328,9 +328,23 @@ end
 
 function TriviaClassic:GetLastWinner()
   if not self.game or not self.game.GetLastWinner then
-    return nil, nil
+    return nil, nil, nil, nil
   end
   return self.game:GetLastWinner()
+end
+
+function TriviaClassic:GetPrimaryAction()
+  if not self.game or not self.game.GetPrimaryAction then
+    return { command = "waiting", label = "Start", enabled = false }
+  end
+  return self.game:GetPrimaryAction()
+end
+
+function TriviaClassic:PerformPrimaryAction(command)
+  if not self.game or not self.game.PerformPrimaryAction then
+    return nil
+  end
+  return self.game:PerformPrimaryAction(command)
 end
 
 function TriviaClassic:GetPendingWinners()

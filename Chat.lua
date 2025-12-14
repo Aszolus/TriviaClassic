@@ -143,13 +143,23 @@ end
 local function formatWinnerNames(winners)
   local parts = {}
   for _, row in ipairs(winners or {}) do
-    table.insert(parts, string.format("%s (+%s pts)", row.name or "?", tostring(row.points or 1)))
+    if row.teamName then
+      local members = row.teamMembers and #row.teamMembers > 0 and (" (" .. table.concat(row.teamMembers, ", ") .. ")") or ""
+      table.insert(parts, string.format("%s%s (+%s pts)", row.teamName or "Team", members, tostring(row.points or 1)))
+    else
+      table.insert(parts, string.format("%s (+%s pts)", row.name or "?", tostring(row.points or 1)))
+    end
   end
   return table.concat(parts, ", ")
 end
 
-function Chat:SendWinner(name, elapsed, points)
-  self:Send(string.format("[Trivia] %s answered correctly in %.2fs! (+%s pts)", name, elapsed or 0, tostring(points or 1)))
+function Chat:SendWinner(name, elapsed, points, teamName, teamMembers)
+  if teamName then
+    local members = teamMembers and #teamMembers > 0 and (" (" .. table.concat(teamMembers, ", ") .. ")") or ""
+    self:Send(string.format("[Trivia] %s answered correctly in %.2fs!%s (+%s pts)", teamName, elapsed or 0, members, tostring(points or 1)))
+  else
+    self:Send(string.format("[Trivia] %s answered correctly in %.2fs! (+%s pts)", name, elapsed or 0, tostring(points or 1)))
+  end
 end
 
 function Chat:SendWinners(winners, question, mode)
@@ -161,7 +171,7 @@ function Chat:SendWinners(winners, question, mode)
     self:Send(string.format("[Trivia] Time's up! %d answered correctly: %s", #winners, formatWinnerNames(winners)))
   else
     local first = winners[1]
-    self:SendWinner(first.name, first.elapsed or 0, first.points or (question and question.points) or 1)
+    self:SendWinner(first.name, first.elapsed or 0, first.points or (question and question.points) or 1, first.teamName, first.teamMembers)
   end
 end
 
@@ -183,7 +193,12 @@ function Chat:SendEnd(rows, fastestName, fastestTime)
     self:Send("[Trivia] No correct answers recorded.")
   else
     for _, entry in ipairs(rows) do
-      local line = string.format("%s - %d pts (%d correct)", entry.name, entry.points, entry.correct)
+      local line = nil
+      if entry.members and #entry.members > 0 then
+        line = string.format("%s - %d pts (%d correct) (%s)", entry.name, entry.points, entry.correct, table.concat(entry.members, ", "))
+      else
+        line = string.format("%s - %d pts (%d correct)", entry.name, entry.points, entry.correct)
+      end
       self:Send("[Trivia] " .. line)
     end
   end

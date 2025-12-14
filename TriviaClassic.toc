@@ -7,6 +7,7 @@
 
 Constants.lua
 QuestionRepository.lua
+GameModes.lua
 Game.lua
 Chat.lua
 Core.lua
