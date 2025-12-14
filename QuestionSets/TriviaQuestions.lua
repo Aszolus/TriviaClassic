@@ -745,7 +745,7 @@ TriviaBot_Questions[1]['Points'][114] = "1"
 TriviaBot_Questions[1]['Hints'][114] = {}
 
 TriviaBot_Questions[1]['Question'][115] = "Which sprawling quest chain known revolves around investigating the disappearance of the King of Stormwind?"
-TriviaBot_Questions[1]['Answers'][115] = {"The Missing Diplomat"}
+TriviaBot_Questions[1]['Answers'][115] = {"The Missing Diplomat", "missing diplomat"}
 TriviaBot_Questions[1]['Category'][115] = 2
 TriviaBot_Questions[1]['Points'][115] = "1"
 TriviaBot_Questions[1]['Hints'][115] = {}
@@ -834,7 +834,7 @@ TriviaBot_Questions[1]['Category'][129] = 4
 TriviaBot_Questions[1]['Points'][129] = "1"
 TriviaBot_Questions[1]['Hints'][129] = {}
 
-TriviaBot_Questions[1]['Question'][130] = "Who originally wielding Ashbringer?"
+TriviaBot_Questions[1]['Question'][130] = "Who originally wielded Ashbringer?"
 TriviaBot_Questions[1]['Answers'][130] = {"Alexandros Mograine", "Mograine", "Scarlet Highlord Mograine", "Highlord Mograine", "Highlord Alexandros Mograine"}
 TriviaBot_Questions[1]['Category'][130] = 4
 TriviaBot_Questions[1]['Points'][130] = "1"
@@ -960,7 +960,7 @@ TriviaBot_Questions[1]['Category'][150] = 4
 TriviaBot_Questions[1]['Points'][150] = "1"
 TriviaBot_Questions[1]['Hints'][150] = {}
 
-TriviaBot_Questions[1]['Question'][151] = "What is the name of the weapon, located in gnomeregan, is commonly farmed by Feral Druids?"
+TriviaBot_Questions[1]['Question'][151] = "What is the name of the weapon, located in gnomeregan, which is commonly farmed by Feral Druids?"
 TriviaBot_Questions[1]['Answers'][151] = {"Manual Crowd Pummeler"}
 TriviaBot_Questions[1]['Category'][151] = 4
 TriviaBot_Questions[1]['Points'][151] = "1"
