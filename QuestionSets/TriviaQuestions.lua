@@ -1249,7 +1249,7 @@ TriviaBot_Questions[1]['Points'][196] = "1"
 TriviaBot_Questions[1]['Hints'][196] = {}
 
 TriviaBot_Questions[1]['Question'][197] = "What is the name of the rare mount that can drop from Baron Rivendare in Stratholme?"
-TriviaBot_Questions[1]['Answers'][197] = {"Deathcharger's Reins", "Baron's Deathcharger"}
+TriviaBot_Questions[1]['Answers'][197] = {"Deathcharger's Reins"}
 TriviaBot_Questions[1]['Category'][197] = 1
 TriviaBot_Questions[1]['Points'][197] = "1"
 TriviaBot_Questions[1]['Hints'][197] = {}
@@ -1405,7 +1405,7 @@ TriviaBot_Questions[1]['Points'][222] = "1"
 TriviaBot_Questions[1]['Hints'][222] = {}
 
 TriviaBot_Questions[1]['Question'][223] = "What is the name of the elite undead knight that stalks Raven Hill Cemetery in Duskwood?"
-TriviaBot_Questions[1]['Answers'][223] = {"Mor'ladim", "Morladim"}
+TriviaBot_Questions[1]['Answers'][223] = {"Mor'ladim"}
 TriviaBot_Questions[1]['Category'][223] = 1
 TriviaBot_Questions[1]['Points'][223] = "1"
 TriviaBot_Questions[1]['Hints'][223] = {}
