@@ -9,6 +9,11 @@ local channelLabels = {}
 for _, ch in ipairs(channels) do
   channelLabels[ch.key] = ch.label
 end
+local gameModes = TriviaClassic_GetGameModes()
+local modeLabels = {}
+for _, mode in ipairs(gameModes) do
+  modeLabels[mode.key] = mode.label
+end
 
 local function normalizeCategoryName(name)
   return trim(name or ""):lower()
@@ -68,6 +73,16 @@ function UI:SetCustomChannel(name)
   if self.channelStatus then
     self.channelStatus:SetText("Channel: Custom - " .. name)
   end
+end
+
+function UI:SetGameMode(key)
+  local modeKey = modeLabels[key] and key or TriviaClassic_GetDefaultMode()
+  self.gameModeKey = modeKey
+  if self.modeDropDown then
+    UIDropDownMenu_SetSelectedValue(self.modeDropDown, modeKey)
+    UIDropDownMenu_SetText(self.modeDropDown, modeLabels[modeKey] or modeKey)
+  end
+  TriviaClassic:SetGameMode(modeKey)
 end
 
 function UI:UpdateSessionBoard()
@@ -223,6 +238,8 @@ function UI:StartGame()
   end
 
   local desiredCount = tonumber(self.questionCountInput and self.questionCountInput:GetText() or "")
+  -- Persist selected mode before starting
+  self:SetGameMode(self.gameModeKey or TriviaClassic:GetGameMode())
   -- Build per-set categories map for all sets (default-deny when empty)
   local categoriesBySet = {}
   for _, set in ipairs(TriviaClassic:GetAllSets()) do
@@ -246,7 +263,7 @@ function UI:StartGame()
     self.skipButton:Enable()
   end
   self.warningButton:Disable()
-  self.frame.statusText:SetText(string.format("Game started with %d questions.", meta.total))
+  self.frame.statusText:SetText(string.format("Game started (%s). %d questions ready.", meta.modeLabel or TriviaClassic:GetGameModeLabel(), meta.total))
   self.questionLabel:SetText("Press Next to announce Question 1.")
   self.categoryLabel:SetText("")
   self.timerText:SetText(string.format("Time: %ds", TriviaClassic.DEFAULT_TIMER))
@@ -256,7 +273,7 @@ function UI:StartGame()
   self.questionNumber = 0
   self:UpdateSessionBoard()
 
-  TriviaClassic.chat:SendStart({ total = meta.total, setNames = meta.setNames })
+  TriviaClassic.chat:SendStart(meta)
   if self.endButton then
     self.endButton:Enable()
   end
@@ -274,7 +291,7 @@ function UI:AnnounceQuestion()
   self.currentQuestion = q
   self.questionLabel:SetText(string.format("Q%d/%d: %s", index, total, q.question))
   self.categoryLabel:SetText(string.format("Category: %s  |  Points: %s", q.category or "General", tostring(q.points or 1)))
-  self.frame.statusText:SetText("Question announced. Listening for answers...")
+  self.frame.statusText:SetText(string.format("Question announced. Listening for answers... (%s)", TriviaClassic:GetGameModeLabel()))
 
   self.timerRemaining = TriviaClassic.DEFAULT_TIMER
   self.timerRunning = true
@@ -305,6 +322,32 @@ function UI:AnnounceWinner()
   if not TriviaClassic:IsPendingWinner() then
     return
   end
+  local mode = TriviaClassic:GetGameMode()
+  if mode == "ALL_CORRECT" then
+    self.timerRunning = false
+    local winners = TriviaClassic:GetPendingWinners()
+    local q = TriviaClassic:GetCurrentQuestion()
+    if winners and #winners > 0 then
+      TriviaClassic.chat:SendWinners(winners, q, mode)
+      self.frame.statusText:SetText("Results announced. Click Next for the next question.")
+    else
+      self:AnnounceNoWinner()
+      return
+    end
+    local finished = TriviaClassic:CompleteWinnerBroadcast()
+    if finished then
+      self.nextButton:SetText("End")
+    else
+      self.nextButton:SetText("Next")
+    end
+    self.nextButton:Enable()
+    if self.skipButton then
+      self.skipButton:Disable()
+    end
+    self:UpdateSessionBoard()
+    return
+  end
+
   local winnerName, elapsed = TriviaClassic:GetLastWinner()
   if not winnerName then
     return
@@ -433,7 +476,21 @@ function UI:SendWarning()
   TriviaClassic.chat:SendWarning()
 end
 
-function UI:OnWinnerFound(winnerName, elapsed)
+function UI:OnWinnerFound(result)
+  if not result then
+    return
+  end
+  local winnerName = result.winner
+  local elapsed = result.elapsed
+  local mode = result.mode or TriviaClassic:GetGameMode()
+  if mode == "ALL_CORRECT" then
+    local total = result.totalWinners or 1
+    local suffix = (total == 1) and "" or "s"
+    self.frame.statusText:SetText(string.format("%s answered correctly in %.2fs. %d player%s credited so far; waiting until time expires.", winnerName or "Someone", elapsed or 0, total, suffix))
+    self:UpdateSessionBoard()
+    return
+  end
+
   self.timerRunning = false
   self.warningButton:Disable()
   if self.hintButton then
@@ -442,6 +499,9 @@ function UI:OnWinnerFound(winnerName, elapsed)
   self.frame.statusText:SetText(string.format("%s answered correctly in %.2fs. Click 'Announce Winner' to broadcast.", winnerName, elapsed or 0))
   self.nextButton:SetText("Announce Winner")
   self.nextButton:Enable()
+  if self.skipButton then
+    self.skipButton:Disable()
+  end
   self:UpdateSessionBoard()
 end
 
@@ -461,9 +521,17 @@ function UI:UpdateTimer(elapsed)
     if self.hintButton then
       self.hintButton:Disable()
     end
-    self.nextButton:SetText("Announce No Winner")
+    if self.skipButton then
+      self.skipButton:Disable()
+    end
+    if TriviaClassic:IsPendingWinner() then
+      self.nextButton:SetText("Announce Results")
+      self.frame.statusText:SetText("Time expired. Announce results for this question.")
+    else
+      self.nextButton:SetText("Announce No Winner")
+      self.frame.statusText:SetText("Time expired. Click 'Announce No Winner' to continue.")
+    end
     self.nextButton:Enable()
-    self.frame.statusText:SetText("Time expired. Click 'Announce No Winner' to continue.")
     return
   end
   self.timerBar:SetValue(self.timerRemaining)
@@ -479,12 +547,18 @@ end
 
 function UI:BuildUI()
   if self.frame then
+    self.gameModeKey = TriviaClassic:GetGameMode()
+    if self.modeDropDown then
+      UIDropDownMenu_SetSelectedValue(self.modeDropDown, self.gameModeKey)
+      UIDropDownMenu_SetText(self.modeDropDown, modeLabels[self.gameModeKey] or self.gameModeKey)
+    end
     self:RefreshSetList()
     self:UpdateSessionBoard()
     return
   end
 
   self.channelKey = TriviaClassic_GetDefaultChannel()
+  self.gameModeKey = TriviaClassic:GetGameMode()
 
   local frame = TriviaClassic_UI_BuildLayout(self)
   self:SetChannel(self.channelKey)
@@ -517,6 +591,22 @@ function UI:BuildUI()
         self:SetChannel(ch.key)
       end
       info.checked = (self.channelKey == ch.key)
+      UIDropDownMenu_AddButton(info)
+    end
+  end)
+
+  UIDropDownMenu_SetSelectedValue(self.modeDropDown, self.gameModeKey)
+  UIDropDownMenu_SetText(self.modeDropDown, modeLabels[self.gameModeKey] or self.gameModeKey)
+  UIDropDownMenu_Initialize(self.modeDropDown, function(_, _, _)
+    for _, mode in ipairs(gameModes) do
+      local info = UIDropDownMenu_CreateInfo()
+      info.text = mode.label
+      info.value = mode.key
+      info.func = function()
+        UIDropDownMenu_SetSelectedValue(self.modeDropDown, mode.key)
+        self:SetGameMode(mode.key)
+      end
+      info.checked = (self.gameModeKey == mode.key)
       UIDropDownMenu_AddButton(info)
     end
   end)

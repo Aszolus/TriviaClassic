@@ -121,7 +121,8 @@ local function formatNames(setNames)
 end
 
 function Chat:SendStart(meta)
-  self:Send(string.format("[Trivia] Game starting! %d questions drawn from %s.", meta.total, formatNames(meta.setNames)))
+  local modeLabel = meta.modeLabel or (meta.mode and TriviaClassic_GetModeLabel(meta.mode)) or "Fastest answer wins"
+  self:Send(string.format("[Trivia] Game starting! Mode: %s. %d questions drawn from %s.", modeLabel, meta.total, formatNames(meta.setNames)))
 end
 
 function Chat:SendQuestion(index, total, question)
@@ -139,8 +140,29 @@ function Chat:SendHint(text)
   end
 end
 
+local function formatWinnerNames(winners)
+  local parts = {}
+  for _, row in ipairs(winners or {}) do
+    table.insert(parts, string.format("%s (+%s pts)", row.name or "?", tostring(row.points or 1)))
+  end
+  return table.concat(parts, ", ")
+end
+
 function Chat:SendWinner(name, elapsed, points)
   self:Send(string.format("[Trivia] %s answered correctly in %.2fs! (+%s pts)", name, elapsed or 0, tostring(points or 1)))
+end
+
+function Chat:SendWinners(winners, question, mode)
+  if not winners or #winners == 0 then
+    self:SendNoWinner(question and (question.displayAnswers and table.concat(question.displayAnswers, ", ") or (question.answers and table.concat(question.answers, ", "))) or nil)
+    return
+  end
+  if mode == "ALL_CORRECT" then
+    self:Send(string.format("[Trivia] Time's up! %d answered correctly: %s", #winners, formatWinnerNames(winners)))
+  else
+    local first = winners[1]
+    self:SendWinner(first.name, first.elapsed or 0, first.points or (question and question.points) or 1)
+  end
 end
 
 function Chat:SendNoWinner(answersText)

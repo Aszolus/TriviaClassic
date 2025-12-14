@@ -6,6 +6,7 @@ _G.TriviaClassic = TriviaClassic
 
 local DEFAULT_TIMER = 20
 local SCHEMA_VERSION = 1
+local MODE_MAP = TriviaClassic_GetModeMap()
 
 TriviaClassic.repo = TriviaClassic_CreateRepo()
 TriviaClassic.chat = TriviaClassic_CreateChat()
@@ -21,10 +22,14 @@ local function initDatabase()
   if not TriviaClassicCharacterDB.fastest then
     TriviaClassicCharacterDB.fastest = nil
   end
+  if not TriviaClassicCharacterDB.mode or not MODE_MAP[TriviaClassicCharacterDB.mode] then
+    TriviaClassicCharacterDB.mode = TriviaClassic_GetDefaultMode()
+  end
 end
 
 local function initGame()
   TriviaClassic.game = TriviaClassic_CreateGame(TriviaClassic.repo, TriviaClassicCharacterDB)
+  TriviaClassic.game:SetMode(TriviaClassic:GetGameMode())
 end
 
 function TriviaClassic:GetAllSets()
@@ -47,8 +52,35 @@ function TriviaClassic:GetChannelKey()
   return self.chat.channelKey
 end
 
+function TriviaClassic:SetGameMode(modeKey)
+  local modeMap = MODE_MAP or TriviaClassic_GetModeMap()
+  if not modeMap[modeKey] then
+    modeKey = TriviaClassic_GetDefaultMode()
+  end
+  TriviaClassicCharacterDB.mode = modeKey
+  if self.game and self.game.SetMode then
+    self.game:SetMode(modeKey)
+  end
+end
+
+function TriviaClassic:GetGameMode()
+  local modeKey = TriviaClassicCharacterDB and TriviaClassicCharacterDB.mode or TriviaClassic_GetDefaultMode()
+  local modeMap = MODE_MAP or TriviaClassic_GetModeMap()
+  if modeMap[modeKey] then
+    return modeKey
+  end
+  return TriviaClassic_GetDefaultMode()
+end
+
+function TriviaClassic:GetGameModeLabel()
+  return TriviaClassic_GetModeLabel(self:GetGameMode())
+end
+
 function TriviaClassic:StartGame(selectedIds, desiredCount, allowedCategories)
-  return self.game:Start(selectedIds, desiredCount, allowedCategories)
+  if self.game and self.game.SetMode then
+    self.game:SetMode(self:GetGameMode())
+  end
+  return self.game:Start(selectedIds, desiredCount, allowedCategories, self:GetGameMode())
 end
 
 function TriviaClassic:NextQuestion()
@@ -99,6 +131,13 @@ function TriviaClassic:GetLastWinner()
   return self.game:GetLastWinner()
 end
 
+function TriviaClassic:GetPendingWinners()
+  if self.game and self.game.GetPendingWinners then
+    return self.game:GetPendingWinners()
+  end
+  return {}
+end
+
 function TriviaClassic:GetSessionScoreboard()
   return self.game:GetSessionScoreboard()
 end
@@ -125,7 +164,7 @@ local function handleIncomingChat(event, msg, sender, languageName, channelNameF
   end
   local winner = TriviaClassic.game:HandleChatAnswer(msg, sender)
   if winner and TriviaClassicUI and TriviaClassicUI.OnWinnerFound then
-    TriviaClassicUI:OnWinnerFound(winner.winner, winner.elapsed)
+    TriviaClassicUI:OnWinnerFound(winner)
   end
 end
 
