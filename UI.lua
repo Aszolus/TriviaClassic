@@ -9,6 +9,11 @@ local channelLabels = {}
 for _, ch in ipairs(channels) do
   channelLabels[ch.key] = ch.label
 end
+local gameModes = TriviaClassic_GetGameModes()
+local modeLabels = {}
+for _, mode in ipairs(gameModes) do
+  modeLabels[mode.key] = mode.label
+end
 
 local function normalizeCategoryName(name)
   return trim(name or ""):lower()
@@ -27,6 +32,64 @@ local function formatScoreLines(rows)
     table.insert(lines, string.format("%d) %s - %d pts (%d correct)%s", i, entry.name, entry.points or 0, entry.correct or 0, best))
   end
   return table.concat(lines, "\n")
+end
+local function normalizeName(text)
+  return trim(text or ""):gsub("%s+", " ")
+end
+
+local function renderSelectableList(listFrame, items, pool, selectedMap)
+  pool = pool or {}
+  selectedMap = selectedMap or {}
+  local y = 0
+  for i, name in ipairs(items) do
+    local row = pool[i]
+    if not row then
+      row = CreateFrame("CheckButton", nil, listFrame, "ChatConfigCheckButtonTemplate")
+      pool[i] = row
+    end
+    row:Show()
+    row:SetPoint("TOPLEFT", 0, -y)
+    row.Text:SetText(name)
+    row:SetChecked(selectedMap[name] or false)
+    row:SetScript("OnClick", function(selfBtn)
+      if selfBtn:GetChecked() then
+        selectedMap[name] = true
+      else
+        selectedMap[name] = nil
+      end
+    end)
+    y = y + 20
+  end
+  for i = #items + 1, #pool do
+    if pool[i] then pool[i]:Hide() end
+  end
+  if listFrame.SetHeight then
+    listFrame:SetHeight(math.max(1, y))
+  end
+  return pool
+end
+
+function UI:RefreshPrimaryButton()
+  if not self.nextButton then
+    return
+  end
+  local action = TriviaClassic:GetPrimaryAction()
+  local label = (action and action.label) or "Next"
+  self.nextButton:SetText(label)
+  if action and action.enabled == false then
+    self.nextButton:Disable()
+  else
+    self.nextButton:Enable()
+  end
+end
+
+function UI:OnPendingSteal(event)
+  if not event then
+    return
+  end
+  local teamName = event.teamName or "the next team"
+  self.frame.statusText:SetText(string.format("%s can steal. Click the button to offer the steal.", teamName))
+  self:RefreshPrimaryButton()
 end
 
 function UI:SetChannel(key)
@@ -70,6 +133,264 @@ function UI:SetCustomChannel(name)
   end
 end
 
+function UI:SetGameMode(key)
+  local modeKey = modeLabels[key] and key or TriviaClassic_GetDefaultMode()
+  self.gameModeKey = modeKey
+  if self.modeDropDown then
+    UIDropDownMenu_SetSelectedValue(self.modeDropDown, modeKey)
+    UIDropDownMenu_SetText(self.modeDropDown, modeLabels[modeKey] or modeKey)
+  end
+  TriviaClassic:SetGameMode(modeKey)
+end
+
+function UI:GetTimerSeconds()
+  return TriviaClassic:GetTimer()
+end
+
+function UI:GetStealTimerSeconds()
+  return TriviaClassic:GetStealTimer()
+end
+
+function UI:SetStealTimerSeconds(seconds)
+  TriviaClassic:SetStealTimer(seconds)
+  self:SyncTimerInput()
+end
+
+function UI:SetTimerSeconds(seconds)
+  TriviaClassic:SetTimer(seconds)
+  self:SyncTimerInput()
+end
+
+function UI:SetSelectedTeam(teamKey)
+  self.selectedTeamKey = teamKey
+  self.selectedMembers = {}
+  if self.teamTargetDropDown then
+    UIDropDownMenu_SetSelectedValue(self.teamTargetDropDown, teamKey)
+    UIDropDownMenu_SetText(self.teamTargetDropDown, self.teamNameByKey and self.teamNameByKey[teamKey] or (teamKey or "Select team"))
+  end
+  self:RefreshTeamMembers()
+end
+
+function UI:RefreshTeamDropdown()
+  local teams = TriviaClassic:GetTeams() or {}
+  self.teamNameByKey = {}
+  self.teamDataByKey = {}
+  for _, t in ipairs(teams) do
+    self.teamNameByKey[t.key] = t.name
+    self.teamDataByKey[t.key] = t
+  end
+  local current = self.selectedTeamKey
+  if not current and teams[1] then
+    current = teams[1].key
+  end
+  UIDropDownMenu_Initialize(self.teamTargetDropDown, function()
+    for _, t in ipairs(teams) do
+      local info = UIDropDownMenu_CreateInfo()
+      info.text = t.name
+      info.value = t.key
+      info.func = function()
+        self:SetSelectedTeam(t.key)
+      end
+      info.checked = (self.selectedTeamKey == t.key)
+      UIDropDownMenu_AddButton(info)
+    end
+  end)
+  self:SetSelectedTeam(current)
+end
+
+function UI:RefreshTeamList()
+  if not self.teamList then
+    return
+  end
+  local teams = TriviaClassic:GetTeams() or {}
+  local lines = {}
+  for _, team in ipairs(teams) do
+    local members = team.members or {}
+    table.sort(members, function(a, b) return a:lower() < b:lower() end)
+    local memberText = (#members > 0) and table.concat(members, ", ") or "No members yet"
+    table.insert(lines, string.format("|cffffff00%s|r: %s", team.name, memberText))
+  end
+  if #lines == 0 then
+    self.teamList:SetText("No teams yet. Add a team to get started.")
+  else
+    self.teamList:SetText(table.concat(lines, "\n"))
+  end
+end
+
+function UI:RefreshWaitingList()
+  if not self.waitingContent then
+    return
+  end
+  local waiting = TriviaClassic:GetWaitingPlayers() or {}
+  table.sort(waiting, function(a, b) return a:lower() < b:lower() end)
+  self.waitingNames = waiting
+  self.selectedWaiting = self.selectedWaiting or {}
+  self.waitingRows = renderSelectableList(self.waitingContent, waiting, self.waitingRows or {}, self.selectedWaiting)
+  if self.waitingStatus then
+    if #waiting == 0 then
+      self.waitingStatus:SetText("No registered players yet.")
+    else
+      self.waitingStatus:SetText("Select players to move to a team.")
+    end
+  end
+end
+
+function UI:RefreshTeamMembers()
+  if not self.memberContent then
+    return
+  end
+  local members = {}
+  local teams = self.teamDataByKey or {}
+  local team = self.selectedTeamKey and teams[self.selectedTeamKey] or nil
+  if team and team.members then
+    for _, m in ipairs(team.members) do
+      table.insert(members, m)
+    end
+  end
+  table.sort(members, function(a, b) return a:lower() < b:lower() end)
+  self.selectedMembers = self.selectedMembers or {}
+  self.memberRows = renderSelectableList(self.memberContent, members, self.memberRows or {}, self.selectedMembers)
+  if self.memberStatus then
+    if not self.selectedTeamKey then
+      self.memberStatus:SetText("Select a team to manage members.")
+    elseif #members == 0 then
+      self.memberStatus:SetText("No members in this team.")
+    else
+      self.memberStatus:SetText("Select members to remove or reassign.")
+    end
+  end
+end
+
+function UI:UpdateTeamUI()
+  if not self.teamTargetDropDown then
+    return
+  end
+  self:RefreshTeamDropdown()
+  self:RefreshTeamList()
+  self:RefreshWaitingList()
+  self:RefreshTeamMembers()
+end
+
+function UI:AddTeam()
+  local name = normalizeName(self.teamNameInput and self.teamNameInput:GetText() or "")
+  if name == "" then
+    if self.teamStatus then self.teamStatus:SetText("|cffff5050Enter a team name.|r") end
+    return
+  end
+  TriviaClassic:AddTeam(name)
+  if self.teamNameInput then self.teamNameInput:SetText("") end
+  if self.teamStatus then self.teamStatus:SetText("|cff20ff20Team added.|r") end
+  self:UpdateTeamUI()
+end
+
+function UI:RemoveTeam()
+  if not self.selectedTeamKey then
+    if self.teamStatus then self.teamStatus:SetText("|cffff5050Select a team to remove.|r") end
+    return
+  end
+  local teamName = self.teamNameByKey and self.teamNameByKey[self.selectedTeamKey] or self.selectedTeamKey
+  TriviaClassic:RemoveTeam(teamName)
+  self.selectedTeamKey = nil
+  if self.teamStatus then self.teamStatus:SetText("|cff20ff20Team removed.|r") end
+  self:UpdateTeamUI()
+end
+
+function UI:MoveWaitingToTeam()
+  local selections = self.selectedWaiting or {}
+  if not self.selectedTeamKey then
+    if self.teamStatus then self.teamStatus:SetText("|cffff5050Select a team first.|r") end
+    return
+  end
+  local hasSelection = false
+  for _ in pairs(selections) do hasSelection = true break end
+  if not hasSelection then
+    if self.teamStatus then self.teamStatus:SetText("|cffff5050Select at least one registered player.|r") end
+    return
+  end
+  local teamName = self.teamNameByKey and self.teamNameByKey[self.selectedTeamKey] or self.selectedTeamKey
+  for name in pairs(selections) do
+    TriviaClassic:AddPlayerToTeam(name, teamName)
+    TriviaClassic:UnregisterPlayer(name)
+  end
+  if self.teamStatus then self.teamStatus:SetText("|cff20ff20Moved selected players to team.|r") end
+  self.selectedWaiting = {}
+  self:UpdateTeamUI()
+end
+
+function UI:RemoveWaiting()
+  local selections = self.selectedWaiting or {}
+  local hasSelection = false
+  for _ in pairs(selections) do hasSelection = true break end
+  if not hasSelection then
+    if self.teamStatus then self.teamStatus:SetText("|cffff5050Select registered players to remove.|r") end
+    return
+  end
+  for name in pairs(selections) do
+    TriviaClassic:UnregisterPlayer(name)
+  end
+  if self.teamStatus then self.teamStatus:SetText("|cff20ff20Removed selected registrations.|r") end
+  self.selectedWaiting = {}
+  self:UpdateTeamUI()
+end
+
+function UI:RemoveMembersToWaiting()
+  local selections = self.selectedMembers or {}
+  if not self.selectedTeamKey then
+    if self.teamStatus then self.teamStatus:SetText("|cffff5050Select a team first.|r") end
+    return
+  end
+  local hasSelection = false
+  for _ in pairs(selections) do hasSelection = true break end
+  if not hasSelection then
+    if self.teamStatus then self.teamStatus:SetText("|cffff5050Select team members to move.|r") end
+    return
+  end
+  for name in pairs(selections) do
+    TriviaClassic:RemovePlayerFromTeam(name)
+    TriviaClassic:RegisterPlayer(name)
+  end
+  self.selectedMembers = {}
+  if self.teamStatus then self.teamStatus:SetText("|cff20ff20Moved selected members back to registered list.|r") end
+  self:UpdateTeamUI()
+end
+
+function UI:SyncTimerInput()
+  if self.timerInput then
+    self.timerInput:SetText(tostring(self:GetTimerSeconds()))
+  end
+  if self.stealTimerInput then
+    self.stealTimerInput:SetText(tostring(self:GetStealTimerSeconds()))
+  end
+end
+
+function UI:ApplyTimerInput()
+  if not self.timerInput then
+    return
+  end
+  local value = tonumber(self.timerInput:GetText() or "")
+  local minTimer, maxTimer = TriviaClassic:GetTimerBounds()
+  if not value then
+    value = self:GetTimerSeconds()
+  end
+  if value < minTimer then value = minTimer end
+  if value > maxTimer then value = maxTimer end
+  self:SetTimerSeconds(value)
+end
+
+function UI:ResetTimerDisplay(seconds)
+  local secs = tonumber(seconds) or self:GetTimerSeconds()
+  self.timerRemaining = secs
+  self.timerRunning = false
+  if self.timerBar then
+    self.timerBar:SetMinMaxValues(0, secs)
+    self.timerBar:SetValue(secs)
+    self.timerBar:SetStatusBarColor(0.2, 0.8, 0.2)
+  end
+  if self.timerText then
+    self.timerText:SetText(string.format("Time: %ds", secs))
+  end
+end
+
 function UI:UpdateSessionBoard()
   if not self.sessionBoard then
     return
@@ -99,7 +420,7 @@ function UI:ShowSessionScores()
 end
 
 function UI:ShowAllTimeScores()
-  local rows, fastestName, fastestTime = TriviaClassic:GetLeaderboard(10)
+  local rows, fastestName, fastestTime = TriviaClassic:GetLeaderboard(5)
   local chat = TriviaClassic.chat
   chat:Send("[Trivia] All-time scores:")
   if not rows or #rows == 0 then
@@ -223,6 +544,9 @@ function UI:StartGame()
   end
 
   local desiredCount = tonumber(self.questionCountInput and self.questionCountInput:GetText() or "")
+  self:ApplyTimerInput()
+  -- Persist selected mode before starting
+  self:SetGameMode(self.gameModeKey or TriviaClassic:GetGameMode())
   -- Build per-set categories map for all sets (default-deny when empty)
   local categoriesBySet = {}
   for _, set in ipairs(TriviaClassic:GetAllSets()) do
@@ -240,33 +564,38 @@ function UI:StartGame()
     return
   end
 
-  self.nextButton:SetText("Next")
-  self.nextButton:Enable()
+  self:RefreshPrimaryButton()
   if self.skipButton then
     self.skipButton:Enable()
   end
   self.warningButton:Disable()
-  self.frame.statusText:SetText(string.format("Game started with %d questions.", meta.total))
+  self.frame.statusText:SetText(string.format("Game started (%s). %d questions ready.", meta.modeLabel or TriviaClassic:GetGameModeLabel(), meta.total))
   self.questionLabel:SetText("Press Next to announce Question 1.")
   self.categoryLabel:SetText("")
-  self.timerText:SetText(string.format("Time: %ds", TriviaClassic.DEFAULT_TIMER))
-  self.timerBar:SetMinMaxValues(0, TriviaClassic.DEFAULT_TIMER)
-  self.timerBar:SetValue(TriviaClassic.DEFAULT_TIMER)
+  local timerSeconds = self:GetTimerSeconds()
+  self:ResetTimerDisplay(timerSeconds)
   self.timerRunning = false
   self.questionNumber = 0
   self:UpdateSessionBoard()
 
-  TriviaClassic.chat:SendStart({ total = meta.total, setNames = meta.setNames })
+  TriviaClassic.chat:SendStart(meta)
   if self.endButton then
     self.endButton:Enable()
   end
 end
 
 function UI:AnnounceQuestion()
-  local q, index, total = TriviaClassic:NextQuestion()
+  local result = TriviaClassic:PerformPrimaryAction("announce_question")
+  local q = result and result.question
+  local index = result and result.index
+  local total = result and result.total
+  local activeTeamName = nil
+  if TriviaClassic:GetGameMode() == "TEAM_STEAL" then
+    activeTeamName = select(1, TriviaClassic:GetActiveTeam())
+  end
   if not q then
     self.frame.statusText:SetText("No more questions. End the game.")
-    self.nextButton:SetText("End")
+    self:RefreshPrimaryButton()
     return
   end
 
@@ -274,14 +603,20 @@ function UI:AnnounceQuestion()
   self.currentQuestion = q
   self.questionLabel:SetText(string.format("Q%d/%d: %s", index, total, q.question))
   self.categoryLabel:SetText(string.format("Category: %s  |  Points: %s", q.category or "General", tostring(q.points or 1)))
-  self.frame.statusText:SetText("Question announced. Listening for answers...")
+  if activeTeamName then
+    self.frame.statusText:SetText(string.format("Question announced. Active team: %s. Listening for answers... (%s)", activeTeamName, TriviaClassic:GetGameModeLabel()))
+    self.timerText:SetText(string.format("Time: %ds (Team: %s)", self:GetTimerSeconds(), activeTeamName))
+  else
+    self.frame.statusText:SetText(string.format("Question announced. Listening for answers... (%s)", TriviaClassic:GetGameModeLabel()))
+  end
 
-  self.timerRemaining = TriviaClassic.DEFAULT_TIMER
+  local timerSeconds = self:GetTimerSeconds()
+  self.timerRemaining = timerSeconds
   self.timerRunning = true
-  self.timerBar:SetMinMaxValues(0, TriviaClassic.DEFAULT_TIMER)
-  self.timerBar:SetValue(TriviaClassic.DEFAULT_TIMER)
+  self.timerBar:SetMinMaxValues(0, timerSeconds)
+  self.timerBar:SetValue(timerSeconds)
   self.timerBar:SetStatusBarColor(0.2, 0.8, 0.2)
-  self.timerText:SetText(string.format("Time: %ds", TriviaClassic.DEFAULT_TIMER))
+  self.timerText:SetText(string.format("Time: %ds", timerSeconds))
   self.warningButton:Enable()
   if self.hintButton then
     -- Enable hint button only if this question actually has a hint
@@ -292,36 +627,102 @@ function UI:AnnounceQuestion()
       self.hintButton:Disable()
     end
   end
-  self.nextButton:SetText("Waiting...")
-  self.nextButton:Disable()
   if self.skipButton then
     self.skipButton:Enable()
   end
 
-  TriviaClassic.chat:SendQuestion(index, total, q)
+  TriviaClassic.chat:SendQuestion(index, total, q, activeTeamName)
+  self:RefreshPrimaryButton()
+end
+
+function UI:StartSteal()
+  local result = TriviaClassic:PerformPrimaryAction("start_steal")
+  local teamName = result and result.teamName
+  local q = result and result.question or TriviaClassic:GetCurrentQuestion()
+  local activeLabel = teamName or "Next team"
+  if not q then
+    self.frame.statusText:SetText("No question available to steal.")
+    self:RefreshPrimaryButton()
+    return
+  end
+  self.currentQuestion = q
+  self.frame.statusText:SetText(string.format("%s can steal. Listening for answers...", activeLabel))
+  local timerSeconds = self:GetTimerSeconds()
+  if TriviaClassic:GetGameMode() == "TEAM_STEAL" then
+    timerSeconds = TriviaClassic:GetStealTimer()
+  end
+  self.timerRemaining = timerSeconds
+  self.timerRunning = true
+  self.timerBar:SetMinMaxValues(0, timerSeconds)
+  self.timerBar:SetValue(timerSeconds)
+  self.timerBar:SetStatusBarColor(0.2, 0.8, 0.2)
+  self.timerText:SetText(string.format("Time: %ds (Steal)", timerSeconds))
+  self.warningButton:Enable()
+  if self.hintButton then
+    local hint = q.hint or (q.hints and q.hints[1])
+    if hint and hint ~= "" then
+      self.hintButton:Enable()
+    else
+      self.hintButton:Disable()
+    end
+  end
+  if self.skipButton then
+    self.skipButton:Enable()
+  end
+  TriviaClassic.chat:SendSteal(teamName, q, timerSeconds)
+  -- Provide a reminder in chat for clarity
+  TriviaClassic.chat:SendActiveTeamReminder(activeLabel)
+  self:RefreshPrimaryButton()
 end
 
 function UI:AnnounceWinner()
   if not TriviaClassic:IsPendingWinner() then
     return
   end
-  local winnerName, elapsed = TriviaClassic:GetLastWinner()
+  local mode = TriviaClassic:GetGameMode()
+  if mode == "ALL_CORRECT" then
+    self.timerRunning = false
+    local winners = TriviaClassic:GetPendingWinners()
+    local q = TriviaClassic:GetCurrentQuestion()
+    if winners and #winners > 0 then
+      TriviaClassic.chat:SendWinners(winners, q, mode)
+      self.frame.statusText:SetText("Results announced. Click Next for the next question.")
+    else
+      self:AnnounceNoWinner()
+      return
+    end
+    local result = TriviaClassic:PerformPrimaryAction("announce_winner")
+    local finished = result and result.finished
+    if finished then
+      self.frame.statusText:SetText("Results announced. Click End to finish.")
+    end
+    self.nextButton:Enable()
+    if self.skipButton then
+      self.skipButton:Disable()
+    end
+    self:UpdateSessionBoard()
+    self:RefreshPrimaryButton()
+    return
+  end
+
+  local winnerName, elapsed, teamName, teamMembers = TriviaClassic:GetLastWinner()
   if not winnerName then
     return
   end
   local q = TriviaClassic:GetCurrentQuestion()
-  TriviaClassic.chat:SendWinner(winnerName, elapsed or 0, q and q.points)
-  self.frame.statusText:SetText("Winner announced. Click Next for the next question.")
-  local finished = TriviaClassic:CompleteWinnerBroadcast()
-  if finished then
-    self.nextButton:SetText("End")
+  TriviaClassic.chat:SendWinner(winnerName, elapsed or 0, q and q.points, teamName, teamMembers)
+  if teamName then
+    local memberText = (teamMembers and #teamMembers > 0) and (" (" .. table.concat(teamMembers, ", ") .. ")") or ""
+    self.frame.statusText:SetText(string.format("%s answered correctly in %.2fs. Click Next for the next question.", teamName .. memberText, elapsed or 0))
   else
-    self.nextButton:SetText("Next")
+    self.frame.statusText:SetText("Winner announced. Click Next for the next question.")
   end
+  TriviaClassic:PerformPrimaryAction("announce_winner")
   self.nextButton:Enable()
   if self.skipButton then
     self.skipButton:Disable()
   end
+  self:RefreshPrimaryButton()
 end
 
 function UI:AnnounceNoWinner()
@@ -333,16 +734,12 @@ function UI:AnnounceNoWinner()
     answersText = table.concat(q.answers, ", ")
   end
   TriviaClassic.chat:SendNoWinner(answersText)
-  local finished = TriviaClassic:CompleteNoWinnerBroadcast()
-  if finished then
-    self.nextButton:SetText("End")
-  else
-    self.nextButton:SetText("Next")
-  end
+  TriviaClassic:PerformPrimaryAction("announce_no_winner")
   self.nextButton:Enable()
   if self.skipButton then
     self.skipButton:Disable()
   end
+  self:RefreshPrimaryButton()
 end
 
 function UI:EndGame()
@@ -350,8 +747,7 @@ function UI:EndGame()
   TriviaClassic.chat:SendEnd(rows, fastestName, fastestTime)
   TriviaClassic:EndGame()
   self.frame.statusText:SetText("Game ended. Press Start to begin a new game.")
-  self.nextButton:SetText("Next")
-  self.nextButton:Disable()
+  self:RefreshPrimaryButton()
   if self.skipButton then
     self.skipButton:Disable()
   end
@@ -365,33 +761,25 @@ function UI:OnNextPressed()
     return
   end
 
-  if self.nextButton:GetText() == "End" then
-    self:EndGame()
-    return
-  end
-
-  if TriviaClassic:IsPendingWinner() then
-    self:AnnounceWinner()
-    self:UpdateSessionBoard()
-    return
-  end
-
-  if TriviaClassic:IsPendingNoWinner() then
-    self:AnnounceNoWinner()
-    return
-  end
-
-  if TriviaClassic:IsQuestionOpen() then
+  local action = TriviaClassic:GetPrimaryAction()
+  if not action or action.command == "waiting" or action.command == "wait" or action.enabled == false then
     self.frame.statusText:SetText("A question is already active.")
     return
   end
 
-  if not TriviaClassic:HasMoreQuestions() then
-    self.nextButton:SetText("End")
-    return
+  if action.command == "announce_question" then
+    self:AnnounceQuestion()
+  elseif action.command == "announce_winner" then
+    self:AnnounceWinner()
+    self:UpdateSessionBoard()
+  elseif action.command == "announce_no_winner" then
+    self:AnnounceNoWinner()
+  elseif action.command == "end_game" then
+    self:EndGame()
+  elseif action.command == "start_steal" then
+    self:StartSteal()
   end
-
-  self:AnnounceQuestion()
+  self:RefreshPrimaryButton()
 end
 
 function UI:SkipQuestion()
@@ -417,8 +805,7 @@ function UI:SkipQuestion()
     if self.hintButton then
       self.hintButton:Disable()
     end
-    self.nextButton:SetText("Next")
-    self.nextButton:Enable()
+    self:RefreshPrimaryButton()
     if self.skipButton then
       self.skipButton:Disable()
     end
@@ -433,15 +820,38 @@ function UI:SendWarning()
   TriviaClassic.chat:SendWarning()
 end
 
-function UI:OnWinnerFound(winnerName, elapsed)
+function UI:OnWinnerFound(result)
+  if not result then
+    return
+  end
+  local winnerName = result.winner
+  local elapsed = result.elapsed
+  local mode = result.mode or TriviaClassic:GetGameMode()
+  local teamName = result.teamName
+  local teamMembers = result.teamMembers
+  if mode == "ALL_CORRECT" then
+    local total = result.totalWinners or 1
+    local suffix = (total == 1) and "" or "s"
+    self.frame.statusText:SetText(string.format("%s answered correctly in %.2fs. %d player%s credited so far; waiting until time expires.", winnerName or "Someone", elapsed or 0, total, suffix))
+    self:UpdateSessionBoard()
+    return
+  end
+
   self.timerRunning = false
   self.warningButton:Disable()
   if self.hintButton then
     self.hintButton:Disable()
   end
-  self.frame.statusText:SetText(string.format("%s answered correctly in %.2fs. Click 'Announce Winner' to broadcast.", winnerName, elapsed or 0))
-  self.nextButton:SetText("Announce Winner")
-  self.nextButton:Enable()
+  if teamName then
+    local memberText = (teamMembers and #teamMembers > 0) and (" (" .. table.concat(teamMembers, ", ") .. ")") or ""
+    self.frame.statusText:SetText(string.format("%s answered correctly in %.2fs. Click 'Announce Winner' to broadcast.", teamName .. memberText, elapsed or 0))
+  else
+    self.frame.statusText:SetText(string.format("%s answered correctly in %.2fs. Click 'Announce Winner' to broadcast.", winnerName, elapsed or 0))
+  end
+  self:RefreshPrimaryButton()
+  if self.skipButton then
+    self.skipButton:Disable()
+  end
   self:UpdateSessionBoard()
 end
 
@@ -449,7 +859,7 @@ function UI:UpdateTimer(elapsed)
   if not self.timerRunning then
     return
   end
-  self.timerRemaining = (self.timerRemaining or TriviaClassic.DEFAULT_TIMER) - elapsed
+  self.timerRemaining = (self.timerRemaining or self:GetTimerSeconds()) - elapsed
   if self.timerRemaining <= 0 then
     self.timerRemaining = 0
     self.timerRunning = false
@@ -461,9 +871,18 @@ function UI:UpdateTimer(elapsed)
     if self.hintButton then
       self.hintButton:Disable()
     end
-    self.nextButton:SetText("Announce No Winner")
-    self.nextButton:Enable()
-    self.frame.statusText:SetText("Time expired. Click 'Announce No Winner' to continue.")
+    if self.skipButton then
+      self.skipButton:Disable()
+    end
+    local action = TriviaClassic:GetPrimaryAction()
+    if action and action.command == "start_steal" then
+      self.frame.statusText:SetText("Time expired. Offer a steal to the next team.")
+    elseif TriviaClassic:IsPendingWinner() then
+      self.frame.statusText:SetText("Time expired. Announce results for this question.")
+    else
+      self.frame.statusText:SetText("Time expired. Click 'Announce No Winner' to continue.")
+    end
+    self:RefreshPrimaryButton()
     return
   end
   self.timerBar:SetValue(self.timerRemaining)
@@ -479,30 +898,47 @@ end
 
 function UI:BuildUI()
   if self.frame then
+    self.gameModeKey = TriviaClassic:GetGameMode()
+    if self.modeDropDown then
+      UIDropDownMenu_SetSelectedValue(self.modeDropDown, self.gameModeKey)
+      UIDropDownMenu_SetText(self.modeDropDown, modeLabels[self.gameModeKey] or self.gameModeKey)
+    end
+    self:SyncTimerInput()
+    self:ResetTimerDisplay(self:GetTimerSeconds())
     self:RefreshSetList()
     self:UpdateSessionBoard()
+    self:UpdateTeamUI()
+    self:RefreshPrimaryButton()
     return
   end
 
   self.channelKey = TriviaClassic_GetDefaultChannel()
+  self.gameModeKey = TriviaClassic:GetGameMode()
+  self.selectedWaiting = {}
+  self.selectedMembers = {}
 
   local frame = TriviaClassic_UI_BuildLayout(self)
   self:SetChannel(self.channelKey)
 
   -- Tab switching
   local function showPage(which)
+    self.optionsPage:Hide()
+    self.gamePage:Hide()
+    self.teamsPage:Hide()
     if which == "options" then
       self.optionsPage:Show()
-      self.gamePage:Hide()
       PanelTemplates_SetTab(self.frame, 2)
+    elseif which == "teams" then
+      self.teamsPage:Show()
+      PanelTemplates_SetTab(self.frame, 3)
     else
-      self.optionsPage:Hide()
       self.gamePage:Show()
       PanelTemplates_SetTab(self.frame, 1)
     end
   end
   self.tabGame:SetScript("OnClick", function() showPage("game") end)
   self.tabOptions:SetScript("OnClick", function() showPage("options") end)
+  self.tabTeams:SetScript("OnClick", function() showPage("teams") end)
   showPage("game")
 
   UIDropDownMenu_SetSelectedValue(self.dropDown, self.channelKey)
@@ -521,6 +957,41 @@ function UI:BuildUI()
     end
   end)
 
+  UIDropDownMenu_SetSelectedValue(self.modeDropDown, self.gameModeKey)
+  UIDropDownMenu_SetText(self.modeDropDown, modeLabels[self.gameModeKey] or self.gameModeKey)
+  UIDropDownMenu_Initialize(self.modeDropDown, function(_, _, _)
+    for _, mode in ipairs(gameModes) do
+      local info = UIDropDownMenu_CreateInfo()
+      info.text = mode.label
+      info.value = mode.key
+      info.func = function()
+        UIDropDownMenu_SetSelectedValue(self.modeDropDown, mode.key)
+        self:SetGameMode(mode.key)
+      end
+      info.checked = (self.gameModeKey == mode.key)
+      UIDropDownMenu_AddButton(info)
+    end
+  end)
+
+  -- Teams tab wiring
+  self:UpdateTeamUI()
+  self.addTeamBtn:SetScript("OnClick", function()
+    self:AddTeam()
+  end)
+  self.removeTeamBtn:SetScript("OnClick", function()
+    self:RemoveTeam()
+  end)
+  self.moveRightBtn:SetScript("OnClick", function()
+    self:MoveWaitingToTeam()
+  end)
+  self.moveLeftBtn:SetScript("OnClick", function()
+    self:RemoveMembersToWaiting()
+  end)
+  self.teamNameInput:SetScript("OnEnterPressed", function(box)
+    self:AddTeam()
+    box:ClearFocus()
+  end)
+
   self.customInput:SetScript("OnEnterPressed", function(box)
     self:SetCustomChannel(box:GetText())
     box:ClearFocus()
@@ -528,6 +999,30 @@ function UI:BuildUI()
   self.customInput:SetScript("OnEditFocusLost", function(box)
     self:SetCustomChannel(box:GetText())
   end)
+  self.timerInput:SetScript("OnEnterPressed", function(box)
+    self:ApplyTimerInput()
+    box:ClearFocus()
+  end)
+  self.timerInput:SetScript("OnEditFocusLost", function()
+    self:ApplyTimerInput()
+  end)
+  if self.stealTimerInput then
+    self.stealTimerInput:SetScript("OnEnterPressed", function(box)
+      local value = tonumber(box:GetText() or "")
+      if value then
+        self:SetStealTimerSeconds(value)
+      end
+      box:ClearFocus()
+    end)
+    self.stealTimerInput:SetScript("OnEditFocusLost", function(box)
+      local value = tonumber(box:GetText() or "")
+      if value then
+        self:SetStealTimerSeconds(value)
+      end
+    end)
+  end
+  self:SyncTimerInput()
+  self:ResetTimerDisplay(self:GetTimerSeconds())
 
   self.startButton:SetScript("OnClick", function()
     self:StartGame()
@@ -564,6 +1059,7 @@ function UI:BuildUI()
 
   self:RefreshSetList()
   self:UpdateSessionBoard()
+  self:RefreshPrimaryButton()
 
   frame:Hide()
   SLASH_TRIVIACLASSIC1 = "/trivia"

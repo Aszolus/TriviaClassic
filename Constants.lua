@@ -9,9 +9,23 @@ local CHANNELS = {
 
 local DEFAULT_CHANNEL = "GUILD"
 
+local GAME_MODES = {
+  { key = "FASTEST", label = "Fastest answer wins" },
+  { key = "ALL_CORRECT", label = "All correct answers score (timer based)" },
+  { key = "TEAM", label = "Team competition (teams score on correct answers)" },
+  { key = "TEAM_STEAL", label = "Team steal (active team, steal with final answer)" },
+}
+
+local DEFAULT_MODE = "FASTEST"
+
 local channelMap = {}
 for _, ch in ipairs(CHANNELS) do
   channelMap[ch.key] = ch
+end
+
+local modeMap = {}
+for _, mode in ipairs(GAME_MODES) do
+  modeMap[mode.key] = mode
 end
 
 function TriviaClassic_GetChannels()
@@ -24,4 +38,23 @@ end
 
 function TriviaClassic_GetDefaultChannel()
   return DEFAULT_CHANNEL
+end
+
+function TriviaClassic_GetGameModes()
+  return GAME_MODES
+end
+
+function TriviaClassic_GetModeMap()
+  return modeMap
+end
+
+function TriviaClassic_GetDefaultMode()
+  return DEFAULT_MODE
+end
+
+function TriviaClassic_GetModeLabel(key)
+  if modeMap[key] then
+    return modeMap[key].label
+  end
+  return modeMap[DEFAULT_MODE].label
 end

@@ -121,12 +121,30 @@ local function formatNames(setNames)
 end
 
 function Chat:SendStart(meta)
-  self:Send(string.format("[Trivia] Game starting! %d questions drawn from %s.", meta.total, formatNames(meta.setNames)))
+  local modeLabel = meta.modeLabel or (meta.mode and TriviaClassic_GetModeLabel(meta.mode)) or "Fastest answer wins"
+  self:Send(string.format("[Trivia] Game starting! Mode: %s. %d questions drawn from %s.", modeLabel, meta.total, formatNames(meta.setNames)))
 end
 
-function Chat:SendQuestion(index, total, question)
+function Chat:SendQuestion(index, total, question, activeTeamName)
   local msg = string.format("[Trivia] Q%d/%d: %s (Category: %s, %s pts)", index, total, question.question, question.category or "General", tostring(question.points or 1))
+  if activeTeamName and activeTeamName ~= "" then
+    msg = msg .. string.format(" [Active team: %s]", activeTeamName)
+  end
   self:Send(msg)
+end
+function Chat:SendActiveTeamReminder(teamName)
+  if teamName and teamName ~= "" then
+    self:Send(string.format("[Trivia] Waiting on %s to answer (use 'final: ...').", teamName))
+  end
+end
+
+function Chat:SendSteal(teamName, question, timer)
+  local label = teamName or "Next team"
+  local base = string.format("[Trivia] Steal attempt for %s: %s", label, question and question.question or "the last question")
+  if timer then
+    base = base .. string.format(" (%ds)", timer)
+  end
+  self:Send(base)
 end
 
 function Chat:SendWarning()
@@ -139,8 +157,39 @@ function Chat:SendHint(text)
   end
 end
 
-function Chat:SendWinner(name, elapsed, points)
-  self:Send(string.format("[Trivia] %s answered correctly in %.2fs! (+%s pts)", name, elapsed or 0, tostring(points or 1)))
+local function formatWinnerNames(winners)
+  local parts = {}
+  for _, row in ipairs(winners or {}) do
+    if row.teamName then
+      local members = row.teamMembers and #row.teamMembers > 0 and (" (" .. table.concat(row.teamMembers, ", ") .. ")") or ""
+      table.insert(parts, string.format("%s%s (+%s pts)", row.teamName or "Team", members, tostring(row.points or 1)))
+    else
+      table.insert(parts, string.format("%s (+%s pts)", row.name or "?", tostring(row.points or 1)))
+    end
+  end
+  return table.concat(parts, ", ")
+end
+
+function Chat:SendWinner(name, elapsed, points, teamName, teamMembers)
+  if teamName then
+    local members = teamMembers and #teamMembers > 0 and (" (" .. table.concat(teamMembers, ", ") .. ")") or ""
+    self:Send(string.format("[Trivia] %s answered correctly in %.2fs!%s (+%s pts)", teamName, elapsed or 0, members, tostring(points or 1)))
+  else
+    self:Send(string.format("[Trivia] %s answered correctly in %.2fs! (+%s pts)", name, elapsed or 0, tostring(points or 1)))
+  end
+end
+
+function Chat:SendWinners(winners, question, mode)
+  if not winners or #winners == 0 then
+    self:SendNoWinner(question and (question.displayAnswers and table.concat(question.displayAnswers, ", ") or (question.answers and table.concat(question.answers, ", "))) or nil)
+    return
+  end
+  if mode == "ALL_CORRECT" then
+    self:Send(string.format("[Trivia] Time's up! %d answered correctly: %s", #winners, formatWinnerNames(winners)))
+  else
+    local first = winners[1]
+    self:SendWinner(first.name, first.elapsed or 0, first.points or (question and question.points) or 1, first.teamName, first.teamMembers)
+  end
 end
 
 function Chat:SendNoWinner(answersText)
@@ -161,7 +210,12 @@ function Chat:SendEnd(rows, fastestName, fastestTime)
     self:Send("[Trivia] No correct answers recorded.")
   else
     for _, entry in ipairs(rows) do
-      local line = string.format("%s - %d pts (%d correct)", entry.name, entry.points, entry.correct)
+      local line = nil
+      if entry.members and #entry.members > 0 then
+        line = string.format("%s - %d pts (%d correct) (%s)", entry.name, entry.points, entry.correct, table.concat(entry.members, ", "))
+      else
+        line = string.format("%s - %d pts (%d correct)", entry.name, entry.points, entry.correct)
+      end
       self:Send("[Trivia] " .. line)
     end
   end
