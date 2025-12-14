@@ -33,6 +33,41 @@ local function formatScoreLines(rows)
   end
   return table.concat(lines, "\n")
 end
+local function normalizeName(text)
+  return trim(text or ""):gsub("%s+", " ")
+end
+
+local function renderSelectableList(listFrame, items, pool, selectedMap)
+  pool = pool or {}
+  selectedMap = selectedMap or {}
+  local y = 0
+  for i, name in ipairs(items) do
+    local row = pool[i]
+    if not row then
+      row = CreateFrame("CheckButton", nil, listFrame, "ChatConfigCheckButtonTemplate")
+      pool[i] = row
+    end
+    row:Show()
+    row:SetPoint("TOPLEFT", 0, -y)
+    row.Text:SetText(name)
+    row:SetChecked(selectedMap[name] or false)
+    row:SetScript("OnClick", function(selfBtn)
+      if selfBtn:GetChecked() then
+        selectedMap[name] = true
+      else
+        selectedMap[name] = nil
+      end
+    end)
+    y = y + 20
+  end
+  for i = #items + 1, #pool do
+    if pool[i] then pool[i]:Hide() end
+  end
+  if listFrame.SetHeight then
+    listFrame:SetHeight(math.max(1, y))
+  end
+  return pool
+end
 
 function UI:SetChannel(key)
   key = key or TriviaClassic_GetDefaultChannel()
@@ -83,6 +118,242 @@ function UI:SetGameMode(key)
     UIDropDownMenu_SetText(self.modeDropDown, modeLabels[modeKey] or modeKey)
   end
   TriviaClassic:SetGameMode(modeKey)
+end
+
+function UI:GetTimerSeconds()
+  return TriviaClassic:GetTimer()
+end
+
+function UI:SetTimerSeconds(seconds)
+  TriviaClassic:SetTimer(seconds)
+  self:SyncTimerInput()
+end
+
+function UI:SetSelectedTeam(teamKey)
+  self.selectedTeamKey = teamKey
+  self.selectedMembers = {}
+  if self.teamTargetDropDown then
+    UIDropDownMenu_SetSelectedValue(self.teamTargetDropDown, teamKey)
+    UIDropDownMenu_SetText(self.teamTargetDropDown, self.teamNameByKey and self.teamNameByKey[teamKey] or (teamKey or "Select team"))
+  end
+  self:RefreshTeamMembers()
+end
+
+function UI:RefreshTeamDropdown()
+  local teams = TriviaClassic:GetTeams() or {}
+  self.teamNameByKey = {}
+  self.teamDataByKey = {}
+  for _, t in ipairs(teams) do
+    self.teamNameByKey[t.key] = t.name
+    self.teamDataByKey[t.key] = t
+  end
+  local current = self.selectedTeamKey
+  if not current and teams[1] then
+    current = teams[1].key
+  end
+  UIDropDownMenu_Initialize(self.teamTargetDropDown, function()
+    for _, t in ipairs(teams) do
+      local info = UIDropDownMenu_CreateInfo()
+      info.text = t.name
+      info.value = t.key
+      info.func = function()
+        self:SetSelectedTeam(t.key)
+      end
+      info.checked = (self.selectedTeamKey == t.key)
+      UIDropDownMenu_AddButton(info)
+    end
+  end)
+  self:SetSelectedTeam(current)
+end
+
+function UI:RefreshTeamList()
+  if not self.teamList then
+    return
+  end
+  local teams = TriviaClassic:GetTeams() or {}
+  local lines = {}
+  for _, team in ipairs(teams) do
+    local members = team.members or {}
+    table.sort(members, function(a, b) return a:lower() < b:lower() end)
+    local memberText = (#members > 0) and table.concat(members, ", ") or "No members yet"
+    table.insert(lines, string.format("|cffffff00%s|r: %s", team.name, memberText))
+  end
+  if #lines == 0 then
+    self.teamList:SetText("No teams yet. Add a team to get started.")
+  else
+    self.teamList:SetText(table.concat(lines, "\n"))
+  end
+end
+
+function UI:RefreshWaitingList()
+  if not self.waitingContent then
+    return
+  end
+  local waiting = TriviaClassic:GetWaitingPlayers() or {}
+  table.sort(waiting, function(a, b) return a:lower() < b:lower() end)
+  self.waitingNames = waiting
+  self.selectedWaiting = self.selectedWaiting or {}
+  self.waitingRows = renderSelectableList(self.waitingContent, waiting, self.waitingRows or {}, self.selectedWaiting)
+  if self.waitingStatus then
+    if #waiting == 0 then
+      self.waitingStatus:SetText("No registered players yet.")
+    else
+      self.waitingStatus:SetText("Select players to move to a team.")
+    end
+  end
+end
+
+function UI:RefreshTeamMembers()
+  if not self.memberContent then
+    return
+  end
+  local members = {}
+  local teams = self.teamDataByKey or {}
+  local team = self.selectedTeamKey and teams[self.selectedTeamKey] or nil
+  if team and team.members then
+    for _, m in ipairs(team.members) do
+      table.insert(members, m)
+    end
+  end
+  table.sort(members, function(a, b) return a:lower() < b:lower() end)
+  self.selectedMembers = self.selectedMembers or {}
+  self.memberRows = renderSelectableList(self.memberContent, members, self.memberRows or {}, self.selectedMembers)
+  if self.memberStatus then
+    if not self.selectedTeamKey then
+      self.memberStatus:SetText("Select a team to manage members.")
+    elseif #members == 0 then
+      self.memberStatus:SetText("No members in this team.")
+    else
+      self.memberStatus:SetText("Select members to remove or reassign.")
+    end
+  end
+end
+
+function UI:UpdateTeamUI()
+  if not self.teamTargetDropDown then
+    return
+  end
+  self:RefreshTeamDropdown()
+  self:RefreshTeamList()
+  self:RefreshWaitingList()
+  self:RefreshTeamMembers()
+end
+
+function UI:AddTeam()
+  local name = normalizeName(self.teamNameInput and self.teamNameInput:GetText() or "")
+  if name == "" then
+    if self.teamStatus then self.teamStatus:SetText("|cffff5050Enter a team name.|r") end
+    return
+  end
+  TriviaClassic:AddTeam(name)
+  if self.teamNameInput then self.teamNameInput:SetText("") end
+  if self.teamStatus then self.teamStatus:SetText("|cff20ff20Team added.|r") end
+  self:UpdateTeamUI()
+end
+
+function UI:RemoveTeam()
+  if not self.selectedTeamKey then
+    if self.teamStatus then self.teamStatus:SetText("|cffff5050Select a team to remove.|r") end
+    return
+  end
+  local teamName = self.teamNameByKey and self.teamNameByKey[self.selectedTeamKey] or self.selectedTeamKey
+  TriviaClassic:RemoveTeam(teamName)
+  self.selectedTeamKey = nil
+  if self.teamStatus then self.teamStatus:SetText("|cff20ff20Team removed.|r") end
+  self:UpdateTeamUI()
+end
+
+function UI:MoveWaitingToTeam()
+  local selections = self.selectedWaiting or {}
+  if not self.selectedTeamKey then
+    if self.teamStatus then self.teamStatus:SetText("|cffff5050Select a team first.|r") end
+    return
+  end
+  local hasSelection = false
+  for _ in pairs(selections) do hasSelection = true break end
+  if not hasSelection then
+    if self.teamStatus then self.teamStatus:SetText("|cffff5050Select at least one registered player.|r") end
+    return
+  end
+  local teamName = self.teamNameByKey and self.teamNameByKey[self.selectedTeamKey] or self.selectedTeamKey
+  for name in pairs(selections) do
+    TriviaClassic:AddPlayerToTeam(name, teamName)
+    TriviaClassic:UnregisterPlayer(name)
+  end
+  if self.teamStatus then self.teamStatus:SetText("|cff20ff20Moved selected players to team.|r") end
+  self.selectedWaiting = {}
+  self:UpdateTeamUI()
+end
+
+function UI:RemoveWaiting()
+  local selections = self.selectedWaiting or {}
+  local hasSelection = false
+  for _ in pairs(selections) do hasSelection = true break end
+  if not hasSelection then
+    if self.teamStatus then self.teamStatus:SetText("|cffff5050Select registered players to remove.|r") end
+    return
+  end
+  for name in pairs(selections) do
+    TriviaClassic:UnregisterPlayer(name)
+  end
+  if self.teamStatus then self.teamStatus:SetText("|cff20ff20Removed selected registrations.|r") end
+  self.selectedWaiting = {}
+  self:UpdateTeamUI()
+end
+
+function UI:RemoveMembersToWaiting()
+  local selections = self.selectedMembers or {}
+  if not self.selectedTeamKey then
+    if self.teamStatus then self.teamStatus:SetText("|cffff5050Select a team first.|r") end
+    return
+  end
+  local hasSelection = false
+  for _ in pairs(selections) do hasSelection = true break end
+  if not hasSelection then
+    if self.teamStatus then self.teamStatus:SetText("|cffff5050Select team members to move.|r") end
+    return
+  end
+  for name in pairs(selections) do
+    TriviaClassic:RemovePlayerFromTeam(name)
+    TriviaClassic:RegisterPlayer(name)
+  end
+  self.selectedMembers = {}
+  if self.teamStatus then self.teamStatus:SetText("|cff20ff20Moved selected members back to registered list.|r") end
+  self:UpdateTeamUI()
+end
+
+function UI:SyncTimerInput()
+  if self.timerInput then
+    self.timerInput:SetText(tostring(self:GetTimerSeconds()))
+  end
+end
+
+function UI:ApplyTimerInput()
+  if not self.timerInput then
+    return
+  end
+  local value = tonumber(self.timerInput:GetText() or "")
+  local minTimer, maxTimer = TriviaClassic:GetTimerBounds()
+  if not value then
+    value = self:GetTimerSeconds()
+  end
+  if value < minTimer then value = minTimer end
+  if value > maxTimer then value = maxTimer end
+  self:SetTimerSeconds(value)
+end
+
+function UI:ResetTimerDisplay(seconds)
+  local secs = tonumber(seconds) or self:GetTimerSeconds()
+  self.timerRemaining = secs
+  self.timerRunning = false
+  if self.timerBar then
+    self.timerBar:SetMinMaxValues(0, secs)
+    self.timerBar:SetValue(secs)
+    self.timerBar:SetStatusBarColor(0.2, 0.8, 0.2)
+  end
+  if self.timerText then
+    self.timerText:SetText(string.format("Time: %ds", secs))
+  end
 end
 
 function UI:UpdateSessionBoard()
@@ -238,6 +509,7 @@ function UI:StartGame()
   end
 
   local desiredCount = tonumber(self.questionCountInput and self.questionCountInput:GetText() or "")
+  self:ApplyTimerInput()
   -- Persist selected mode before starting
   self:SetGameMode(self.gameModeKey or TriviaClassic:GetGameMode())
   -- Build per-set categories map for all sets (default-deny when empty)
@@ -266,9 +538,8 @@ function UI:StartGame()
   self.frame.statusText:SetText(string.format("Game started (%s). %d questions ready.", meta.modeLabel or TriviaClassic:GetGameModeLabel(), meta.total))
   self.questionLabel:SetText("Press Next to announce Question 1.")
   self.categoryLabel:SetText("")
-  self.timerText:SetText(string.format("Time: %ds", TriviaClassic.DEFAULT_TIMER))
-  self.timerBar:SetMinMaxValues(0, TriviaClassic.DEFAULT_TIMER)
-  self.timerBar:SetValue(TriviaClassic.DEFAULT_TIMER)
+  local timerSeconds = self:GetTimerSeconds()
+  self:ResetTimerDisplay(timerSeconds)
   self.timerRunning = false
   self.questionNumber = 0
   self:UpdateSessionBoard()
@@ -293,12 +564,13 @@ function UI:AnnounceQuestion()
   self.categoryLabel:SetText(string.format("Category: %s  |  Points: %s", q.category or "General", tostring(q.points or 1)))
   self.frame.statusText:SetText(string.format("Question announced. Listening for answers... (%s)", TriviaClassic:GetGameModeLabel()))
 
-  self.timerRemaining = TriviaClassic.DEFAULT_TIMER
+  local timerSeconds = self:GetTimerSeconds()
+  self.timerRemaining = timerSeconds
   self.timerRunning = true
-  self.timerBar:SetMinMaxValues(0, TriviaClassic.DEFAULT_TIMER)
-  self.timerBar:SetValue(TriviaClassic.DEFAULT_TIMER)
+  self.timerBar:SetMinMaxValues(0, timerSeconds)
+  self.timerBar:SetValue(timerSeconds)
   self.timerBar:SetStatusBarColor(0.2, 0.8, 0.2)
-  self.timerText:SetText(string.format("Time: %ds", TriviaClassic.DEFAULT_TIMER))
+  self.timerText:SetText(string.format("Time: %ds", timerSeconds))
   self.warningButton:Enable()
   if self.hintButton then
     -- Enable hint button only if this question actually has a hint
@@ -509,7 +781,7 @@ function UI:UpdateTimer(elapsed)
   if not self.timerRunning then
     return
   end
-  self.timerRemaining = (self.timerRemaining or TriviaClassic.DEFAULT_TIMER) - elapsed
+  self.timerRemaining = (self.timerRemaining or self:GetTimerSeconds()) - elapsed
   if self.timerRemaining <= 0 then
     self.timerRemaining = 0
     self.timerRunning = false
@@ -552,31 +824,41 @@ function UI:BuildUI()
       UIDropDownMenu_SetSelectedValue(self.modeDropDown, self.gameModeKey)
       UIDropDownMenu_SetText(self.modeDropDown, modeLabels[self.gameModeKey] or self.gameModeKey)
     end
+    self:SyncTimerInput()
+    self:ResetTimerDisplay(self:GetTimerSeconds())
     self:RefreshSetList()
     self:UpdateSessionBoard()
+    self:UpdateTeamUI()
     return
   end
 
   self.channelKey = TriviaClassic_GetDefaultChannel()
   self.gameModeKey = TriviaClassic:GetGameMode()
+  self.selectedWaiting = {}
+  self.selectedMembers = {}
 
   local frame = TriviaClassic_UI_BuildLayout(self)
   self:SetChannel(self.channelKey)
 
   -- Tab switching
   local function showPage(which)
+    self.optionsPage:Hide()
+    self.gamePage:Hide()
+    self.teamsPage:Hide()
     if which == "options" then
       self.optionsPage:Show()
-      self.gamePage:Hide()
       PanelTemplates_SetTab(self.frame, 2)
+    elseif which == "teams" then
+      self.teamsPage:Show()
+      PanelTemplates_SetTab(self.frame, 3)
     else
-      self.optionsPage:Hide()
       self.gamePage:Show()
       PanelTemplates_SetTab(self.frame, 1)
     end
   end
   self.tabGame:SetScript("OnClick", function() showPage("game") end)
   self.tabOptions:SetScript("OnClick", function() showPage("options") end)
+  self.tabTeams:SetScript("OnClick", function() showPage("teams") end)
   showPage("game")
 
   UIDropDownMenu_SetSelectedValue(self.dropDown, self.channelKey)
@@ -611,6 +893,25 @@ function UI:BuildUI()
     end
   end)
 
+  -- Teams tab wiring
+  self:UpdateTeamUI()
+  self.addTeamBtn:SetScript("OnClick", function()
+    self:AddTeam()
+  end)
+  self.removeTeamBtn:SetScript("OnClick", function()
+    self:RemoveTeam()
+  end)
+  self.moveRightBtn:SetScript("OnClick", function()
+    self:MoveWaitingToTeam()
+  end)
+  self.moveLeftBtn:SetScript("OnClick", function()
+    self:RemoveMembersToWaiting()
+  end)
+  self.teamNameInput:SetScript("OnEnterPressed", function(box)
+    self:AddTeam()
+    box:ClearFocus()
+  end)
+
   self.customInput:SetScript("OnEnterPressed", function(box)
     self:SetCustomChannel(box:GetText())
     box:ClearFocus()
@@ -618,6 +919,15 @@ function UI:BuildUI()
   self.customInput:SetScript("OnEditFocusLost", function(box)
     self:SetCustomChannel(box:GetText())
   end)
+  self.timerInput:SetScript("OnEnterPressed", function(box)
+    self:ApplyTimerInput()
+    box:ClearFocus()
+  end)
+  self.timerInput:SetScript("OnEditFocusLost", function()
+    self:ApplyTimerInput()
+  end)
+  self:SyncTimerInput()
+  self:ResetTimerDisplay(self:GetTimerSeconds())
 
   self.startButton:SetScript("OnClick", function()
     self:StartGame()

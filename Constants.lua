@@ -12,6 +12,7 @@ local DEFAULT_CHANNEL = "GUILD"
 local GAME_MODES = {
   { key = "FASTEST", label = "Fastest answer wins" },
   { key = "ALL_CORRECT", label = "All correct answers score (timer based)" },
+  { key = "TEAM", label = "Team competition (teams score on correct answers)" },
 }
 
 local DEFAULT_MODE = "FASTEST"

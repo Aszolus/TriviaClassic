@@ -5,9 +5,100 @@ local DEFAULT_MIN = 10
 local DEFAULT_MAX = 20
 local MODE_FASTEST = "FASTEST"
 local MODE_ALL_CORRECT = "ALL_CORRECT"
+local MODE_TEAM = "TEAM"
 local VALID_MODES = {
   [MODE_FASTEST] = true,
   [MODE_ALL_CORRECT] = true,
+  [MODE_TEAM] = true,
+}
+
+local ModeHandlers = {}
+
+ModeHandlers[MODE_FASTEST] = {
+  label = "Fastest answer wins",
+  initQuestion = function(state)
+    state.correctThisQuestion = {}
+  end,
+  handleCorrect = function(game, state, sender, elapsed)
+    state.questionOpen = false
+    state.pendingWinner = true
+    state.pendingNoWinner = false
+    state.lastWinnerName = sender
+    state.lastWinnerTime = elapsed
+    local points = game:_recordCorrectAnswer(sender, elapsed)
+    return {
+      winner = sender,
+      elapsed = elapsed,
+      points = points,
+      mode = MODE_FASTEST,
+      totalWinners = 1,
+    }
+  end,
+  onTimeout = function(_, state)
+    state.pendingWinner = false
+    state.pendingNoWinner = true
+  end,
+  pendingWinners = function(game, state)
+    if not state.lastWinnerName then
+      return {}
+    end
+    return {
+      {
+        name = state.lastWinnerName,
+        elapsed = state.lastWinnerTime,
+        points = game:_currentPoints(),
+      },
+    }
+  end,
+}
+
+ModeHandlers[MODE_ALL_CORRECT] = {
+  label = "All correct answers score (timer based)",
+  initQuestion = function(state)
+    state.correctThisQuestion = {}
+  end,
+  handleCorrect = function(game, state, sender, elapsed)
+    state.correctThisQuestion = state.correctThisQuestion or {}
+    if state.correctThisQuestion[sender] then
+      return nil -- already credited for this question
+    end
+    state.correctThisQuestion[sender] = elapsed
+    state.lastWinnerName = sender
+    state.lastWinnerTime = elapsed
+    local points = game:_recordCorrectAnswer(sender, elapsed)
+    return {
+      winner = sender,
+      elapsed = elapsed,
+      points = points,
+      mode = MODE_ALL_CORRECT,
+      totalWinners = game:GetCurrentWinnerCount(),
+    }
+  end,
+  onTimeout = function(_, state)
+    if state.correctThisQuestion and next(state.correctThisQuestion) then
+      state.pendingWinner = true
+      state.pendingNoWinner = false
+    else
+      state.pendingWinner = false
+      state.pendingNoWinner = true
+    end
+  end,
+  pendingWinners = function(game, state)
+    local winners = {}
+    local bucket = state.correctThisQuestion or {}
+    local pts = game:_currentPoints()
+    for name, elapsed in pairs(bucket) do
+      table.insert(winners, {
+        name = name,
+        elapsed = elapsed,
+        points = pts,
+      })
+    end
+    table.sort(winners, function(a, b)
+      return (a.elapsed or math.huge) < (b.elapsed or math.huge)
+    end)
+    return winners
+  end,
 }
 
 local function shuffle(list)
@@ -42,6 +133,15 @@ local function ensureLeaderboardEntry(store, playerName)
   return store.leaderboard[playerName]
 end
 
+local function getModeHandler(modeKey)
+  return ModeHandlers[modeKey] or ModeHandlers[MODE_FASTEST]
+end
+
+local function normalizeKey(name)
+  if not name then return nil end
+  return tostring(name):lower()
+end
+
 function Game:new(repo, store)
   local o = {
     repo = repo,
@@ -62,10 +162,13 @@ function Game:new(repo, store)
       lastWinnerTime = nil,
       questionStartTime = 0,
       gameScores = {},
+      teamScores = {},
       correctThisQuestion = {},
+      correctTeams = {},
       -- Per-session registry of asked question ids (not persisted). Prevents repeats when changing sets mid-session.
       askedRegistry = {},
     },
+    teamMap = {},
   }
   setmetatable(o, self)
   return o
@@ -84,6 +187,30 @@ function Game:GetMode()
     return self.mode
   end
   return MODE_FASTEST
+end
+
+function Game:SetTeams(teamMap)
+  self.teamMap = teamMap or {}
+end
+
+function Game:_modeHandler()
+  return getModeHandler(self:GetMode())
+end
+
+function Game:_currentPoints()
+  if self.state and self.state.currentQuestion and self.state.currentQuestion.points then
+    return self.state.currentQuestion.points
+  end
+  return 1
+end
+
+function Game:_initQuestionState()
+  local handler = self:_modeHandler()
+  if handler and handler.initQuestion then
+    handler.initQuestion(self.state)
+  end
+  self.state.correctThisQuestion = self.state.correctThisQuestion or {}
+  self.state.correctTeams = self.state.correctTeams or {}
 end
 
 function Game:Start(selectedIds, desiredCount, allowedCategories, modeKey)
@@ -144,7 +271,9 @@ function Game:Start(selectedIds, desiredCount, allowedCategories, modeKey)
   s.lastWinnerTime = nil
   s.gameActive = true
   s.gameScores = {}
+  s.teamScores = {}
   s.correctThisQuestion = {}
+  s.correctTeams = {}
   s.fastest = nil
 
   return {
@@ -173,7 +302,7 @@ function Game:NextQuestion()
   s.lastWinnerName = nil
   s.lastWinnerTime = nil
   s.questionStartTime = GetTime()
-  s.correctThisQuestion = {}
+  self:_initQuestionState()
   return s.currentQuestion, s.askedCount, s.totalQuestions
 end
 
@@ -183,9 +312,9 @@ function Game:MarkTimeout()
     return
   end
   s.questionOpen = false
-  if self:GetMode() == MODE_ALL_CORRECT and s.correctThisQuestion and next(s.correctThisQuestion) then
-    s.pendingWinner = true
-    s.pendingNoWinner = false
+  local handler = self:_modeHandler()
+  if handler and handler.onTimeout then
+    handler.onTimeout(self, s)
   else
     s.pendingWinner = false
     s.pendingNoWinner = true
@@ -303,36 +432,11 @@ function Game:HandleChatAnswer(msg, sender)
   for _, ans in ipairs(s.currentQuestion.answers or {}) do
     if norm == ans then
       local elapsed = math.max(0.01, GetTime() - (s.questionStartTime or GetTime()))
-      if self:GetMode() == MODE_ALL_CORRECT then
-        s.correctThisQuestion = s.correctThisQuestion or {}
-        if s.correctThisQuestion[sender] then
-          return nil -- already credited for this question
-        end
-        s.correctThisQuestion[sender] = elapsed
-        s.lastWinnerName = sender
-        s.lastWinnerTime = elapsed
-        local points = self:_recordCorrectAnswer(sender, elapsed)
-        return {
-          winner = sender,
-          elapsed = elapsed,
-          points = points,
-          mode = MODE_ALL_CORRECT,
-          totalWinners = self:GetCurrentWinnerCount(),
-        }
+      local handler = self:_modeHandler()
+      if handler and handler.handleCorrect then
+        return handler.handleCorrect(self, s, sender, elapsed)
       end
-
-      s.questionOpen = false
-      s.pendingWinner = true
-      s.pendingNoWinner = false
-      s.lastWinnerName = sender
-      s.lastWinnerTime = elapsed
-      local points = self:_recordCorrectAnswer(sender, elapsed)
-      return {
-        winner = sender,
-        elapsed = elapsed,
-        points = points,
-        mode = MODE_FASTEST,
-      }
+      return nil
     end
   end
   return nil
@@ -450,19 +554,11 @@ function Game:GetLastWinner()
 end
 
 function Game:GetPendingWinners()
-  local winners = {}
-  local bucket = self.state.correctThisQuestion or {}
-  for name, elapsed in pairs(bucket) do
-    table.insert(winners, {
-      name = name,
-      elapsed = elapsed,
-      points = self.state.currentQuestion and self.state.currentQuestion.points or 1,
-    })
+  local handler = self:_modeHandler()
+  if handler and handler.pendingWinners then
+    return handler.pendingWinners(self, self.state)
   end
-  table.sort(winners, function(a, b)
-    return (a.elapsed or math.huge) < (b.elapsed or math.huge)
-  end)
-  return winners
+  return {}
 end
 
 function TriviaClassic_CreateGame(repo, store)
