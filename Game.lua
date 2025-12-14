@@ -197,7 +197,15 @@ local function recordSessionWin(state, playerName, points, elapsed)
 end
 
 local function normalizeMessage(msg)
-  return msg:lower():gsub("^%s+", ""):gsub("%s+$", "")
+  local s = tostring(msg or ""):lower()
+  s = s:gsub("^%s+", ""):gsub("%s+$", "")
+  s = s:gsub("%s+", " ")
+
+  -- strip punctuation/symbols only at the start/end
+  s = s:gsub("^%p+", ""):gsub("%p+$", "")
+
+  s = s:gsub("^%s+", ""):gsub("%s+$", "")
+  return s
 end
 
 function Game:HandleChatAnswer(msg, sender)
