@@ -13,6 +13,7 @@ local GAME_MODES = {
   { key = "FASTEST", label = "Fastest answer wins" },
   { key = "ALL_CORRECT", label = "All correct answers score (timer based)" },
   { key = "TEAM", label = "Team competition (teams score on correct answers)" },
+  { key = "TEAM_STEAL", label = "Team steal (active team, steal with final answer)" },
 }
 
 local DEFAULT_MODE = "FASTEST"

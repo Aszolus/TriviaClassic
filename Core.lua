@@ -9,6 +9,10 @@ local MODE_MAP = TriviaClassic_GetModeMap()
 local DEFAULT_TIMER = 20
 local MIN_TIMER = 5
 local MAX_TIMER = 120
+local DEFAULT_STEAL_TIMER = 20
+local MIN_STEAL_TIMER = 5
+local MAX_STEAL_TIMER = 120
+local DEBUG_ENABLED = false
 
 local function normalizeName(text)
   if not text then return nil end
@@ -40,6 +44,7 @@ local function ensureTeamStore()
   TriviaClassicCharacterDB.teams.teams = TriviaClassicCharacterDB.teams.teams or {}
   TriviaClassicCharacterDB.teams.playerTeam = TriviaClassicCharacterDB.teams.playerTeam or {}
   TriviaClassicCharacterDB.teams.waiting = TriviaClassicCharacterDB.teams.waiting or {}
+  TriviaClassicCharacterDB.teams.config = TriviaClassicCharacterDB.teams.config or {}
 end
 
 TriviaClassic.repo = TriviaClassic_CreateRepo()
@@ -60,6 +65,9 @@ local function initDatabase()
     TriviaClassicCharacterDB.mode = TriviaClassic_GetDefaultMode()
   end
   TriviaClassicCharacterDB.timer = clampTimerValue(TriviaClassicCharacterDB.timer or DEFAULT_TIMER)
+  if not TriviaClassicCharacterDB.teams.config.stealTimer then
+    TriviaClassicCharacterDB.teams.config.stealTimer = DEFAULT_STEAL_TIMER
+  end
   ensureTeamStore()
 end
 
@@ -261,6 +269,47 @@ function TriviaClassic:GetTimerBounds()
   return MIN_TIMER, MAX_TIMER
 end
 
+local function clampStealTimer(seconds)
+  local n = tonumber(seconds)
+  if not n then
+    return DEFAULT_STEAL_TIMER
+  end
+  if n < MIN_STEAL_TIMER then
+    n = MIN_STEAL_TIMER
+  elseif n > MAX_STEAL_TIMER then
+    n = MAX_STEAL_TIMER
+  end
+  return math.floor(n + 0.5)
+end
+
+function TriviaClassic:SetStealTimer(seconds)
+  ensureTeamStore()
+  TriviaClassicCharacterDB.teams.config = TriviaClassicCharacterDB.teams.config or {}
+  TriviaClassicCharacterDB.teams.config.stealTimer = clampStealTimer(seconds)
+end
+
+function TriviaClassic:GetStealTimer()
+  ensureTeamStore()
+  TriviaClassicCharacterDB.teams.config = TriviaClassicCharacterDB.teams.config or {}
+  local value = TriviaClassicCharacterDB.teams.config.stealTimer
+  if value == nil then
+    return DEFAULT_STEAL_TIMER
+  end
+  return clampStealTimer(value)
+end
+
+function TriviaClassic:GetStealTimerBounds()
+  return MIN_STEAL_TIMER, MAX_STEAL_TIMER
+end
+
+function TriviaClassic:EnableDebugLogging(enabled)
+  DEBUG_ENABLED = enabled and true or false
+end
+
+function TriviaClassic:IsDebugLogging()
+  return DEBUG_ENABLED
+end
+
 function TriviaClassic:StartGame(selectedIds, desiredCount, allowedCategories)
   if self.game and self.game.SetMode then
     self.game:SetMode(self:GetGameMode())
@@ -333,6 +382,13 @@ function TriviaClassic:GetLastWinner()
   return self.game:GetLastWinner()
 end
 
+function TriviaClassic:GetActiveTeam()
+  if not self.game or not self.game.GetActiveTeam then
+    return nil, nil
+  end
+  return self.game:GetActiveTeam()
+end
+
 function TriviaClassic:GetPrimaryAction()
   if not self.game or not self.game.GetPrimaryAction then
     return { command = "waiting", label = "Start", enabled = false }
@@ -402,8 +458,12 @@ local function handleIncomingChat(event, msg, sender, languageName, channelNameF
     return
   end
   local winner = TriviaClassic.game:HandleChatAnswer(msg, sender)
-  if winner and TriviaClassicUI and TriviaClassicUI.OnWinnerFound then
-    TriviaClassicUI:OnWinnerFound(winner)
+  if winner and TriviaClassicUI then
+    if winner.pendingSteal and TriviaClassicUI.OnPendingSteal then
+      TriviaClassicUI:OnPendingSteal(winner)
+    elseif TriviaClassicUI.OnWinnerFound then
+      TriviaClassicUI:OnWinnerFound(winner)
+    end
   end
 end
 

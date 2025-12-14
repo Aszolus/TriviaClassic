@@ -161,6 +161,18 @@ function TriviaClassic_UI_BuildLayout(ui)
   timerInput:SetMaxLetters(3)
   ui.timerInput = timerInput
 
+  local stealTimerLabel = optionsPage:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  stealTimerLabel:SetPoint("TOPLEFT", timerLabel, "BOTTOMLEFT", 0, -8)
+  stealTimerLabel:SetText("Steal timer (seconds):")
+
+  local stealTimerInput = CreateFrame("EditBox", nil, optionsPage, "InputBoxTemplate")
+  stealTimerInput:SetSize(60, 20)
+  stealTimerInput:SetPoint("LEFT", stealTimerLabel, "RIGHT", 6, 0)
+  stealTimerInput:SetAutoFocus(false)
+  stealTimerInput:SetNumeric(true)
+  stealTimerInput:SetMaxLetters(3)
+  ui.stealTimerInput = stealTimerInput
+
   local modeLabel = optionsPage:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   -- Place mode selection clearly below the timer input
   modeLabel:SetPoint("TOPLEFT", timerLabel, "BOTTOMLEFT", 0, -20)

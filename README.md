@@ -10,6 +10,7 @@ Getting Started
 - Channel: pick Guild/Party/Raid/Say/Yell or a custom channel (joins automatically).
 - Sets & categories: choose which question sets/categories to include; the question counter updates live.
 - Timer: set the per-question timer (clamped to allowed min/max).
+- Steal timer: for Team Steal mode, set a separate timer used during steal attempts.
 - Mode: select a game mode (see below); the choice is saved per character.
 - Start: click **Start**, then **Next** to announce questions. Use **Skip** to replace a question. Click **Announce Winner/Results** after timeouts.
 - Answers: players respond in the configured channel; correct answers are detected automatically.
@@ -18,7 +19,9 @@ Game Modes
 ----------
 - Fastest: first correct answer wins the question.
 - All Correct: all players who answer correctly before time expires score points; results are announced when time is up.
-New modes can be added by registering a handler in `GameModes.lua`.
+- Team: credits the answering player’s team; announcements include team name and members.
+- Team Steal: active team must answer with `final:`; on wrong/timeout, another team can steal the same question with the same timer.
+New modes can be added by registering a handler under `GameModes/` (one file per mode, see existing examples).
 
 Teams (optional)
 ----------------
@@ -32,7 +35,7 @@ Data & Persistence
 Files & Structure
 -----------------
 - `Constants.lua`: channel and mode definitions.
-- `GameModes.lua`: per-mode logic/state (add new modes here).
+- `GameModes/`: per-mode logic/state (one file per mode) and the mode registry.
 - `Game.lua`: core game flow (question selection, scoring, timers).
 - `Chat.lua`: outbound chat messaging and event filtering.
 - `QuestionRepository.lua` / `QuestionLoader.lua`: question set management and import helpers.
@@ -42,7 +45,7 @@ Files & Structure
 
 Development Notes
 -----------------
-- To add a new mode, create a handler in `GameModes.lua` (provide `createState`, `beginQuestion`, `handleCorrect`, `onTimeout`, and optional `pendingWinners`/`winnerCount`/`resetProgress`).
+- To add a new mode, create a handler file under `GameModes/` (provide `createState`, `beginQuestion`, `handleCorrect`, `onTimeout`, and optional `pendingWinners`/`winnerCount`/`resetProgress`/`primaryAction`), then register it.
 - To add a question set, drop a TriviaBot-style table into `QuestionSets/` and list it in the `.toc`.
 - Avoid altering saved variable keys unless you also handle migration (`SCHEMA_VERSION` in `Core.lua`).
 

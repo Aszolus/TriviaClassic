@@ -125,9 +125,26 @@ function Chat:SendStart(meta)
   self:Send(string.format("[Trivia] Game starting! Mode: %s. %d questions drawn from %s.", modeLabel, meta.total, formatNames(meta.setNames)))
 end
 
-function Chat:SendQuestion(index, total, question)
+function Chat:SendQuestion(index, total, question, activeTeamName)
   local msg = string.format("[Trivia] Q%d/%d: %s (Category: %s, %s pts)", index, total, question.question, question.category or "General", tostring(question.points or 1))
+  if activeTeamName and activeTeamName ~= "" then
+    msg = msg .. string.format(" [Active team: %s]", activeTeamName)
+  end
   self:Send(msg)
+end
+function Chat:SendActiveTeamReminder(teamName)
+  if teamName and teamName ~= "" then
+    self:Send(string.format("[Trivia] Waiting on %s to answer (use 'final: ...').", teamName))
+  end
+end
+
+function Chat:SendSteal(teamName, question, timer)
+  local label = teamName or "Next team"
+  local base = string.format("[Trivia] Steal attempt for %s: %s", label, question and question.question or "the last question")
+  if timer then
+    base = base .. string.format(" (%ds)", timer)
+  end
+  self:Send(base)
 end
 
 function Chat:SendWarning()

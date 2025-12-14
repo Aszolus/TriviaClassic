@@ -52,12 +52,20 @@ local function normalizeKey(name)
   return tostring(name):lower()
 end
 
-local function collectTeamMembers(store, teamKey)
+local function collectTeamMembers(store, teamKey, displayName)
   local list = {}
   if not store or not store.teams or not store.teams.teams then
     return list
   end
   local team = store.teams.teams[teamKey]
+  if not team and displayName then
+    for key, t in pairs(store.teams.teams) do
+      if t.name == displayName then
+        team = t
+        break
+      end
+    end
+  end
   if not team or not team.members then
     return list
   end
@@ -92,6 +100,9 @@ function Game:new(repo, store)
     },
     teamMap = {},
   }
+  if o.state.modeState then
+    o.state.modeState.gameRef = o
+  end
   setmetatable(o, self)
   return o
 end
@@ -100,6 +111,9 @@ function Game:SetMode(modeKey)
   local resolved = normalizeModeKey(modeKey)
   self.mode = resolved
   self.state.modeState = TriviaClassic_CreateModeState(resolved)
+  if self.state.modeState then
+    self.state.modeState.gameRef = self
+  end
 end
 
 function Game:GetMode()
@@ -108,6 +122,23 @@ end
 
 function Game:SetTeams(teamMap)
   self.teamMap = teamMap or {}
+end
+
+function Game:GetTeamList()
+  local list = {}
+  if self.store and self.store.teams and self.store.teams.teams then
+    for _, team in pairs(self.store.teams.teams) do
+      table.insert(list, team.name or "")
+    end
+  end
+  table.sort(list, function(a, b)
+    return tostring(a or ""):lower() < tostring(b or ""):lower()
+  end)
+  return list
+end
+
+function Game:GetTeamMembers(teamName)
+  return collectTeamMembers(self.store, normalizeKey(teamName), teamName)
 end
 
 function Game:_resolveTeamInfo(sender)
@@ -132,8 +163,20 @@ function Game:_modeState()
   local current = self:GetMode()
   if not self.state.modeState or self.state.modeState.key ~= current then
     self.state.modeState = TriviaClassic_CreateModeState(current)
+    if self.state.modeState then
+      self.state.modeState.gameRef = self
+    end
+  end
+  if self.state.modeState and not self.state.modeState.gameRef then
+    self.state.modeState.gameRef = self
   end
   return self.state.modeState
+end
+
+function Game:_debug(msg)
+  if TriviaClassic and TriviaClassic.IsDebugLogging and TriviaClassic:IsDebugLogging() then
+    print("|cffffff00[Trivia Debug]|r " .. tostring(msg))
+  end
 end
 
 function Game:_currentPoints()
@@ -146,7 +189,7 @@ end
 function Game:_initQuestionState()
   local modeState = self:_modeState()
   if modeState and modeState.BeginQuestion then
-    modeState:BeginQuestion()
+    modeState:BeginQuestion(self)
   end
 end
 
@@ -278,6 +321,9 @@ function Game:SkipCurrent()
   s.questionOpen = false
   s.currentQuestion = nil
   local modeState = self:_modeState()
+  if modeState and modeState.handler and modeState.handler.onSkip then
+    modeState.handler.onSkip(modeState, self)
+  end
   modeState:ResetProgress()
 end
 
@@ -371,9 +417,13 @@ function Game:HandleChatAnswer(msg, sender)
     return nil
   end
 
+  if modeState and modeState.handler and modeState.handler.evaluateAnswer then
+    return modeState:EvaluateAnswer(self, sender, msg)
+  end
+
   local norm = normalizeMessage(msg)
   for _, ans in ipairs(s.currentQuestion.answers or {}) do
-    if norm == ans then
+    if norm == normalizeMessage(ans) then
       local elapsed = math.max(0.01, GetTime() - (s.questionStartTime or GetTime()))
       if modeState and modeState.HandleCorrect then
         return modeState:HandleCorrect(self, sender, elapsed)
@@ -401,7 +451,7 @@ end
 function Game:GetSessionScoreboard()
   local list = {}
   local mode = self:GetMode()
-  if mode == "TEAM" then
+  if mode == "TEAM" or mode == "TEAM_STEAL" then
     for name, info in pairs(self.state.teamScores or {}) do
       table.insert(list, {
         name = name,
@@ -510,6 +560,14 @@ function Game:GetLastWinner()
   return modeState.lastWinnerName, modeState.lastWinnerTime, modeState.lastTeamName, modeState.lastTeamMembers
 end
 
+function Game:GetActiveTeam()
+  local modeState = self:_modeState()
+  if not modeState or not modeState.GetActiveTeam then
+    return nil, nil
+  end
+  return modeState:GetActiveTeam(self)
+end
+
 function Game:GetPendingWinners()
   local modeState = self:_modeState()
   if modeState and modeState.PendingWinners then
@@ -566,6 +624,12 @@ function Game:PerformPrimaryAction(command)
   elseif action.command == "end_game" then
     self:EndGame()
     return { command = action.command, finished = true }
+  elseif action.command == "start_steal" then
+    local modeState = self:_modeState()
+    if modeState and modeState.handler and modeState.handler.startSteal then
+      local teamName, teamMembers = modeState.handler.startSteal(self, modeState)
+      return { command = action.command, teamName = teamName, teamMembers = teamMembers, question = self:GetCurrentQuestion(), index = self.state.askedCount, total = self.state.totalQuestions }
+    end
   end
   return nil
 end

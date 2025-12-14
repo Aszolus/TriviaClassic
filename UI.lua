@@ -83,6 +83,15 @@ function UI:RefreshPrimaryButton()
   end
 end
 
+function UI:OnPendingSteal(event)
+  if not event then
+    return
+  end
+  local teamName = event.teamName or "the next team"
+  self.frame.statusText:SetText(string.format("%s can steal. Click the button to offer the steal.", teamName))
+  self:RefreshPrimaryButton()
+end
+
 function UI:SetChannel(key)
   key = key or TriviaClassic_GetDefaultChannel()
   self.channelKey = key
@@ -136,6 +145,15 @@ end
 
 function UI:GetTimerSeconds()
   return TriviaClassic:GetTimer()
+end
+
+function UI:GetStealTimerSeconds()
+  return TriviaClassic:GetStealTimer()
+end
+
+function UI:SetStealTimerSeconds(seconds)
+  TriviaClassic:SetStealTimer(seconds)
+  self:SyncTimerInput()
 end
 
 function UI:SetTimerSeconds(seconds)
@@ -339,6 +357,9 @@ end
 function UI:SyncTimerInput()
   if self.timerInput then
     self.timerInput:SetText(tostring(self:GetTimerSeconds()))
+  end
+  if self.stealTimerInput then
+    self.stealTimerInput:SetText(tostring(self:GetStealTimerSeconds()))
   end
 end
 
@@ -568,6 +589,10 @@ function UI:AnnounceQuestion()
   local q = result and result.question
   local index = result and result.index
   local total = result and result.total
+  local activeTeamName = nil
+  if TriviaClassic:GetGameMode() == "TEAM_STEAL" then
+    activeTeamName = select(1, TriviaClassic:GetActiveTeam())
+  end
   if not q then
     self.frame.statusText:SetText("No more questions. End the game.")
     self:RefreshPrimaryButton()
@@ -578,7 +603,12 @@ function UI:AnnounceQuestion()
   self.currentQuestion = q
   self.questionLabel:SetText(string.format("Q%d/%d: %s", index, total, q.question))
   self.categoryLabel:SetText(string.format("Category: %s  |  Points: %s", q.category or "General", tostring(q.points or 1)))
-  self.frame.statusText:SetText(string.format("Question announced. Listening for answers... (%s)", TriviaClassic:GetGameModeLabel()))
+  if activeTeamName then
+    self.frame.statusText:SetText(string.format("Question announced. Active team: %s. Listening for answers... (%s)", activeTeamName, TriviaClassic:GetGameModeLabel()))
+    self.timerText:SetText(string.format("Time: %ds (Team: %s)", self:GetTimerSeconds(), activeTeamName))
+  else
+    self.frame.statusText:SetText(string.format("Question announced. Listening for answers... (%s)", TriviaClassic:GetGameModeLabel()))
+  end
 
   local timerSeconds = self:GetTimerSeconds()
   self.timerRemaining = timerSeconds
@@ -601,7 +631,47 @@ function UI:AnnounceQuestion()
     self.skipButton:Enable()
   end
 
-  TriviaClassic.chat:SendQuestion(index, total, q)
+  TriviaClassic.chat:SendQuestion(index, total, q, activeTeamName)
+  self:RefreshPrimaryButton()
+end
+
+function UI:StartSteal()
+  local result = TriviaClassic:PerformPrimaryAction("start_steal")
+  local teamName = result and result.teamName
+  local q = result and result.question or TriviaClassic:GetCurrentQuestion()
+  local activeLabel = teamName or "Next team"
+  if not q then
+    self.frame.statusText:SetText("No question available to steal.")
+    self:RefreshPrimaryButton()
+    return
+  end
+  self.currentQuestion = q
+  self.frame.statusText:SetText(string.format("%s can steal. Listening for answers...", activeLabel))
+  local timerSeconds = self:GetTimerSeconds()
+  if TriviaClassic:GetGameMode() == "TEAM_STEAL" then
+    timerSeconds = TriviaClassic:GetStealTimer()
+  end
+  self.timerRemaining = timerSeconds
+  self.timerRunning = true
+  self.timerBar:SetMinMaxValues(0, timerSeconds)
+  self.timerBar:SetValue(timerSeconds)
+  self.timerBar:SetStatusBarColor(0.2, 0.8, 0.2)
+  self.timerText:SetText(string.format("Time: %ds (Steal)", timerSeconds))
+  self.warningButton:Enable()
+  if self.hintButton then
+    local hint = q.hint or (q.hints and q.hints[1])
+    if hint and hint ~= "" then
+      self.hintButton:Enable()
+    else
+      self.hintButton:Disable()
+    end
+  end
+  if self.skipButton then
+    self.skipButton:Enable()
+  end
+  TriviaClassic.chat:SendSteal(teamName, q, timerSeconds)
+  -- Provide a reminder in chat for clarity
+  TriviaClassic.chat:SendActiveTeamReminder(activeLabel)
   self:RefreshPrimaryButton()
 end
 
@@ -706,6 +776,8 @@ function UI:OnNextPressed()
     self:AnnounceNoWinner()
   elseif action.command == "end_game" then
     self:EndGame()
+  elseif action.command == "start_steal" then
+    self:StartSteal()
   end
   self:RefreshPrimaryButton()
 end
@@ -802,7 +874,10 @@ function UI:UpdateTimer(elapsed)
     if self.skipButton then
       self.skipButton:Disable()
     end
-    if TriviaClassic:IsPendingWinner() then
+    local action = TriviaClassic:GetPrimaryAction()
+    if action and action.command == "start_steal" then
+      self.frame.statusText:SetText("Time expired. Offer a steal to the next team.")
+    elseif TriviaClassic:IsPendingWinner() then
       self.frame.statusText:SetText("Time expired. Announce results for this question.")
     else
       self.frame.statusText:SetText("Time expired. Click 'Announce No Winner' to continue.")
@@ -931,6 +1006,21 @@ function UI:BuildUI()
   self.timerInput:SetScript("OnEditFocusLost", function()
     self:ApplyTimerInput()
   end)
+  if self.stealTimerInput then
+    self.stealTimerInput:SetScript("OnEnterPressed", function(box)
+      local value = tonumber(box:GetText() or "")
+      if value then
+        self:SetStealTimerSeconds(value)
+      end
+      box:ClearFocus()
+    end)
+    self.stealTimerInput:SetScript("OnEditFocusLost", function(box)
+      local value = tonumber(box:GetText() or "")
+      if value then
+        self:SetStealTimerSeconds(value)
+      end
+    end)
+  end
   self:SyncTimerInput()
   self:ResetTimerDisplay(self:GetTimerSeconds())
 

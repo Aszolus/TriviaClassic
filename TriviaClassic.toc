@@ -7,7 +7,11 @@
 
 Constants.lua
 QuestionRepository.lua
-GameModes.lua
+GameModes/Registry.lua
+GameModes/Fastest.lua
+GameModes/AllCorrect.lua
+GameModes/Team.lua
+GameModes/TeamSteal.lua
 Game.lua
 Chat.lua
 Core.lua
