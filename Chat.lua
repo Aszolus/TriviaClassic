@@ -134,18 +134,11 @@ function Chat:Send(msg)
   safeSendMessage(msg, entry, self.customId)
 end
 
-local function formatNames(setNames)
-  if type(setNames) == "table" then
-    return table.concat(setNames, ", ")
-  end
-  return setNames or "unknown sets"
-end
-
 --- Announces the start of a game.
 ---@param meta table Game metadata (e.g., total, setNames, mode/modeLabel)
 function Chat:SendStart(meta)
-  local modeLabel = meta.modeLabel or (meta.mode and TriviaClassic_GetModeLabel(meta.mode)) or "Fastest answer wins"
-  self:Send(string.format("[Trivia] Game starting! Mode: %s. %d questions drawn from %s.", modeLabel, meta.total, formatNames(meta.setNames)))
+  local F = TriviaClassic_MessageFormatter
+  self:Send(F.formatStart(meta))
 end
 
 --- Announces a question to chat.
@@ -154,18 +147,15 @@ end
 ---@param question table Question object (fields: question, category, points, ...)
 ---@param activeTeamName string|nil Optional active team label
 function Chat:SendQuestion(index, total, question, activeTeamName)
-  local msg = string.format("[Trivia] Q%d/%d: %s (Category: %s, %s pts)", index, total, question.question, question.category or "General", tostring(question.points or 1))
-  if activeTeamName and activeTeamName ~= "" then
-    msg = msg .. string.format(" [Active team: %s]", activeTeamName)
-  end
-  self:Send(msg)
+  local F = TriviaClassic_MessageFormatter
+  self:Send(F.formatQuestion(index, total, question, activeTeamName))
 end
 --- Reminds which team is active for final answers.
 ---@param teamName string|nil Team name
 function Chat:SendActiveTeamReminder(teamName)
-  if teamName and teamName ~= "" then
-    self:Send(string.format("[Trivia] Waiting on %s to answer (use 'final: ...').", teamName))
-  end
+  local F = TriviaClassic_MessageFormatter
+  local msg = F.formatActiveTeamReminder(teamName)
+  if msg then self:Send(msg) end
 end
 
 --- Announces a steal opportunity.
@@ -173,38 +163,22 @@ end
 ---@param question table|nil The question object (optional for context)
 ---@param timer integer|nil Seconds allowed for steal
 function Chat:SendSteal(teamName, question, timer)
-  local label = teamName or "Next team"
-  local base = string.format("[Trivia] Steal attempt for %s: %s", label, question and question.question or "the last question")
-  if timer then
-    base = base .. string.format(" (%ds)", timer)
-  end
-  self:Send(base)
+  local F = TriviaClassic_MessageFormatter
+  self:Send(F.formatSteal(teamName, question, timer))
 end
 
 --- Warns that only a short time remains.
 function Chat:SendWarning()
-  self:Send("[Trivia] 10 seconds remaining!")
+  local F = TriviaClassic_MessageFormatter
+  self:Send(F.formatWarning())
 end
 
 --- Announces a hint, if provided.
 ---@param text string|nil
 function Chat:SendHint(text)
-  if text and text ~= "" then
-    self:Send("[Trivia] Hint: " .. text)
-  end
-end
-
-local function formatWinnerNames(winners)
-  local parts = {}
-  for _, row in ipairs(winners or {}) do
-    if row.teamName then
-      local members = row.teamMembers and #row.teamMembers > 0 and (" (" .. table.concat(row.teamMembers, ", ") .. ")") or ""
-      table.insert(parts, string.format("%s%s (+%s pts)", row.teamName or "Team", members, tostring(row.points or 1)))
-    else
-      table.insert(parts, string.format("%s (+%s pts)", row.name or "?", tostring(row.points or 1)))
-    end
-  end
-  return table.concat(parts, ", ")
+  local F = TriviaClassic_MessageFormatter
+  local msg = F.formatHint(text)
+  if msg then self:Send(msg) end
 end
 
 --- Announces a single winner (player or team).
@@ -214,12 +188,8 @@ end
 ---@param teamName string|nil Team name if team win
 ---@param teamMembers string[]|nil Team member display names
 function Chat:SendWinner(name, elapsed, points, teamName, teamMembers)
-  if teamName then
-    local members = teamMembers and #teamMembers > 0 and (" (" .. table.concat(teamMembers, ", ") .. ")") or ""
-    self:Send(string.format("[Trivia] %s answered correctly in %.2fs!%s (+%s pts)", teamName, elapsed or 0, members, tostring(points or 1)))
-  else
-    self:Send(string.format("[Trivia] %s answered correctly in %.2fs! (+%s pts)", name, elapsed or 0, tostring(points or 1)))
-  end
+  local F = TriviaClassic_MessageFormatter
+  self:Send(F.formatWinner(name, elapsed, points, teamName, teamMembers))
 end
 
 --- Announces winners list (all-correct mode) or delegates to SendWinner.
@@ -227,31 +197,22 @@ end
 ---@param question table|nil
 ---@param mode string|nil
 function Chat:SendWinners(winners, question, mode)
-  if not winners or #winners == 0 then
-    self:SendNoWinner(question and (question.displayAnswers and table.concat(question.displayAnswers, ", ") or (question.answers and table.concat(question.answers, ", "))) or nil)
-    return
-  end
-  if mode == "ALL_CORRECT" then
-    self:Send(string.format("[Trivia] Time's up! %d answered correctly: %s", #winners, formatWinnerNames(winners)))
-  else
-    local first = winners[1]
-    self:SendWinner(first.name, first.elapsed or 0, first.points or (question and question.points) or 1, first.teamName, first.teamMembers)
-  end
+  local F = TriviaClassic_MessageFormatter
+  local msg = F.formatWinners(winners, question, mode)
+  if msg then self:Send(msg) end
 end
 
 --- Announces that no one answered correctly.
 ---@param answersText string|nil Display-form acceptable answers
 function Chat:SendNoWinner(answersText)
-  if answersText and answersText ~= "" then
-    self:Send(string.format("[Trivia] Time is up! No correct answers. Acceptable answers: %s", answersText))
-  else
-    self:Send("[Trivia] Time is up! No correct answers. Moving on.")
-  end
+  local F = TriviaClassic_MessageFormatter
+  self:Send(F.formatNoWinner(answersText))
 end
 
 --- Announces that the host skipped the question.
 function Chat:SendSkipped()
-  self:Send("[Trivia] Question skipped by host. Moving on.")
+  local F = TriviaClassic_MessageFormatter
+  self:Send(F.formatSkipped())
 end
 
 --- Announces end-of-game scores and fastest time.
@@ -259,24 +220,18 @@ end
 ---@param fastestName string|nil
 ---@param fastestTime number|nil
 function Chat:SendEnd(rows, fastestName, fastestTime)
-  self:Send("[Trivia] Game over! Final scores:")
+  local F = TriviaClassic_MessageFormatter
+  self:Send(F.formatEndHeader())
   if not rows or #rows == 0 then
     self:Send("[Trivia] No correct answers recorded.")
   else
     for _, entry in ipairs(rows) do
-      local line = nil
-      if entry.members and #entry.members > 0 then
-        line = string.format("%s - %d pts (%d correct) (%s)", entry.name, entry.points, entry.correct, table.concat(entry.members, ", "))
-      else
-        line = string.format("%s - %d pts (%d correct)", entry.name, entry.points, entry.correct)
-      end
-      self:Send("[Trivia] " .. line)
+      self:Send(F.formatEndRow(entry))
     end
   end
-  if fastestName and fastestTime then
-    self:Send(string.format("[Trivia] Speed record this game: %s (%.2fs)", fastestName, fastestTime))
-  end
-  self:Send("[Trivia] Thanks for playing!")
+  local fastest = F.formatEndFastest(fastestName, fastestTime)
+  if fastest then self:Send(fastest) end
+  self:Send(F.formatThanks())
 end
 
 --- Factory: creates a new Chat.

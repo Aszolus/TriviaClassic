@@ -8,6 +8,9 @@
 Constants.lua
 Util.lua
 Types.lua
+Events.lua
+MessageFormatter.lua
+TimerService.lua
 QuestionRepository.lua
 GameModes/Registry.lua
 GameModes/Fastest.lua

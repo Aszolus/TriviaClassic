@@ -579,7 +579,8 @@ function UI:AnnounceQuestion()
   end
 
   local timerSeconds = self:GetTimerSeconds()
-  self.timerRemaining = timerSeconds
+  -- Initialize timer service (UI still controls side-effects on expiration)
+  self.timerService = TriviaClassic_CreateTimer(timerSeconds)
   self.timerRunning = true
   self.timerBar:SetMinMaxValues(0, timerSeconds)
   self.timerBar:SetValue(timerSeconds)
@@ -827,21 +828,16 @@ function UI:UpdateTimer(elapsed)
   if not self.timerRunning then
     return
   end
-  self.timerRemaining = (self.timerRemaining or self:GetTimerSeconds()) - elapsed
-  if self.timerRemaining <= 0 then
-    self.timerRemaining = 0
+  local snap = self.timerService and self.timerService:Tick(elapsed) or { remaining = 0, expired = true, color = "red" }
+  if snap.expired then
     self.timerRunning = false
     TriviaClassic:MarkTimeout()
     self.timerBar:SetValue(0)
     self.timerText:SetText("Time: 0s")
     self.timerBar:SetStatusBarColor(0.7, 0.1, 0.1)
     self.warningButton:Disable()
-    if self.hintButton then
-      self.hintButton:Disable()
-    end
-    if self.skipButton then
-      self.skipButton:Disable()
-    end
+    if self.hintButton then self.hintButton:Disable() end
+    if self.skipButton then self.skipButton:Disable() end
     local action = TriviaClassic:GetPrimaryAction()
     if action and action.command == "start_steal" then
       self.frame.statusText:SetText("Time expired. Offer a steal to the next team.")
@@ -853,15 +849,15 @@ function UI:UpdateTimer(elapsed)
     self:RefreshPrimaryButton()
     return
   end
-  self.timerBar:SetValue(self.timerRemaining)
-  if self.timerRemaining <= 5 then
+  self.timerBar:SetValue(snap.remaining)
+  if snap.color == "red" then
     self.timerBar:SetStatusBarColor(0.9, 0.2, 0.2)
-  elseif self.timerRemaining <= 10 then
+  elseif snap.color == "orange" then
     self.timerBar:SetStatusBarColor(0.95, 0.7, 0.2)
   else
     self.timerBar:SetStatusBarColor(0.2, 0.8, 0.2)
   end
-  self.timerText:SetText(string.format("Time: %ds", math.ceil(self.timerRemaining)))
+  self.timerText:SetText(string.format("Time: %ds", math.ceil(snap.remaining)))
 end
 
 function UI:BuildUI()
@@ -887,6 +883,20 @@ function UI:BuildUI()
 
   local frame = TriviaClassic_UI_BuildLayout(self)
   self:SetChannel(self.channelKey)
+
+  -- Subscribe to core events to keep UI in sync (no chat sends here)
+  if TriviaClassic_On then
+    self._unsub = self._unsub or {}
+    table.insert(self._unsub, TriviaClassic_On("teams_updated", function()
+      if self and self.UpdateTeamUI then self:UpdateTeamUI() end
+    end))
+    table.insert(self._unsub, TriviaClassic_On("pending_steal", function(evt)
+      if self and self.OnPendingSteal then self:OnPendingSteal(evt) end
+    end))
+    table.insert(self._unsub, TriviaClassic_On("winner_found", function(evt)
+      if self and self.OnWinnerFound then self:OnWinnerFound(evt) end
+    end))
+  end
 
   -- Tab switching
   local function showPage(which)

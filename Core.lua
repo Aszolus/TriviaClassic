@@ -549,18 +549,16 @@ local function handleIncomingChat(event, msg, sender, languageName, channelNameF
   if lowered == "trivia register" or lowered == "trivia join" then
     if TriviaClassic:RegisterPlayer(sender) then
       DEFAULT_CHAT_FRAME:AddMessage("|cffffff00[Trivia]|r Registered " .. (sender or "?") .. " for team placement.")
-      if TriviaClassicUI and TriviaClassicUI.UpdateTeamUI then
-        TriviaClassicUI:UpdateTeamUI()
-      end
+      if TriviaClassic_Emit then TriviaClassic_Emit("teams_updated") end
     end
     return
   end
   local winner = TriviaClassic.game:HandleChatAnswer(msg, sender)
-  if winner and TriviaClassicUI then
-    if winner.pendingSteal and TriviaClassicUI.OnPendingSteal then
-      TriviaClassicUI:OnPendingSteal(winner)
-    elseif TriviaClassicUI.OnWinnerFound then
-      TriviaClassicUI:OnWinnerFound(winner)
+  if winner then
+    if winner.pendingSteal then
+      if TriviaClassic_Emit then TriviaClassic_Emit("pending_steal", winner) end
+    else
+      if TriviaClassic_Emit then TriviaClassic_Emit("winner_found", winner) end
     end
   end
 end
