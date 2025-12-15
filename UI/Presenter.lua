@@ -9,6 +9,22 @@ function Presenter:new(trivia)
   return o
 end
 
+local function getFormatter(game)
+  local defaultF = TriviaClassic_MessageFormatter
+  if not game or not game.GetModeHandler then return defaultF end
+  local handler = game:GetModeHandler()
+  if handler and handler.format then
+    -- Return a proxy that prefers handler.format functions if present
+    local H = handler.format
+    return setmetatable({}, {
+      __index = function(_, k)
+        return H[k] or defaultF[k]
+      end,
+    })
+  end
+  return defaultF
+end
+
 --- Starts a game and broadcasts to chat.
 ---@param desiredCount integer|nil
 ---@param categoriesBySet table|nil Per-set map of allowed category keys
@@ -20,7 +36,8 @@ function Presenter:StartGame(desiredCount, categoriesBySet)
   end
   local meta = self.trivia:StartGame(selectedIds, desiredCount, categoriesBySet)
   if meta then
-    self.trivia.chat:SendStart(meta)
+    local F = getFormatter(self.trivia and self.trivia.game)
+    self.trivia.chat:Send(F.formatStart(meta))
   end
   return meta
 end
@@ -34,6 +51,19 @@ end
 --- Returns a simplified primary view model for the main button.
 ---@return table vm {label:string, enabled:boolean, command:string}
 function Presenter:PrimaryView()
+  -- Prefer mode-provided primaryAction view if available
+  local game = self.trivia and self.trivia.game
+  local handler = game and game.GetModeHandler and game:GetModeHandler() or nil
+  if handler and handler.view and type(handler.view.primaryAction) == "function" then
+    local vm = handler.view.primaryAction(game, game and game.state and game.state.modeState)
+    if vm and vm.label then
+      return {
+        label = vm.label or "Next",
+        enabled = (vm.enabled ~= false),
+        command = vm.command or (self:PrimaryAction() and self:PrimaryAction().command) or "waiting",
+      }
+    end
+  end
   local a = self:PrimaryAction() or { command = "waiting", label = "Start", enabled = false }
   return { label = a.label or "Next", enabled = (a.enabled ~= false), command = a.command or "waiting" }
 end
@@ -46,11 +76,9 @@ function Presenter:AnnounceQuestion()
   local index = result and result.index
   local total = result and result.total
   if q and index and total then
-    local activeTeamName = nil
-    if self.trivia:GetGameMode() == "TEAM_STEAL" then
-      activeTeamName = select(1, self.trivia:GetActiveTeam())
-    end
-    self.trivia.chat:SendQuestion(index, total, q, activeTeamName)
+    local activeTeamName = select(1, self.trivia:GetActiveTeam())
+    local F = getFormatter(self.trivia and self.trivia.game)
+    self.trivia.chat:Send(F.formatQuestion(index, total, q, activeTeamName))
   end
   return result
 end
@@ -59,23 +87,60 @@ function Presenter:StartSteal()
   local result = self.trivia:PerformPrimaryAction("start_steal")
   local teamName = result and result.teamName
   local q = result and result.question or self.trivia:GetCurrentQuestion()
-  local timerSeconds = self.trivia:GetStealTimer()
-  self.trivia.chat:SendSteal(teamName, q, timerSeconds)
-  self.trivia.chat:SendActiveTeamReminder(teamName or select(1, self.trivia:GetActiveTeam()) or "Next team")
+  local timerSeconds = self:GetStealTimerSeconds()
+  local F = getFormatter(self.trivia and self.trivia.game)
+  self.trivia.chat:Send(F.formatSteal(teamName, q, timerSeconds))
+  local rem = F.formatActiveTeamReminder(teamName or select(1, self.trivia:GetActiveTeam()) or "Next team")
+  if rem then self.trivia.chat:Send(rem) end
   return result
 end
 
-function Presenter:AnnounceWinner()
-  local mode = self.trivia:GetGameMode()
-  if mode == "ALL_CORRECT" then
-    local winners = self.trivia:GetPendingWinners()
-    local q = self.trivia:GetCurrentQuestion()
-    if winners and #winners > 0 then
-      self.trivia.chat:SendWinners(winners, q, mode)
-    else
-      self:AnnounceNoWinner()
-      return { finished = true }
+function Presenter:GetStealTimerSeconds()
+  local game = self.trivia and self.trivia.game
+  if game and game.GetModeHandler then
+    local handler = game:GetModeHandler()
+    if handler and handler.view and type(handler.view.getStealTimerSeconds) == "function" then
+      return handler.view.getStealTimerSeconds(game, game.state and game.state.modeState)
     end
+  end
+  return self.trivia and self.trivia.GetStealTimer and self.trivia:GetStealTimer() or 20
+end
+
+--- Handles the primary button click using the current primary action.
+function Presenter:OnPrimaryPressed()
+  local a = self:PrimaryAction()
+  if not a or a.enabled == false or a.command == "waiting" or a.command == "wait" then
+    return nil
+  end
+  if a.command == "announce_question" then
+    return self:AnnounceQuestion()
+  elseif a.command == "announce_winner" then
+    return self:AnnounceWinner()
+  elseif a.command == "announce_no_winner" then
+    return self:AnnounceNoWinner()
+  elseif a.command == "end_game" then
+    return self:EndGame()
+  else
+    -- Fallback for mode-specific actions (e.g., steal) without leaking names to UI
+    if self.trivia and self.trivia.game and self.trivia.game.PerformPrimaryAction then
+      -- Let the mode handle it; Presenter sends any necessary chat when appropriate
+      local res = self.trivia:PerformPrimaryAction(a.command)
+      if a.command == "start_steal" then
+        -- Maintain behavior for TeamSteal while we migrate to fully generic effects
+        return self:StartSteal()
+      end
+      return res
+    end
+  end
+end
+
+function Presenter:AnnounceWinner()
+  local F = getFormatter(self.trivia and self.trivia.game)
+  local winners = self.trivia:GetPendingWinners()
+  local q = self.trivia:GetCurrentQuestion()
+  if winners and #winners > 0 then
+    local msg = F.formatWinners(winners, q, self.trivia:GetGameMode())
+    if msg then self.trivia.chat:Send(msg) end
     local result = self.trivia:PerformPrimaryAction("announce_winner")
     return result
   end
@@ -84,8 +149,7 @@ function Presenter:AnnounceWinner()
   if not winnerName then
     return nil
   end
-  local q = self.trivia:GetCurrentQuestion()
-  self.trivia.chat:SendWinner(winnerName, elapsed or 0, q and q.points, teamName, teamMembers)
+  self.trivia.chat:Send(F.formatWinner(winnerName, elapsed or 0, q and q.points, teamName, teamMembers))
   local result = self.trivia:PerformPrimaryAction("announce_winner")
   return result
 end
@@ -98,19 +162,23 @@ function Presenter:AnnounceNoWinner()
   elseif q and q.answers then
     answersText = table.concat(q.answers, ", ")
   end
-  self.trivia.chat:SendNoWinner(answersText)
+  local F = getFormatter(self.trivia and self.trivia.game)
+  self.trivia.chat:Send(F.formatNoWinner(answersText))
   return self.trivia:PerformPrimaryAction("announce_no_winner")
 end
 
 function Presenter:SendWarning()
-  self.trivia.chat:SendWarning()
+  local F = getFormatter(self.trivia and self.trivia.game)
+  self.trivia.chat:Send(F.formatWarning())
 end
 
 function Presenter:AnnounceHint()
   local q = self.trivia:GetCurrentQuestion()
   local hint = q and (q.hint or (q.hints and q.hints[1])) or nil
   if hint and hint ~= "" then
-    self.trivia.chat:SendHint(hint)
+    local F = getFormatter(self.trivia and self.trivia.game)
+    local msg = F.formatHint(hint)
+    if msg then self.trivia.chat:Send(msg) end
     return true
   end
   return false
@@ -119,7 +187,8 @@ end
 function Presenter:SkipQuestion()
   if self.trivia:IsQuestionOpen() then
     self.trivia:SkipCurrentQuestion()
-    self.trivia.chat:SendSkipped()
+    local F = getFormatter(self.trivia and self.trivia.game)
+    self.trivia.chat:Send(F.formatSkipped())
     return true
   end
   return false
@@ -144,16 +213,15 @@ end
 
 function Presenter:StatusWinnerPending(result)
   if not result then return "" end
+  local game = self.trivia and self.trivia.game
+  local handler = game and game.GetModeHandler and game:GetModeHandler() or nil
+  if handler and handler.view and type(handler.view.onWinnerFound) == "function" then
+    return handler.view.onWinnerFound(game, game and game.state and game.state.modeState, result)
+  end
   local winnerName = result.winner
   local elapsed = result.elapsed
-  local mode = result.mode or self.trivia:GetGameMode()
   local teamName = result.teamName
   local teamMembers = result.teamMembers
-  if mode == "ALL_CORRECT" then
-    local total = result.totalWinners or 1
-    local suffix = (total == 1) and "" or "s"
-    return string.format("%s answered correctly in %.2fs. %d player%s credited so far; waiting until time expires.", winnerName or "Someone", elapsed or 0, total, suffix)
-  end
   if teamName then
     local memberText = (teamMembers and #teamMembers > 0) and (" (" .. table.concat(teamMembers, ", ") .. ")") or ""
     return string.format("%s answered correctly in %.2fs. Click 'Announce Winner' to broadcast.", (teamName or "Team") .. memberText, elapsed or 0)
@@ -173,7 +241,18 @@ end
 
 function Presenter:EndGame()
   local rows, fastestName, fastestTime = self.trivia:GetSessionScoreboard()
-  self.trivia.chat:SendEnd(rows, fastestName, fastestTime)
+  local F = getFormatter(self.trivia and self.trivia.game)
+  self.trivia.chat:Send(F.formatEndHeader())
+  if not rows or #rows == 0 then
+    self.trivia.chat:Send("[Trivia] No correct answers recorded.")
+  else
+    for _, entry in ipairs(rows) do
+      self.trivia.chat:Send(F.formatEndRow(entry))
+    end
+  end
+  local fastest = F.formatEndFastest(fastestName, fastestTime)
+  if fastest then self.trivia.chat:Send(fastest) end
+  self.trivia.chat:Send(F.formatThanks())
   self.trivia:EndGame()
 end
 

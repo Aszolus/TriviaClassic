@@ -511,10 +511,7 @@ function UI:AnnounceQuestion()
   local q = result and result.question
   local index = result and result.index
   local total = result and result.total
-  local activeTeamName = nil
-  if TriviaClassic:GetGameMode() == "TEAM_STEAL" then
-    activeTeamName = select(1, TriviaClassic:GetActiveTeam())
-  end
+  local activeTeamName = select(1, TriviaClassic:GetActiveTeam())
   if not q then
     self.frame.statusText:SetText("No more questions. End the game.")
     self:RefreshPrimaryButton()
@@ -579,10 +576,7 @@ function UI:StartSteal()
   else
     self.frame.statusText:SetText(string.format("%s can steal. Listening for answers...", activeLabel))
   end
-  local timerSeconds = self:GetTimerSeconds()
-  if TriviaClassic:GetGameMode() == "TEAM_STEAL" then
-    timerSeconds = TriviaClassic:GetStealTimer()
-  end
+  local timerSeconds = (self.presenter and self.presenter:GetStealTimerSeconds()) or self:GetTimerSeconds()
   self.timerRemaining = timerSeconds
   self.timerRunning = true
   self.timerBar:SetMinMaxValues(0, timerSeconds)
@@ -615,7 +609,7 @@ function UI:AnnounceWinner()
     local winners = TriviaClassic:GetPendingWinners()
     local q = TriviaClassic:GetCurrentQuestion()
     if winners and #winners > 0 then
-      TriviaClassic.chat:SendWinners(winners, q, mode)
+      if self.presenter then self.presenter:AnnounceWinner() end
       self.frame.statusText:SetText("Results announced. Click Next for the next question.")
     else
       self:AnnounceNoWinner()
@@ -685,18 +679,22 @@ function UI:OnNextPressed()
     self.frame.statusText:SetText("A question is already active.")
     return
   end
-
-  if action.command == "announce_question" then
-    self:AnnounceQuestion()
-  elseif action.command == "announce_winner" then
-    self:AnnounceWinner()
-    self:UpdateSessionBoard()
-  elseif action.command == "announce_no_winner" then
-    self:AnnounceNoWinner()
-  elseif action.command == "end_game" then
-    self:EndGame()
-  elseif action.command == "start_steal" then
-    self:StartSteal()
+  if self.presenter and self.presenter.OnPrimaryPressed then
+    self.presenter:OnPrimaryPressed()
+  else
+    -- Legacy fallback
+    if action.command == "announce_question" then
+      self:AnnounceQuestion()
+    elseif action.command == "announce_winner" then
+      self:AnnounceWinner()
+      self:UpdateSessionBoard()
+    elseif action.command == "announce_no_winner" then
+      self:AnnounceNoWinner()
+    elseif action.command == "end_game" then
+      self:EndGame()
+    elseif action.command == "start_steal" then
+      self:StartSteal()
+    end
   end
   self:RefreshPrimaryButton()
 end

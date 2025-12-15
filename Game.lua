@@ -122,6 +122,14 @@ function Game:GetMode()
   return normalizeModeKey(self.mode)
 end
 
+--- Returns the full mode handler for the current mode (logic + optional view/format).
+function Game:GetModeHandler()
+  if TriviaClassic_GetModeHandler then
+    return TriviaClassic_GetModeHandler(self:GetMode())
+  end
+  return nil
+end
+
 function Game:SetTeams(teamMap)
   self.teamMap = teamMap or {}
 end
@@ -451,26 +459,19 @@ function Game:CompleteNoWinnerBroadcast()
 end
 
 function Game:GetSessionScoreboard()
+  local handler = self.GetModeHandler and self:GetModeHandler() or nil
+  if handler and handler.view and type(handler.view.scoreboardRows) == "function" then
+    local rows, fastestName, fastestTime = handler.view.scoreboardRows(self)
+    if rows then return rows, fastestName, fastestTime end
+  end
   local list = {}
-  local mode = self:GetMode()
-  if mode == "TEAM" or mode == "TEAM_STEAL" then
-    for name, info in pairs(self.state.teamScores or {}) do
-      table.insert(list, {
-        name = name,
-        points = info.points or 0,
-        correct = info.correct or 0,
-        members = collectTeamMembers(self.store, normalizeKey(name)),
-      })
-    end
-  else
-    for name, info in pairs(self.state.gameScores or {}) do
-      table.insert(list, {
-        name = name,
-        points = info.points or 0,
-        correct = info.correct or 0,
-        bestTime = info.times and #info.times > 0 and math.min(unpack(info.times)) or nil,
-      })
-    end
+  for name, info in pairs(self.state.gameScores or {}) do
+    table.insert(list, {
+      name = name,
+      points = info.points or 0,
+      correct = info.correct or 0,
+      bestTime = info.times and #info.times > 0 and math.min(unpack(info.times)) or nil,
+    })
   end
   table.sort(list, function(a, b)
     if a.points == b.points then
