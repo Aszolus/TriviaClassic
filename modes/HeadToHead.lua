@@ -40,6 +40,10 @@ local handler = {
   -- Build or advance per-team player permutations and select one player per team
   _selectParticipants = function(game, ctx)
     local data = ctx.data
+    data.permByTeam = data.permByTeam or {}
+    data.idxByTeam = data.idxByTeam or {}
+    data.selectedByTeam = data.selectedByTeam or {}
+    data.teamNames = data.teamNames or {}
     -- Refresh team list
     local tnames = game:GetTeamList() or {}
     data.teamNames = {}
@@ -70,7 +74,11 @@ local handler = {
   onAdvance = function(game, ctx)
     local data = ctx.data
     if not data.pairAnnounced then
-      handler._selectParticipants(game, ctx)
+      -- Prefer the context-bound handler so we don't rely on a global
+      local h = ctx.handler or handler
+      if h and h._selectParticipants then
+        h._selectParticipants(game, ctx)
+      end
       data.pairAnnounced = true
       -- build participants list for formatter
       local list = {}

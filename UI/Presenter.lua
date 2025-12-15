@@ -111,11 +111,23 @@ function Presenter:OnPrimaryPressed()
   else
     -- Generic advance: delegate to mode via Game; handle window reopen or next question
     if self.trivia and self.trivia.game and self.trivia.game.PerformPrimaryAction then
-      local res = self.trivia:PerformPrimaryAction("advance")
+      local res = self.trivia:PerformPrimaryAction(a.command == "announce_incorrect" and "announce_incorrect" or "advance")
       if res and res.participants then
         local F = getFormatter(self.trivia and self.trivia.game)
         self.trivia.chat:Send(F.formatParticipants(res.participants))
         return res
+      end
+      if res and res.announceIncorrect then
+        local F = getFormatter(self.trivia and self.trivia.game)
+        local prev = res.announceIncorrect.prev
+        local nxt = res.announceIncorrect.next
+        if F and F.formatIncorrect then
+          self.trivia.chat:Send(F.formatIncorrect(prev, nxt))
+        end
+        -- If still queued, do not progress further
+        if res.pendingStealQueued then
+          return res
+        end
       end
       if res and (res.command == "announce_question" or res.question) then
         local q = res.question or (self.trivia and self.trivia:GetCurrentQuestion())

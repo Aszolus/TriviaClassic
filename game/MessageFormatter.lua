@@ -1,24 +1,45 @@
 -- Composes user-visible chat messages (no side effects)
 
 local F = {}
+local MAX_CHAT_LEN = 220 -- keep well under WoW's 255 chat limit (leave room for color codes)
+local MAX_START_SETNAMES = 3 -- only list a few set names in the start message
 
 local function join(arr, sep)
   return table.concat(arr or {}, sep or ", ")
 end
 
+-- Clamp a question chat line to avoid hitting chat length limits.
+local function clampQuestionMessage(prefix, questionText, suffix)
+  local body = tostring(questionText or "")
+  local budget = MAX_CHAT_LEN - (#prefix + #suffix)
+  if budget < 0 then budget = 0 end
+  if #body > budget then
+    local cut = math.max(0, budget - 3)
+    body = body:sub(1, cut) .. "..."
+  end
+  return prefix .. body .. suffix
+end
+
 function F.formatStart(meta)
   local modeLabel = meta.modeLabel or "Fastest answer wins"
   local total = meta.total or 0
-  local setNames = type(meta.setNames) == "table" and join(meta.setNames, ", ") or (meta.setNames or "unknown sets")
-  return string.format("[Trivia] Game starting! Mode: %s. %d questions drawn from %s.", modeLabel, total, setNames)
+  local base = string.format("[Trivia] Game starting! Mode: %s. Questions: %d.", modeLabel, total)
+  if meta.mode == "TEAM_STEAL" then
+    base = base .. " Team Steal: answer with 'final: <answer>'. Others can steal after a miss/timeout using the same prefix."
+  end
+  if #base > MAX_CHAT_LEN then
+    base = base:sub(1, MAX_CHAT_LEN - 3) .. "..."
+  end
+  return base
 end
 
 function F.formatQuestion(index, total, question, activeTeamName)
-  local msg = string.format("[Trivia] Q%d/%d: %s (Category: %s, %s pts)", index, total, question.question, question.category or "General", tostring(question.points or 1))
+  local prefix = string.format("[Trivia] Q%d/%d: ", index, total)
+  local suffix = string.format(" (Category: %s, %s pts)", question.category or "General", tostring(question.points or 1))
   if activeTeamName and activeTeamName ~= "" then
-    msg = msg .. string.format(" [Active team: %s]", activeTeamName)
+    suffix = suffix .. string.format(" [Active team: %s]", activeTeamName)
   end
-  return msg
+  return clampQuestionMessage(prefix, question.question, suffix)
 end
 
 -- Optional: announce a list of participants for a multi-team head-to-head round
@@ -44,6 +65,13 @@ function F.formatSteal(teamName, question, timer)
   local base = string.format("[Trivia] Steal attempt for %s: %s", label, question and question.question or "the last question")
   if timer then base = base .. string.format(" (%ds)", timer) end
   return base
+end
+
+-- When a team is wrong and the next team can steal (before opening the steal window).
+function F.formatIncorrect(teamName, nextTeamName)
+  local current = teamName or "Team"
+  local nextUp = nextTeamName or "Next team"
+  return string.format("[Trivia] %s was incorrect. Next up: %s can steal (host: click the button to offer the steal).", current, nextUp)
 end
 
 function F.formatWarning()

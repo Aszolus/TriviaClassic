@@ -601,10 +601,11 @@ function Game:PerformPrimaryAction(command)
   if not action or action.enabled == false or action.command == "waiting" or action.command == "wait" then
     return nil
   end
-  if action.command == "advance" or command == "advance" then
+  local cmd = command or action.command
+  if action.command == "advance" or command == "advance" or cmd == "announce_incorrect" then
     local modeState = self:_modeState()
     if modeState and modeState.handler and type(modeState.handler.onAdvance) == "function" then
-      return modeState.handler.onAdvance(self, modeState)
+      return modeState.handler.onAdvance(self, modeState, cmd)
     end
     -- Default advance: behave like announce_question
     local q, idx, total = self:NextQuestion()

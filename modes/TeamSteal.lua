@@ -16,21 +16,29 @@ local handler = {
       teams = {},
       activeIndex = 0,
       pendingSteal = false,
+      pendingStealQueued = false,
       stealIndex = nil,
       attempted = {},
       nextStartIndex = 1,
+      lastIncorrectTeam = nil,
+      nextStealTeam = nil,
+      activeTeamName = nil,
     }
   end,
   beginQuestion = function(ctx, game)
     ctx.pendingWinner = false
     ctx.pendingNoWinner = false
     ctx.pendingSteal = false
+    ctx.pendingStealQueued = false
     ctx.lastWinnerName = nil
     ctx.lastWinnerTime = nil
     ctx.lastTeamName = nil
     ctx.lastTeamMembers = nil
     ctx.stealIndex = nil
     ctx.data.attempted = {}
+    ctx.data.lastIncorrectTeam = nil
+    ctx.data.nextStealTeam = nil
+    ctx.data.activeTeamName = nil
 
     -- Build ordered team list each question to reflect changes
     ctx.data.teams = game:GetTeamList()
@@ -87,16 +95,20 @@ local handler = {
     local nextIdx = ((ctx.data.activeIndex or 0) % teamCount) + 1
     if ctx.data.attempted[nextIdx] then
       ctx.pendingSteal = false
+      ctx.pendingStealQueued = false
       ctx.pendingWinner = false
       ctx.pendingNoWinner = true
       ctx.stealIndex = nil
       return
     end
-    ctx.pendingSteal = true
+    ctx.pendingStealQueued = true
+    ctx.pendingSteal = false
     ctx.pendingWinner = false
     ctx.pendingNoWinner = false
     ctx.stealIndex = nextIdx
     ctx.data.attempted[nextIdx] = true
+    ctx.data.lastIncorrectTeam = ctx.data.teams and ctx.data.teams[ctx.data.activeIndex or 0]
+    ctx.data.nextStealTeam = ctx.data.teams and ctx.data.teams[nextIdx]
   end,
   pendingWinners = function(game, ctx)
     if not ctx.lastTeamName then
@@ -121,6 +133,7 @@ local handler = {
     ctx.pendingWinner = false
     ctx.pendingNoWinner = false
     ctx.pendingSteal = false
+    ctx.pendingStealQueued = false
     ctx.stealIndex = nil
   end,
   primaryAction = function(game, ctx)
@@ -132,6 +145,10 @@ local handler = {
     end
     if ctx.pendingWinner then
       return { command = "announce_winner", label = "Announce Winner", enabled = true }
+    end
+    if ctx.pendingStealQueued then
+      local nextTeam = ctx.data.teams[ctx.stealIndex or 0] or "Next team"
+      return { command = "announce_incorrect", label = "Announce Incorrect", enabled = true, teamName = nextTeam }
     end
     if ctx.pendingSteal then
       local teamName = ctx.data.teams[ctx.stealIndex or 0] or "Steal"
@@ -152,6 +169,7 @@ local handler = {
     end
     local idx = ctx.data.activeIndex or 1
     local name = ctx.data.teams[idx]
+    ctx.data.activeTeamName = name
     return name, game:GetTeamMembers(name)
   end,
   -- Mode-specific evaluation to enforce active team and "final:" prefix
@@ -163,8 +181,10 @@ local handler = {
     if not teamName then
       return nil
     end
+    ctx.data.teams = ctx.data.teams or game:GetTeamList() or {}
     local teamCount = ctx.data.teams and #ctx.data.teams or 0
-    local activeTeamName = ctx.data.teams and ctx.data.teams[ctx.data.activeIndex or 1]
+    local activeIdx = ctx.data.activeIndex or ctx.stealIndex or 1
+    local activeTeamName = ctx.data.activeTeamName or (ctx.data.teams and ctx.data.teams[activeIdx])
     if teamCount > 0 and teamName ~= activeTeamName then
       return nil -- wrong team; ignore
     end
@@ -191,31 +211,38 @@ local handler = {
       local nextIdx = ((ctx.data.activeIndex or 0) % teamCount) + 1
       if ctx.data.attempted[nextIdx] then
         ctx.pendingSteal = false
+        ctx.pendingStealQueued = false
         ctx.pendingWinner = false
         ctx.pendingNoWinner = true
         ctx.stealIndex = nil
         return nil
       end
-      ctx.pendingSteal = true
+      ctx.pendingStealQueued = true
+      ctx.pendingSteal = false
       ctx.pendingWinner = false
       ctx.pendingNoWinner = false
       ctx.stealIndex = nextIdx
       ctx.data.attempted[nextIdx] = true
       local nextTeam = ctx.data.teams[nextIdx]
-      return { pendingSteal = true, teamName = nextTeam }
+      ctx.data.lastIncorrectTeam = teamName
+      ctx.data.nextStealTeam = nextTeam
+      return { pendingSteal = true, teamName = nextTeam, prevTeamName = teamName, incorrect = true }
     else
       ctx.pendingSteal = false
+      ctx.pendingStealQueued = false
       ctx.pendingNoWinner = true
     end
     return nil
   end,
   startSteal = function(game, ctx)
+    ctx.data.teams = ctx.data.teams or game:GetTeamList() or {}
     local teamCount = ctx.data.teams and #ctx.data.teams or 0
     if teamCount == 0 then
       return nil
     end
     local targetIndex = ctx.stealIndex or (((ctx.data.activeIndex or 0) % teamCount) + 1)
     ctx.data.activeIndex = targetIndex
+    ctx.data.activeTeamName = ctx.data.teams[targetIndex]
     ctx.pendingSteal = false
     ctx.pendingNoWinner = false
     ctx.pendingWinner = false
@@ -227,10 +254,32 @@ local handler = {
     return teamName, members
   end,
   -- Generic advance: when a steal is pending, start it; otherwise move to next question
-  onAdvance = function(game, ctx)
+  onAdvance = function(game, ctx, command)
+    if ctx.pendingStealQueued then
+      local prev = ctx.data.lastIncorrectTeam
+      local nxt = ctx.data.nextStealTeam or (ctx.stealIndex and ctx.data.teams and ctx.data.teams[ctx.stealIndex])
+      -- If we're specifically announcing incorrect (no timer), don't flip state yet; caller handles chat
+      if command == "announce_incorrect" then
+        ctx.pendingStealQueued = false
+        ctx.pendingSteal = true
+        -- stash once; we do not resend this when starting the steal
+        ctx.data._announceIncorrect = { prev = prev, next = nxt }
+        return { announceIncorrect = ctx.data._announceIncorrect, pendingStealQueued = false, pendingSteal = true }
+      end
+      -- Otherwise, advance into steal setup
+      ctx.pendingStealQueued = false
+      ctx.pendingSteal = true
+      ctx.data._announceIncorrect = { prev = prev, next = nxt }
+    end
     if ctx.pendingSteal then
-      local teamName, members = handler.startSteal(game, ctx)
+      local h = ctx.handler or handler
+      local startSteal = h and h.startSteal
+      local teamName, members = nil, nil
+      if startSteal then
+        teamName, members = startSteal(game, ctx)
+      end
       ctx.data.reuseWindow = true
+      ctx.data._announceIncorrect = nil -- already announced
       return {
         phase = "steal",
         teamName = teamName,
@@ -247,6 +296,7 @@ local handler = {
   onSkip = function(ctx, game)
     ctx.data.attempted = {}
     ctx.pendingSteal = false
+    ctx.pendingStealQueued = false
     ctx.pendingWinner = false
     ctx.pendingNoWinner = false
     ctx.stealIndex = nil
@@ -254,6 +304,9 @@ local handler = {
     ctx.lastWinnerTime = nil
     ctx.lastTeamName = nil
     ctx.lastTeamMembers = nil
+    ctx.data.lastIncorrectTeam = nil
+    ctx.data.nextStealTeam = nil
+    ctx.data.activeTeamName = nil
   end,
 }
 

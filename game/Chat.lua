@@ -110,6 +110,13 @@ end
 --- Sends a raw message to the configured channel.
 ---@param msg string
 function Chat:Send(msg)
+  -- Hard clamp any message to avoid exceeding chat length limits.
+  local MAX_CHAT_LEN = 220
+  msg = tostring(msg or "")
+  if #msg > MAX_CHAT_LEN then
+    msg = msg:sub(1, MAX_CHAT_LEN - 3) .. "..."
+  end
+
   local entry = channelMap[self.channelKey]
   if not entry then
     DEFAULT_CHAT_FRAME:AddMessage("|cffff5050[Trivia]|r Invalid channel configured.")
