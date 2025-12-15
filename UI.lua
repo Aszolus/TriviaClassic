@@ -28,14 +28,9 @@ function UI:RefreshPrimaryButton()
   if not self.nextButton then
     return
   end
-  local action = TriviaClassic:GetPrimaryAction()
-  local label = (action and action.label) or "Next"
-  self.nextButton:SetText(label)
-  if action and action.enabled == false then
-    self.nextButton:Disable()
-  else
-    self.nextButton:Enable()
-  end
+  local vm = (self.presenter and self.presenter:PrimaryView()) or { label = "Next", enabled = true }
+  self.nextButton:SetText(vm.label or "Next")
+  if vm.enabled == false then self.nextButton:Disable() else self.nextButton:Enable() end
 end
 
 function UI:OnPendingSteal(event)
@@ -43,7 +38,11 @@ function UI:OnPendingSteal(event)
     return
   end
   local teamName = event.teamName or "the next team"
-  self.frame.statusText:SetText(string.format("%s can steal. Click the button to offer the steal.", teamName))
+  if self.presenter and self.presenter.StatusPendingSteal then
+    self.frame.statusText:SetText(self.presenter:StatusPendingSteal(teamName))
+  else
+    self.frame.statusText:SetText(string.format("%s can steal. Click the button to offer the steal.", teamName))
+  end
   self:RefreshPrimaryButton()
 end
 
@@ -526,11 +525,16 @@ function UI:AnnounceQuestion()
   self.currentQuestion = q
   self.questionLabel:SetText(string.format("Q%d/%d: %s", index, total, q.question))
   self.categoryLabel:SetText(string.format("Category: %s  |  Points: %s", q.category or "General", tostring(q.points or 1)))
-  if activeTeamName then
-    self.frame.statusText:SetText(string.format("Question announced. Active team: %s. Listening for answers... (%s)", activeTeamName, TriviaClassic:GetGameModeLabel()))
-    self.timerText:SetText(string.format("Time: %ds (Team: %s)", self:GetTimerSeconds(), activeTeamName))
+  local modeLabel = TriviaClassic:GetGameModeLabel()
+  if self.presenter and self.presenter.StatusQuestionAnnounced then
+    self.frame.statusText:SetText(self.presenter:StatusQuestionAnnounced(activeTeamName, modeLabel, self:GetTimerSeconds()))
   else
-    self.frame.statusText:SetText(string.format("Question announced. Listening for answers... (%s)", TriviaClassic:GetGameModeLabel()))
+    if activeTeamName then
+      self.frame.statusText:SetText(string.format("Question announced. Active team: %s. Listening for answers... (%s)", activeTeamName, modeLabel))
+      self.timerText:SetText(string.format("Time: %ds (Team: %s)", self:GetTimerSeconds(), activeTeamName))
+    else
+      self.frame.statusText:SetText(string.format("Question announced. Listening for answers... (%s)", modeLabel))
+    end
   end
 
   local timerSeconds = self:GetTimerSeconds()
@@ -570,7 +574,11 @@ function UI:StartSteal()
     return
   end
   self.currentQuestion = q
-  self.frame.statusText:SetText(string.format("%s can steal. Listening for answers...", activeLabel))
+  if self.presenter and self.presenter.StatusStealListening then
+    self.frame.statusText:SetText(self.presenter:StatusStealListening(activeLabel))
+  else
+    self.frame.statusText:SetText(string.format("%s can steal. Listening for answers...", activeLabel))
+  end
   local timerSeconds = self:GetTimerSeconds()
   if TriviaClassic:GetGameMode() == "TEAM_STEAL" then
     timerSeconds = TriviaClassic:GetStealTimer()
@@ -672,7 +680,7 @@ function UI:OnNextPressed()
     return
   end
 
-  local action = TriviaClassic:GetPrimaryAction()
+  local action = (self.presenter and self.presenter:PrimaryAction()) or TriviaClassic:GetPrimaryAction()
   if not action or action.command == "waiting" or action.command == "wait" or action.enabled == false then
     self.frame.statusText:SetText("A question is already active.")
     return
@@ -734,29 +742,32 @@ function UI:OnWinnerFound(result)
   if not result then
     return
   end
-  local winnerName = result.winner
-  local elapsed = result.elapsed
   local mode = result.mode or TriviaClassic:GetGameMode()
-  local teamName = result.teamName
-  local teamMembers = result.teamMembers
-  if mode == "ALL_CORRECT" then
-    local total = result.totalWinners or 1
-    local suffix = (total == 1) and "" or "s"
-    self.frame.statusText:SetText(string.format("%s answered correctly in %.2fs. %d player%s credited so far; waiting until time expires.", winnerName or "Someone", elapsed or 0, total, suffix))
-    self:UpdateSessionBoard()
-    return
+  if self.presenter and self.presenter.StatusWinnerPending then
+    self.frame.statusText:SetText(self.presenter:StatusWinnerPending(result))
+  else
+    local winnerName = result.winner
+    local elapsed = result.elapsed
+    local teamName = result.teamName
+    local teamMembers = result.teamMembers
+    if mode == "ALL_CORRECT" then
+      local total = result.totalWinners or 1
+      local suffix = (total == 1) and "" or "s"
+      self.frame.statusText:SetText(string.format("%s answered correctly in %.2fs. %d player%s credited so far; waiting until time expires.", winnerName or "Someone", elapsed or 0, total, suffix))
+      self:UpdateSessionBoard()
+      return
+    end
+    if teamName then
+      local memberText = (teamMembers and #teamMembers > 0) and (" (" .. table.concat(teamMembers, ", ") .. ")") or ""
+      self.frame.statusText:SetText(string.format("%s answered correctly in %.2fs. Click 'Announce Winner' to broadcast.", teamName .. memberText, elapsed or 0))
+    else
+      self.frame.statusText:SetText(string.format("%s answered correctly in %.2fs. Click 'Announce Winner' to broadcast.", winnerName, elapsed or 0))
+    end
   end
-
   self.timerRunning = false
   self.warningButton:Disable()
   if self.hintButton then
     self.hintButton:Disable()
-  end
-  if teamName then
-    local memberText = (teamMembers and #teamMembers > 0) and (" (" .. table.concat(teamMembers, ", ") .. ")") or ""
-    self.frame.statusText:SetText(string.format("%s answered correctly in %.2fs. Click 'Announce Winner' to broadcast.", teamName .. memberText, elapsed or 0))
-  else
-    self.frame.statusText:SetText(string.format("%s answered correctly in %.2fs. Click 'Announce Winner' to broadcast.", winnerName, elapsed or 0))
   end
   self:RefreshPrimaryButton()
   if self.skipButton then
@@ -780,12 +791,16 @@ function UI:UpdateTimer(elapsed)
     if self.hintButton then self.hintButton:Disable() end
     if self.skipButton then self.skipButton:Disable() end
     local action = TriviaClassic:GetPrimaryAction()
-    if action and action.command == "start_steal" then
-      self.frame.statusText:SetText("Time expired. Offer a steal to the next team.")
-    elseif TriviaClassic:IsPendingWinner() then
-      self.frame.statusText:SetText("Time expired. Announce results for this question.")
+    if self.presenter and self.presenter.StatusTimeExpired then
+      self.frame.statusText:SetText(self.presenter:StatusTimeExpired(action and action.command, TriviaClassic:IsPendingWinner()))
     else
-      self.frame.statusText:SetText("Time expired. Click 'Announce No Winner' to continue.")
+      if action and action.command == "start_steal" then
+        self.frame.statusText:SetText("Time expired. Offer a steal to the next team.")
+      elseif TriviaClassic:IsPendingWinner() then
+        self.frame.statusText:SetText("Time expired. Announce results for this question.")
+      else
+        self.frame.statusText:SetText("Time expired. Click 'Announce No Winner' to continue.")
+      end
     end
     self:RefreshPrimaryButton()
     return

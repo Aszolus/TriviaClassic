@@ -25,6 +25,19 @@ function Presenter:StartGame(desiredCount, categoriesBySet)
   return meta
 end
 
+--- Returns the current primary action for the UI.
+---@return table action
+function Presenter:PrimaryAction()
+  return self.trivia:GetPrimaryAction()
+end
+
+--- Returns a simplified primary view model for the main button.
+---@return table vm {label:string, enabled:boolean, command:string}
+function Presenter:PrimaryView()
+  local a = self:PrimaryAction() or { command = "waiting", label = "Start", enabled = false }
+  return { label = a.label or "Next", enabled = (a.enabled ~= false), command = a.command or "waiting" }
+end
+
 --- Announces next question and broadcasts it.
 ---@return table|nil result
 function Presenter:AnnounceQuestion()
@@ -112,6 +125,52 @@ function Presenter:SkipQuestion()
   return false
 end
 
+-- View-model helpers for status texts
+
+function Presenter:StatusQuestionAnnounced(activeTeamName, modeLabel, seconds)
+  if activeTeamName and activeTeamName ~= "" then
+    return string.format("Question announced. Active team: %s. Listening for answers... (%s)", activeTeamName, modeLabel or "")
+  end
+  return string.format("Question announced. Listening for answers... (%s)", modeLabel or "")
+end
+
+function Presenter:StatusStealListening(activeLabel)
+  return string.format("%s can steal. Listening for answers...", activeLabel or "Next team")
+end
+
+function Presenter:StatusPendingSteal(activeLabel)
+  return string.format("%s can steal. Click the button to offer the steal.", activeLabel or "the next team")
+end
+
+function Presenter:StatusWinnerPending(result)
+  if not result then return "" end
+  local winnerName = result.winner
+  local elapsed = result.elapsed
+  local mode = result.mode or self.trivia:GetGameMode()
+  local teamName = result.teamName
+  local teamMembers = result.teamMembers
+  if mode == "ALL_CORRECT" then
+    local total = result.totalWinners or 1
+    local suffix = (total == 1) and "" or "s"
+    return string.format("%s answered correctly in %.2fs. %d player%s credited so far; waiting until time expires.", winnerName or "Someone", elapsed or 0, total, suffix)
+  end
+  if teamName then
+    local memberText = (teamMembers and #teamMembers > 0) and (" (" .. table.concat(teamMembers, ", ") .. ")") or ""
+    return string.format("%s answered correctly in %.2fs. Click 'Announce Winner' to broadcast.", (teamName or "Team") .. memberText, elapsed or 0)
+  end
+  return string.format("%s answered correctly in %.2fs. Click 'Announce Winner' to broadcast.", winnerName or "Someone", elapsed or 0)
+end
+
+function Presenter:StatusTimeExpired(nextCommand, pendingWinner)
+  if nextCommand == "start_steal" then
+    return "Time expired. Offer a steal to the next team."
+  end
+  if pendingWinner then
+    return "Time expired. Announce results for this question."
+  end
+  return "Time expired. Click 'Announce No Winner' to continue."
+end
+
 function Presenter:EndGame()
   local rows, fastestName, fastestTime = self.trivia:GetSessionScoreboard()
   self.trivia.chat:SendEnd(rows, fastestName, fastestTime)
@@ -143,4 +202,3 @@ end
 function TriviaClassic_UI_CreatePresenter(trivia)
   return Presenter:new(trivia or TriviaClassic)
 end
-
