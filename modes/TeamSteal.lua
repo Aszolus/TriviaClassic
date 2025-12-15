@@ -1,19 +1,12 @@
 local MODE_TEAM_STEAL = "TEAM_STEAL"
 
-local function normalize(text)
-  local s = tostring(text or ""):lower()
-  s = s:gsub("^%s+", ""):gsub("%s+$", "")
-  s = s:gsub("%s+", " ")
-  return s
-end
-
 local function startsWithFinalPrefix(msg)
-  local lowered = normalize(msg)
+  local lowered = tostring(msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
   return lowered:find("^final:%s*")
 end
 
 local function stripFinalPrefix(msg)
-  local lowered = normalize(msg)
+  local lowered = tostring(msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
   return lowered:gsub("^final:%s*", "")
 end
 
@@ -56,6 +49,7 @@ local handler = {
     if ctx.data.activeIndex then
       ctx.data.attempted[ctx.data.activeIndex] = true
     end
+    ctx.data.reuseWindow = false
   end,
   handleCorrect = function(game, ctx, sender, elapsed)
     local teamName, teamMembers = game:_resolveTeamInfo(sender)
@@ -141,7 +135,8 @@ local handler = {
     end
     if ctx.pendingSteal then
       local teamName = ctx.data.teams[ctx.stealIndex or 0] or "Steal"
-      return { command = "start_steal", label = "Offer Steal: " .. teamName, enabled = true, stealTeamIndex = ctx.stealIndex }
+      -- Use generic advance to open a reuse answer window; no mode-leaking command names
+      return { command = "advance", label = "Offer Steal: " .. teamName, enabled = true }
     end
     if ctx.pendingNoWinner then
       return { command = "announce_no_winner", label = "Announce No Winner", enabled = true }
@@ -176,19 +171,19 @@ local handler = {
     if not startsWithFinalPrefix(rawMsg) then
       return nil -- must use final:
     end
-    local candidate = stripFinalPrefix(rawMsg)
+    local A = _G.TriviaClassic_Answer
+    local extracted = (A and A.extract and A.extract(rawMsg, { requiredPrefix = "final:", dropPrefix = true })) or stripFinalPrefix(rawMsg)
+    local candidate = extracted
     local q = game:GetCurrentQuestion()
     if not q or not q.answers then
       return nil
     end
-    for _, ans in ipairs(q.answers or {}) do
-      if normalize(ans) == normalize(candidate) then
-        local elapsed = math.max(0.01, GetTime() - (game.state.questionStartTime or GetTime()))
-        if ctx.handler and ctx.handler.handleCorrect then
-          return ctx.handler.handleCorrect(game, ctx, sender, elapsed)
-        end
-        return nil
+    if A and A.match and candidate and A.match(candidate, q) then
+      local elapsed = math.max(0.01, GetTime() - (game.state.questionStartTime or GetTime()))
+      if ctx.handler and ctx.handler.handleCorrect then
+        return ctx.handler.handleCorrect(game, ctx, sender, elapsed)
       end
+      return nil
     end
     -- incorrect: close and offer steal if available
     game.state.questionOpen = false
@@ -231,6 +226,24 @@ local handler = {
     local members = game:GetTeamMembers(teamName)
     return teamName, members
   end,
+  -- Generic advance: when a steal is pending, start it; otherwise move to next question
+  onAdvance = function(game, ctx)
+    if ctx.pendingSteal then
+      local teamName, members = handler.startSteal(game, ctx)
+      ctx.data.reuseWindow = true
+      return {
+        phase = "steal",
+        teamName = teamName,
+        teamMembers = members,
+        question = game:GetCurrentQuestion(),
+        index = game.state and game.state.askedCount,
+        total = game.state and game.state.totalQuestions,
+      }
+    end
+    local q, idx, total = game:NextQuestion()
+    ctx.data.reuseWindow = false
+    return { command = "announce_question", question = q, index = idx, total = total }
+  end,
   onSkip = function(ctx, game)
     ctx.data.attempted = {}
     ctx.pendingSteal = false
@@ -246,12 +259,13 @@ local handler = {
 
 -- View hooks for Team Steal to avoid leaking mode specifics outside
 handler.view = {
-  --- Returns the timer seconds to use during a steal attempt.
-  getStealTimerSeconds = function(game, ctx)
-    if TriviaClassic and TriviaClassic.GetStealTimer then
+  --- Returns the timer seconds for the current answer window (main vs reuse).
+  getQuestionTimerSeconds = function(game, ctx)
+    local isReuse = ctx and ctx.data and ctx.data.reuseWindow
+    if isReuse and TriviaClassic and TriviaClassic.GetStealTimer then
       return TriviaClassic:GetStealTimer()
     end
-    return 20
+    return (TriviaClassic and TriviaClassic.GetTimer and TriviaClassic:GetTimer()) or 20
   end,
   scoreboardRows = function(game)
     local list = {}

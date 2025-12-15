@@ -96,6 +96,20 @@ handler.view = {
     local suffix = (total == 1) and "" or "s"
     return string.format("%s answered correctly in %.2fs. %d player%s credited so far; waiting until time expires.", winnerName, elapsed, total, suffix)
   end,
+  evaluateAnswer = function(game, ctx, sender, rawMsg)
+    if not game:IsQuestionOpen() then return nil end
+    local q = game:GetCurrentQuestion()
+    if not q or not q.answers then return nil end
+    local A = _G.TriviaClassic_Answer
+    local candidate = rawMsg
+    if A and A.match and A.match(candidate, q) then
+      local elapsed = math.max(0.01, GetTime() - (game.state.questionStartTime or GetTime()))
+      if ctx.handler and ctx.handler.handleCorrect then
+        return ctx.handler.handleCorrect(game, ctx, sender, elapsed)
+      end
+    end
+    return nil
+  end,
 }
 
 handler.format = {

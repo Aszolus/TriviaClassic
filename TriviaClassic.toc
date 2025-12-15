@@ -11,6 +11,7 @@ core/Util.lua
 core/Events.lua
 
 game/MessageFormatter.lua
+game/AnswerService.lua
 game/TimerService.lua
 game/ScoreboardService.lua
 

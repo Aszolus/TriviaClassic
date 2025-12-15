@@ -24,10 +24,10 @@ end
 
 local function normalizeAnswers(answerList)
   local normalized = {}
+  local A = _G.TriviaClassic_Answer
   for _, answer in ipairs(answerList or {}) do
     if type(answer) == "string" then
-      local cleaned = answer:lower():gsub("^%s+", "")
-      cleaned = cleaned:gsub("%s+$", "")
+      local cleaned = (A and A.normalize and A.normalize(answer)) or answer
       table.insert(normalized, cleaned)
     end
   end
