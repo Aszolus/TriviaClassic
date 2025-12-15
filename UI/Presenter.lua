@@ -83,27 +83,15 @@ function Presenter:AnnounceQuestion()
   return result
 end
 
-function Presenter:StartSteal()
-  local result = self.trivia:PerformPrimaryAction("start_steal")
-  local teamName = result and result.teamName
-  local q = result and result.question or self.trivia:GetCurrentQuestion()
-  local timerSeconds = self:GetStealTimerSeconds()
-  local F = getFormatter(self.trivia and self.trivia.game)
-  self.trivia.chat:Send(F.formatSteal(teamName, q, timerSeconds))
-  local rem = F.formatActiveTeamReminder(teamName or select(1, self.trivia:GetActiveTeam()) or "Next team")
-  if rem then self.trivia.chat:Send(rem) end
-  return result
-end
-
-function Presenter:GetStealTimerSeconds()
+function Presenter:GetQuestionTimerSeconds()
   local game = self.trivia and self.trivia.game
   if game and game.GetModeHandler then
     local handler = game:GetModeHandler()
-    if handler and handler.view and type(handler.view.getStealTimerSeconds) == "function" then
-      return handler.view.getStealTimerSeconds(game, game.state and game.state.modeState)
+    if handler and handler.view and type(handler.view.getQuestionTimerSeconds) == "function" then
+      return handler.view.getQuestionTimerSeconds(game, game.state and game.state.modeState)
     end
   end
-  return self.trivia and self.trivia.GetStealTimer and self.trivia:GetStealTimer() or 20
+  return self.trivia and self.trivia.GetTimer and self.trivia:GetTimer() or 20
 end
 
 --- Handles the primary button click using the current primary action.
@@ -121,13 +109,18 @@ function Presenter:OnPrimaryPressed()
   elseif a.command == "end_game" then
     return self:EndGame()
   else
-    -- Fallback for mode-specific actions (e.g., steal) without leaking names to UI
+    -- Generic advance: delegate to mode via Game; handle window reopen or next question
     if self.trivia and self.trivia.game and self.trivia.game.PerformPrimaryAction then
-      -- Let the mode handle it; Presenter sends any necessary chat when appropriate
-      local res = self.trivia:PerformPrimaryAction(a.command)
-      if a.command == "start_steal" then
-        -- Maintain behavior for TeamSteal while we migrate to fully generic effects
-        return self:StartSteal()
+      local res = self.trivia:PerformPrimaryAction("advance")
+      if res and (res.command == "announce_question" or res.question) then
+        local q = res.question or (self.trivia and self.trivia:GetCurrentQuestion())
+        local idx = res.index or (self.trivia and select(1, self.trivia:GetCurrentQuestionIndex()))
+        local total = res.total or (self.trivia and select(2, self.trivia:GetCurrentQuestionIndex()))
+        local activeTeamName = select(1, self.trivia:GetActiveTeam())
+        local F = getFormatter(self.trivia and self.trivia.game)
+        self.trivia.chat:Send(F.formatQuestion(idx or 0, total or 0, q, activeTeamName))
+        local seconds = self:GetQuestionTimerSeconds()
+        return { question = q, index = idx, total = total, timerSeconds = seconds, activeTeamName = activeTeamName }
       end
       return res
     end

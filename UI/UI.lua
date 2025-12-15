@@ -599,6 +599,9 @@ function UI:StartSteal()
   self:RefreshPrimaryButton()
 end
 
+-- New: UI reaction when a steal phase starts (from presenter via event)
+-- removed: mode-specific steal UI handler; handled via generic question announce
+
 function UI:AnnounceWinner()
   if not TriviaClassic:IsPendingWinner() then
     return
@@ -680,7 +683,41 @@ function UI:OnNextPressed()
     return
   end
   if self.presenter and self.presenter.OnPrimaryPressed then
-    self.presenter:OnPrimaryPressed()
+    local res = self.presenter:OnPrimaryPressed()
+    if res and res.question then
+      local q = res.question
+      local index = res.index or 0
+      local total = res.total or 0
+      self.questionNumber = index
+      self.currentQuestion = q
+      self.questionLabel:SetText(string.format("Q%d/%d: %s", index, total, q.question))
+      self.categoryLabel:SetText(string.format("Category: %s  |  Points: %s", q.category or "General", tostring(q.points or 1)))
+      local modeLabel = TriviaClassic:GetGameModeLabel()
+      local activeTeamName = res.activeTeamName
+      if self.presenter and self.presenter.StatusQuestionAnnounced then
+        self.frame.statusText:SetText(self.presenter:StatusQuestionAnnounced(activeTeamName, modeLabel, res.timerSeconds or self:GetTimerSeconds()))
+      else
+        if activeTeamName then
+          self.frame.statusText:SetText(string.format("Question announced. Active team: %s. Listening for answers... (%s)", activeTeamName, modeLabel))
+          self.timerText:SetText(string.format("Time: %ds (Team: %s)", res.timerSeconds or self:GetTimerSeconds(), activeTeamName))
+        else
+          self.frame.statusText:SetText(string.format("Question announced. Listening for answers... (%s)", modeLabel))
+        end
+      end
+      local timerSeconds = res.timerSeconds or self:GetTimerSeconds()
+      self.timerService = TriviaClassic_CreateTimer(timerSeconds)
+      self.timerRunning = true
+      self.timerBar:SetMinMaxValues(0, timerSeconds)
+      self.timerBar:SetValue(timerSeconds)
+      self.timerBar:SetStatusBarColor(0.2, 0.8, 0.2)
+      self.timerText:SetText(string.format("Time: %ds", timerSeconds))
+      self.warningButton:Enable()
+      if self.hintButton then
+        local hint = q.hint or (q.hints and q.hints[1])
+        if hint and hint ~= "" then self.hintButton:Enable() else self.hintButton:Disable() end
+      end
+      if self.skipButton then self.skipButton:Enable() end
+    end
   else
     -- Legacy fallback
     if action.command == "announce_question" then
@@ -692,8 +729,6 @@ function UI:OnNextPressed()
       self:AnnounceNoWinner()
     elseif action.command == "end_game" then
       self:EndGame()
-    elseif action.command == "start_steal" then
-      self:StartSteal()
     end
   end
   self:RefreshPrimaryButton()
