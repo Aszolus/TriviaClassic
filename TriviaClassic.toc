@@ -6,6 +6,8 @@
 ## SavedVariablesPerCharacter: TriviaClassicCharacterDB
 
 Constants.lua
+Util.lua
+Types.lua
 QuestionRepository.lua
 GameModes/Registry.lua
 GameModes/Fastest.lua
@@ -17,6 +19,7 @@ Chat.lua
 Core.lua
 UI/Constants.lua
 UI/Helpers.lua
+UI/Components/SelectableList.lua
 UI/Layout.lua
 QuestionLoader.lua
 UI.lua

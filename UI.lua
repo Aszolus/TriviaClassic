@@ -37,38 +37,6 @@ local function normalizeName(text)
   return trim(text or ""):gsub("%s+", " ")
 end
 
-local function renderSelectableList(listFrame, items, pool, selectedMap)
-  pool = pool or {}
-  selectedMap = selectedMap or {}
-  local y = 0
-  for i, name in ipairs(items) do
-    local row = pool[i]
-    if not row then
-      row = CreateFrame("CheckButton", nil, listFrame, "ChatConfigCheckButtonTemplate")
-      pool[i] = row
-    end
-    row:Show()
-    row:SetPoint("TOPLEFT", 0, -y)
-    row.Text:SetText(name)
-    row:SetChecked(selectedMap[name] or false)
-    row:SetScript("OnClick", function(selfBtn)
-      if selfBtn:GetChecked() then
-        selectedMap[name] = true
-      else
-        selectedMap[name] = nil
-      end
-    end)
-    y = y + 20
-  end
-  for i = #items + 1, #pool do
-    if pool[i] then pool[i]:Hide() end
-  end
-  if listFrame.SetHeight then
-    listFrame:SetHeight(math.max(1, y))
-  end
-  return pool
-end
-
 function UI:RefreshPrimaryButton()
   if not self.nextButton then
     return
@@ -225,7 +193,7 @@ function UI:RefreshWaitingList()
   table.sort(waiting, function(a, b) return a:lower() < b:lower() end)
   self.waitingNames = waiting
   self.selectedWaiting = self.selectedWaiting or {}
-  self.waitingRows = renderSelectableList(self.waitingContent, waiting, self.waitingRows or {}, self.selectedWaiting)
+  self.waitingRows = TriviaClassic_UI_RenderSelectableList(self.waitingContent, waiting, self.waitingRows or {}, self.selectedWaiting)
   if self.waitingStatus then
     if #waiting == 0 then
       self.waitingStatus:SetText("No registered players yet.")
@@ -249,7 +217,7 @@ function UI:RefreshTeamMembers()
   end
   table.sort(members, function(a, b) return a:lower() < b:lower() end)
   self.selectedMembers = self.selectedMembers or {}
-  self.memberRows = renderSelectableList(self.memberContent, members, self.memberRows or {}, self.selectedMembers)
+  self.memberRows = TriviaClassic_UI_RenderSelectableList(self.memberContent, members, self.memberRows or {}, self.selectedMembers)
   if self.memberStatus then
     if not self.selectedTeamKey then
       self.memberStatus:SetText("Select a team to manage members.")

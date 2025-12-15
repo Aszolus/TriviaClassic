@@ -5,14 +5,11 @@ local Repo = {}
 Repo.__index = Repo
 
 local function trim(text)
-  local s = text or ""
-  s = s:gsub("^%s+", "")
-  s = s:gsub("%s+$", "")
-  return s
+  return TriviaClassic_Trim(text)
 end
 
 local function normalizeCategory(name)
-  return trim(name):lower()
+  return TriviaClassic_Trim(name):lower()
 end
 
 --- Creates a new repository instance.

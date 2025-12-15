@@ -290,19 +290,6 @@ function TriviaClassic:GetWaitingPlayers()
   return list
 end
 
-local function clampTimerValue(seconds)
-  local n = tonumber(seconds)
-  if not n then
-    return DEFAULT_TIMER
-  end
-  if n < MIN_TIMER then
-    n = MIN_TIMER
-  elseif n > MAX_TIMER then
-    n = MAX_TIMER
-  end
-  return math.floor(n + 0.5)
-end
-
 --- Sets the per-question timer (seconds, clamped).
 ---@param seconds number
 function TriviaClassic:SetTimer(seconds)
