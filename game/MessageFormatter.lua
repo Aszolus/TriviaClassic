@@ -21,6 +21,18 @@ function F.formatQuestion(index, total, question, activeTeamName)
   return msg
 end
 
+-- Optional: announce a list of participants for a multi-team head-to-head round
+-- participants: array of { team = "Team Name", player = "Player Name" }
+function F.formatParticipants(participants)
+  local parts = {}
+  for _, p in ipairs(participants or {}) do
+    local team = p.team or "Team"
+    local player = p.player or "Player"
+    table.insert(parts, string.format("%s (%s)", player, team))
+  end
+  return string.format("[Trivia] Head-to-Head: %s", table.concat(parts, " vs "))
+end
+
 function F.formatActiveTeamReminder(teamName)
   if teamName and teamName ~= "" then
     return string.format("[Trivia] Waiting on %s to answer (use 'final: ...').", teamName)
@@ -112,4 +124,3 @@ function F.formatThanks()
 end
 
 TriviaClassic_MessageFormatter = F
-

@@ -24,6 +24,7 @@ modes/Fastest.lua
 modes/AllCorrect.lua
 modes/Team.lua
 modes/TeamSteal.lua
+modes/HeadToHead.lua
 
 game/Game.lua
 game/Chat.lua

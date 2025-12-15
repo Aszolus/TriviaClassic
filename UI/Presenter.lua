@@ -112,6 +112,11 @@ function Presenter:OnPrimaryPressed()
     -- Generic advance: delegate to mode via Game; handle window reopen or next question
     if self.trivia and self.trivia.game and self.trivia.game.PerformPrimaryAction then
       local res = self.trivia:PerformPrimaryAction("advance")
+      if res and res.participants then
+        local F = getFormatter(self.trivia and self.trivia.game)
+        self.trivia.chat:Send(F.formatParticipants(res.participants))
+        return res
+      end
       if res and (res.command == "announce_question" or res.question) then
         local q = res.question or (self.trivia and self.trivia:GetCurrentQuestion())
         local idx = res.index or (self.trivia and select(1, self.trivia:GetCurrentQuestionIndex()))
