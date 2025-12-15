@@ -1,3 +1,10 @@
+--- Chat helper for broadcasting and filtering trivia messages.
+---@class Chat
+---@field channelKey string Current target channel key (e.g. "GUILD", "PARTY", "CUSTOM")
+---@field customName string|nil Name of the custom channel, if any
+---@field customNameLower string|nil Lowercased custom channel name cache
+---@field customId integer|nil Numeric channel id for custom channel
+
 local Chat = {}
 Chat.__index = Chat
 
@@ -31,6 +38,8 @@ local function shouldAccept(event, key, channelName, customTarget)
   return false
 end
 
+--- Creates a new Chat instance.
+---@return Chat
 function Chat:new()
   local o = {
     channelKey = TriviaClassic_GetDefaultChannel(),
@@ -42,6 +51,8 @@ function Chat:new()
   return o
 end
 
+--- Sets the outbound channel by key.
+---@param key string Channel key from `TriviaClassic_GetChannelMap()` or "CUSTOM".
 function Chat:SetChannel(key)
   local entry = channelMap[key or TriviaClassic_GetDefaultChannel()]
   self.channelKey = entry and entry.key or TriviaClassic_GetDefaultChannel()
@@ -52,6 +63,8 @@ function Chat:SetChannel(key)
   end
 end
 
+--- Sets and joins a custom channel by name.
+---@param name string
 function Chat:SetCustomChannel(name)
   if not name or name == "" then
     return
@@ -64,6 +77,8 @@ function Chat:SetCustomChannel(name)
   self.customId = id ~= 0 and id or nil
 end
 
+--- Ensures the custom channel is joined and has an id.
+---@return boolean joined
 function Chat:EnsureCustomChannel()
   if self.channelKey ~= "CUSTOM" or not self.customName then
     return true
@@ -76,6 +91,10 @@ function Chat:EnsureCustomChannel()
   return self.customId ~= nil
 end
 
+--- Whether an incoming chat event is relevant for this chat config.
+---@param event string WoW chat event
+---@param channelName string|nil Full channel name from event (e.g., "1. Custom")
+---@return boolean
 function Chat:AcceptsEvent(event, channelName)
   return shouldAccept(event, self.channelKey, channelName, self.customNameLower)
 end
@@ -88,6 +107,8 @@ local function safeSendMessage(msg, entry, customId)
   end
 end
 
+--- Sends a raw message to the configured channel.
+---@param msg string
 function Chat:Send(msg)
   local entry = channelMap[self.channelKey]
   if not entry then
@@ -120,11 +141,18 @@ local function formatNames(setNames)
   return setNames or "unknown sets"
 end
 
+--- Announces the start of a game.
+---@param meta table Game metadata (e.g., total, setNames, mode/modeLabel)
 function Chat:SendStart(meta)
   local modeLabel = meta.modeLabel or (meta.mode and TriviaClassic_GetModeLabel(meta.mode)) or "Fastest answer wins"
   self:Send(string.format("[Trivia] Game starting! Mode: %s. %d questions drawn from %s.", modeLabel, meta.total, formatNames(meta.setNames)))
 end
 
+--- Announces a question to chat.
+---@param index integer Current question index (1-based)
+---@param total integer Total questions in this game
+---@param question table Question object (fields: question, category, points, ...)
+---@param activeTeamName string|nil Optional active team label
 function Chat:SendQuestion(index, total, question, activeTeamName)
   local msg = string.format("[Trivia] Q%d/%d: %s (Category: %s, %s pts)", index, total, question.question, question.category or "General", tostring(question.points or 1))
   if activeTeamName and activeTeamName ~= "" then
@@ -132,12 +160,18 @@ function Chat:SendQuestion(index, total, question, activeTeamName)
   end
   self:Send(msg)
 end
+--- Reminds which team is active for final answers.
+---@param teamName string|nil Team name
 function Chat:SendActiveTeamReminder(teamName)
   if teamName and teamName ~= "" then
     self:Send(string.format("[Trivia] Waiting on %s to answer (use 'final: ...').", teamName))
   end
 end
 
+--- Announces a steal opportunity.
+---@param teamName string|nil Team attempting the steal
+---@param question table|nil The question object (optional for context)
+---@param timer integer|nil Seconds allowed for steal
 function Chat:SendSteal(teamName, question, timer)
   local label = teamName or "Next team"
   local base = string.format("[Trivia] Steal attempt for %s: %s", label, question and question.question or "the last question")
@@ -147,10 +181,13 @@ function Chat:SendSteal(teamName, question, timer)
   self:Send(base)
 end
 
+--- Warns that only a short time remains.
 function Chat:SendWarning()
   self:Send("[Trivia] 10 seconds remaining!")
 end
 
+--- Announces a hint, if provided.
+---@param text string|nil
 function Chat:SendHint(text)
   if text and text ~= "" then
     self:Send("[Trivia] Hint: " .. text)
@@ -170,6 +207,12 @@ local function formatWinnerNames(winners)
   return table.concat(parts, ", ")
 end
 
+--- Announces a single winner (player or team).
+---@param name string|nil Player name if solo
+---@param elapsed number Time in seconds
+---@param points integer Points awarded
+---@param teamName string|nil Team name if team win
+---@param teamMembers string[]|nil Team member display names
 function Chat:SendWinner(name, elapsed, points, teamName, teamMembers)
   if teamName then
     local members = teamMembers and #teamMembers > 0 and (" (" .. table.concat(teamMembers, ", ") .. ")") or ""
@@ -179,6 +222,10 @@ function Chat:SendWinner(name, elapsed, points, teamName, teamMembers)
   end
 end
 
+--- Announces winners list (all-correct mode) or delegates to SendWinner.
+---@param winners table[]
+---@param question table|nil
+---@param mode string|nil
 function Chat:SendWinners(winners, question, mode)
   if not winners or #winners == 0 then
     self:SendNoWinner(question and (question.displayAnswers and table.concat(question.displayAnswers, ", ") or (question.answers and table.concat(question.answers, ", "))) or nil)
@@ -192,6 +239,8 @@ function Chat:SendWinners(winners, question, mode)
   end
 end
 
+--- Announces that no one answered correctly.
+---@param answersText string|nil Display-form acceptable answers
 function Chat:SendNoWinner(answersText)
   if answersText and answersText ~= "" then
     self:Send(string.format("[Trivia] Time is up! No correct answers. Acceptable answers: %s", answersText))
@@ -200,10 +249,15 @@ function Chat:SendNoWinner(answersText)
   end
 end
 
+--- Announces that the host skipped the question.
 function Chat:SendSkipped()
   self:Send("[Trivia] Question skipped by host. Moving on.")
 end
 
+--- Announces end-of-game scores and fastest time.
+---@param rows table[] Scoreboard rows
+---@param fastestName string|nil
+---@param fastestTime number|nil
 function Chat:SendEnd(rows, fastestName, fastestTime)
   self:Send("[Trivia] Game over! Final scores:")
   if not rows or #rows == 0 then
@@ -225,6 +279,8 @@ function Chat:SendEnd(rows, fastestName, fastestTime)
   self:Send("[Trivia] Thanks for playing!")
 end
 
+--- Factory: creates a new Chat.
+---@return Chat
 function TriviaClassic_CreateChat()
   return Chat:new()
 end

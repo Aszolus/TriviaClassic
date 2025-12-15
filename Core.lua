@@ -1,6 +1,13 @@
 local addonName, addonPrivate = ...
 addonPrivate = addonPrivate or {}
 
+--- Public API table for the Trivia Classic addon.
+---@class TriviaClassic
+---@field repo Repo
+---@field chat Chat
+---@field game Game|nil
+---@field DEFAULT_TIMER integer
+
 local TriviaClassic = {}
 _G.TriviaClassic = TriviaClassic
 
@@ -76,14 +83,22 @@ local function initGame()
   TriviaClassic.game:SetMode(TriviaClassic:GetGameMode())
 end
 
+--- Returns all registered question sets.
+---@return table sets
 function TriviaClassic:GetAllSets()
   return self.repo:GetAllSets()
 end
 
+--- Registers a TriviaBot-format set into the repository.
+---@param label string|nil
+---@param triviaTable table
 function TriviaClassic:RegisterTriviaBotSet(label, triviaTable)
   self.repo:RegisterTriviaBotSet(label, triviaTable)
 end
 
+--- Configures the outbound chat channel (or custom channel).
+---@param key string Channel key or "CUSTOM"
+---@param customName string|nil Custom channel name when key is "CUSTOM"
 function TriviaClassic:SetChannel(key, customName)
   if key == "CUSTOM" then
     self.chat:SetCustomChannel(customName)
@@ -92,10 +107,14 @@ function TriviaClassic:SetChannel(key, customName)
   end
 end
 
+--- Returns the active channel key.
+---@return string
 function TriviaClassic:GetChannelKey()
   return self.chat.channelKey
 end
 
+--- Sets the game mode key.
+---@param modeKey string
 function TriviaClassic:SetGameMode(modeKey)
   local modeMap = MODE_MAP or TriviaClassic_GetModeMap()
   if not modeMap[modeKey] then
@@ -107,6 +126,8 @@ function TriviaClassic:SetGameMode(modeKey)
   end
 end
 
+--- Gets the current valid game mode key.
+---@return string
 function TriviaClassic:GetGameMode()
   local modeKey = TriviaClassicCharacterDB and TriviaClassicCharacterDB.mode or TriviaClassic_GetDefaultMode()
   local modeMap = MODE_MAP or TriviaClassic_GetModeMap()
@@ -116,11 +137,16 @@ function TriviaClassic:GetGameMode()
   return TriviaClassic_GetDefaultMode()
 end
 
+--- Returns the display label for the current mode.
+---@return string
 function TriviaClassic:GetGameModeLabel()
   return TriviaClassic_GetModeLabel(self:GetGameMode())
 end
 
 -- Team data helpers
+--- Adds a team or ensures it exists.
+---@param teamName string
+---@return boolean ok
 function TriviaClassic:AddTeam(teamName)
   ensureTeamStore()
   local key = normalizeKey(teamName)
@@ -130,6 +156,9 @@ function TriviaClassic:AddTeam(teamName)
   return true
 end
 
+--- Removes a team and clears member mappings.
+---@param teamName string
+---@return boolean ok
 function TriviaClassic:RemoveTeam(teamName)
   ensureTeamStore()
   local key = normalizeKey(teamName)
@@ -147,6 +176,10 @@ function TriviaClassic:RemoveTeam(teamName)
   return true
 end
 
+--- Assigns a player to a team (creates the team if needed).
+---@param playerName string
+---@param teamName string
+---@return boolean ok
 function TriviaClassic:AddPlayerToTeam(playerName, teamName)
   ensureTeamStore()
   local playerKey = normalizeKey(playerName)
@@ -162,6 +195,9 @@ function TriviaClassic:AddPlayerToTeam(playerName, teamName)
   return true
 end
 
+--- Removes a player from whichever team they belong to.
+---@param playerName string
+---@return boolean ok
 function TriviaClassic:RemovePlayerFromTeam(playerName)
   ensureTeamStore()
   local playerKey = normalizeKey(playerName)
@@ -178,6 +214,8 @@ function TriviaClassic:RemovePlayerFromTeam(playerName)
   return true
 end
 
+--- Returns sorted team summaries with member display names.
+---@return table[] teams
 function TriviaClassic:GetTeams()
   ensureTeamStore()
   local list = {}
@@ -193,6 +231,8 @@ function TriviaClassic:GetTeams()
   return list
 end
 
+--- Returns a map of player key -> team key.
+---@return table map
 function TriviaClassic:GetTeamMap()
   ensureTeamStore()
   local map = {}
@@ -202,6 +242,9 @@ function TriviaClassic:GetTeamMap()
   return map
 end
 
+--- Looks up a player's team.
+---@param playerName string
+---@return string|nil teamName, string|nil teamKey
 function TriviaClassic:GetTeamForPlayer(playerName)
   ensureTeamStore()
   local key = normalizeKey(playerName)
@@ -212,6 +255,9 @@ function TriviaClassic:GetTeamForPlayer(playerName)
   return team and team.name or nil, teamKey
 end
 
+--- Adds a player to the waiting list for team placement.
+---@param name string
+---@return boolean ok
 function TriviaClassic:RegisterPlayer(name)
   ensureTeamStore()
   local key = normalizeKey(name)
@@ -221,6 +267,9 @@ function TriviaClassic:RegisterPlayer(name)
   return true
 end
 
+--- Removes a player from the waiting list.
+---@param name string
+---@return boolean ok
 function TriviaClassic:UnregisterPlayer(name)
   ensureTeamStore()
   local key = normalizeKey(name)
@@ -229,6 +278,8 @@ function TriviaClassic:UnregisterPlayer(name)
   return true
 end
 
+--- Returns waiting player display names (sorted).
+---@return string[] names
 function TriviaClassic:GetWaitingPlayers()
   ensureTeamStore()
   local list = {}
@@ -252,11 +303,15 @@ local function clampTimerValue(seconds)
   return math.floor(n + 0.5)
 end
 
+--- Sets the per-question timer (seconds, clamped).
+---@param seconds number
 function TriviaClassic:SetTimer(seconds)
   local clamped = clampTimerValue(seconds)
   TriviaClassicCharacterDB.timer = clamped
 end
 
+--- Gets the configured per-question timer (seconds).
+---@return integer
 function TriviaClassic:GetTimer()
   local value = TriviaClassicCharacterDB and TriviaClassicCharacterDB.timer
   if value == nil then
@@ -265,6 +320,8 @@ function TriviaClassic:GetTimer()
   return clampTimerValue(value)
 end
 
+--- Returns min/max bounds for the per-question timer.
+---@return integer min, integer max
 function TriviaClassic:GetTimerBounds()
   return MIN_TIMER, MAX_TIMER
 end
@@ -282,12 +339,16 @@ local function clampStealTimer(seconds)
   return math.floor(n + 0.5)
 end
 
+--- Sets the steal timer (seconds).
+---@param seconds number
 function TriviaClassic:SetStealTimer(seconds)
   ensureTeamStore()
   TriviaClassicCharacterDB.teams.config = TriviaClassicCharacterDB.teams.config or {}
   TriviaClassicCharacterDB.teams.config.stealTimer = clampStealTimer(seconds)
 end
 
+--- Gets the configured steal timer (seconds).
+---@return integer
 function TriviaClassic:GetStealTimer()
   ensureTeamStore()
   TriviaClassicCharacterDB.teams.config = TriviaClassicCharacterDB.teams.config or {}
@@ -298,18 +359,29 @@ function TriviaClassic:GetStealTimer()
   return clampStealTimer(value)
 end
 
+--- Returns min/max bounds for the steal timer.
+---@return integer min, integer max
 function TriviaClassic:GetStealTimerBounds()
   return MIN_STEAL_TIMER, MAX_STEAL_TIMER
 end
 
+--- Enables or disables debug logging.
+---@param enabled boolean
 function TriviaClassic:EnableDebugLogging(enabled)
   DEBUG_ENABLED = enabled and true or false
 end
 
+--- Returns whether debug logging is enabled.
+---@return boolean
 function TriviaClassic:IsDebugLogging()
   return DEBUG_ENABLED
 end
 
+--- Starts a new game with the given selection.
+---@param selectedIds string[] Set ids selected by the user
+---@param desiredCount integer|nil Optional number of questions to draw
+---@param allowedCategories table|nil Global or per-set category allow map
+---@return table|nil meta Returns game metadata or nil if no questions
 function TriviaClassic:StartGame(selectedIds, desiredCount, allowedCategories)
   if self.game and self.game.SetMode then
     self.game:SetMode(self:GetGameMode())
@@ -320,34 +392,48 @@ function TriviaClassic:StartGame(selectedIds, desiredCount, allowedCategories)
   return self.game:Start(selectedIds, desiredCount, allowedCategories, self:GetGameMode())
 end
 
+--- Advances to the next question.
+---@return table|nil question, integer|nil index, integer|nil total
 function TriviaClassic:NextQuestion()
   return self.game:NextQuestion()
 end
 
+--- Marks the current question as timed out.
 function TriviaClassic:MarkTimeout()
   return self.game:MarkTimeout()
 end
 
+--- Skips the current question (keeping total constant).
 function TriviaClassic:SkipCurrentQuestion()
   return self.game:SkipCurrent()
 end
 
+--- Whether there is a pending winner announcement.
+---@return boolean
 function TriviaClassic:IsPendingWinner()
   return self.game:IsPendingWinner()
 end
 
+--- Whether there is a pending no-winner announcement.
+---@return boolean
 function TriviaClassic:IsPendingNoWinner()
   return self.game:IsPendingNoWinner()
 end
 
+--- Whether the current question is open for answers.
+---@return boolean
 function TriviaClassic:IsQuestionOpen()
   return self.game:IsQuestionOpen()
 end
 
+--- Whether more questions remain in this game.
+---@return boolean
 function TriviaClassic:HasMoreQuestions()
   return self.game:HasMoreQuestions()
 end
 
+--- Current (asked) question index and total.
+---@return integer index, integer total
 function TriviaClassic:GetCurrentQuestionIndex()
   if not self.game or not self.game.GetCurrentQuestionIndex then
     return 0, 0
@@ -355,6 +441,8 @@ function TriviaClassic:GetCurrentQuestionIndex()
   return self.game:GetCurrentQuestionIndex()
 end
 
+--- Whether a game session is active.
+---@return boolean
 function TriviaClassic:IsGameActive()
   if not self.game or not self.game.IsGameActive then
     return false
@@ -362,12 +450,15 @@ function TriviaClassic:IsGameActive()
   return self.game:IsGameActive()
 end
 
+--- Ends the current game if one is active.
 function TriviaClassic:EndGame()
   if self.game and self.game.EndGame then
     return self.game:EndGame()
   end
 end
 
+--- Returns the current question (if any).
+---@return table|nil
 function TriviaClassic:GetCurrentQuestion()
   if not self.game or not self.game.GetCurrentQuestion then
     return nil
@@ -375,6 +466,8 @@ function TriviaClassic:GetCurrentQuestion()
   return self.game:GetCurrentQuestion()
 end
 
+--- Returns the last winner details.
+---@return string|nil name, number|nil elapsed, integer|nil points, string|nil teamName
 function TriviaClassic:GetLastWinner()
   if not self.game or not self.game.GetLastWinner then
     return nil, nil, nil, nil
@@ -382,6 +475,8 @@ function TriviaClassic:GetLastWinner()
   return self.game:GetLastWinner()
 end
 
+--- Returns the active team (if team mode).
+---@return string|nil teamName, string|nil teamKey
 function TriviaClassic:GetActiveTeam()
   if not self.game or not self.game.GetActiveTeam then
     return nil, nil
@@ -389,6 +484,8 @@ function TriviaClassic:GetActiveTeam()
   return self.game:GetActiveTeam()
 end
 
+--- Returns the primary UI action for the current state.
+---@return table action
 function TriviaClassic:GetPrimaryAction()
   if not self.game or not self.game.GetPrimaryAction then
     return { command = "waiting", label = "Start", enabled = false }
@@ -396,6 +493,9 @@ function TriviaClassic:GetPrimaryAction()
   return self.game:GetPrimaryAction()
 end
 
+--- Performs the requested primary action.
+---@param command string
+---@return any
 function TriviaClassic:PerformPrimaryAction(command)
   if not self.game or not self.game.PerformPrimaryAction then
     return nil
@@ -403,6 +503,8 @@ function TriviaClassic:PerformPrimaryAction(command)
   return self.game:PerformPrimaryAction(command)
 end
 
+--- Returns any pending winners awaiting broadcast.
+---@return table[]
 function TriviaClassic:GetPendingWinners()
   if not self.game or not self.game.GetPendingWinners then
     return {}
@@ -410,6 +512,8 @@ function TriviaClassic:GetPendingWinners()
   return self.game:GetPendingWinners()
 end
 
+--- Returns the in-session scoreboard rows and fastest stats.
+---@return table[] rows, string|nil fastestName, number|nil fastestTime
 function TriviaClassic:GetSessionScoreboard()
   if not self.game or not self.game.GetSessionScoreboard then
     return {}, nil, nil
@@ -417,6 +521,9 @@ function TriviaClassic:GetSessionScoreboard()
   return self.game:GetSessionScoreboard()
 end
 
+--- Returns the all-time leaderboard rows and fastest stats.
+---@param limit integer|nil Optional max rows
+---@return table[] rows, string|nil fastestName, number|nil fastestTime
 function TriviaClassic:GetLeaderboard(limit)
   if not self.game or not self.game.GetLeaderboard then
     return {}, nil, nil
@@ -424,6 +531,8 @@ function TriviaClassic:GetLeaderboard(limit)
   return self.game:GetLeaderboard(limit)
 end
 
+--- Marks any pending winner broadcast as completed.
+---@return boolean
 function TriviaClassic:CompleteWinnerBroadcast()
   if not self.game or not self.game.CompleteWinnerBroadcast then
     return true
@@ -431,6 +540,8 @@ function TriviaClassic:CompleteWinnerBroadcast()
   return self.game:CompleteWinnerBroadcast()
 end
 
+--- Marks any pending no-winner broadcast as completed.
+---@return boolean
 function TriviaClassic:CompleteNoWinnerBroadcast()
   if not self.game or not self.game.CompleteNoWinnerBroadcast then
     return true

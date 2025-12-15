@@ -1,3 +1,5 @@
+--- Game state machine for running a trivia session.
+---@class Game
 local Game = {}
 Game.__index = Game
 

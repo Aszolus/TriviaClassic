@@ -1,3 +1,6 @@
+--- Repository of trivia sets and helpers to build question pools.
+---@class Repo
+---@field sets table<string, table>
 local Repo = {}
 Repo.__index = Repo
 
@@ -12,6 +15,8 @@ local function normalizeCategory(name)
   return trim(name):lower()
 end
 
+--- Creates a new repository instance.
+---@return Repo
 function Repo:new()
   local o = {
     sets = {},
@@ -32,6 +37,9 @@ local function normalizeAnswers(answerList)
   return normalized
 end
 
+--- Registers a TriviaBot-format set into this repository.
+---@param label string|nil Optional label to use if the set lacks a Title
+---@param triviaTable table Raw TriviaBot_Questions-like table
 function Repo:RegisterTriviaBotSet(label, triviaTable)
   if type(triviaTable) ~= "table" then
     return
@@ -184,6 +192,8 @@ function Repo:RegisterTriviaBotSet(label, triviaTable)
   end
 end
 
+--- Returns all sets sorted by display title.
+---@return table[] sets
 function Repo:GetAllSets()
   local list = {}
   for _, set in pairs(self.sets) do
@@ -195,6 +205,10 @@ function Repo:GetAllSets()
   return list
 end
 
+--- Builds a question pool for a selection of set ids.
+---@param selectedIds string[]
+---@param allowedCategories table|nil Global allow map or per-set map
+---@return table[] questions, string[] setNames
 function Repo:BuildPool(selectedIds, allowedCategories)
   local questions = {}
   local names = {}
