@@ -19,20 +19,7 @@ local function normalizeCategoryName(name)
   return trim(name or ""):lower()
 end
 
-local function formatScoreLines(rows)
-  if not rows or #rows == 0 then
-    return "No answers yet."
-  end
-  local lines = {}
-  for i, entry in ipairs(rows) do
-    if i > 12 then
-      break
-    end
-    local best = entry.bestTime and string.format(" (best %.1fs)", entry.bestTime) or ""
-    table.insert(lines, string.format("%d) %s - %d pts (%d correct)%s", i, entry.name, entry.points or 0, entry.correct or 0, best))
-  end
-  return table.concat(lines, "\n")
-end
+-- Scoreboard UI formatting moved to ScoreboardService.lua
 local function normalizeName(text)
   return trim(text or ""):gsub("%s+", " ")
 end
@@ -364,43 +351,17 @@ function UI:UpdateSessionBoard()
     return
   end
   local rows, fastestName, fastestTime = TriviaClassic:GetSessionScoreboard()
-  local text = formatScoreLines(rows)
-  if fastestName and fastestTime then
-    text = text .. "\nFastest answer: " .. fastestName .. " (" .. string.format("%.2f", fastestTime) .. "s)"
-  end
+  local S = TriviaClassic_Scoreboard
+  local text = S.formatUIPanel(rows, fastestName, fastestTime)
   self.sessionBoard:SetText(text)
 end
 
 function UI:ShowSessionScores()
-  local rows, fastestName, fastestTime = TriviaClassic:GetSessionScoreboard()
-  local chat = TriviaClassic.chat
-  chat:Send("[Trivia] Current game scores:")
-  if not rows or #rows == 0 then
-    chat:Send("[Trivia] No answers yet.")
-    return
-  end
-  for _, entry in ipairs(rows) do
-    chat:Send(string.format("[Trivia] %s - %d pts (%d correct, best %.2fs)", entry.name, entry.points or 0, entry.correct or 0, (entry.bestTime or 0)))
-  end
-  if fastestName and fastestTime then
-    chat:Send(string.format("[Trivia] Speed record this game: %s (%.2fs)", fastestName, fastestTime))
-  end
+  if self.presenter then self.presenter:ShowSessionScores() end
 end
 
 function UI:ShowAllTimeScores()
-  local rows, fastestName, fastestTime = TriviaClassic:GetLeaderboard(5)
-  local chat = TriviaClassic.chat
-  chat:Send("[Trivia] All-time scores:")
-  if not rows or #rows == 0 then
-    chat:Send("[Trivia] No scores recorded.")
-    return
-  end
-  for i, entry in ipairs(rows) do
-    chat:Send(string.format("[Trivia] %d) %s - %d pts (%d correct)", i, entry.name, entry.points or 0, entry.correct or 0))
-  end
-  if fastestName and fastestTime then
-    chat:Send(string.format("[Trivia] All-time fastest: %s (%.2fs)", fastestName, fastestTime))
-  end
+  if self.presenter then self.presenter:ShowAllTimeScores() end
 end
 
 function UI:RefreshSetList()
@@ -506,11 +467,6 @@ function UI:UpdateQuestionCount()
 end
 
 function UI:StartGame()
-  local selectedIds = {}
-  for _, set in ipairs(TriviaClassic:GetAllSets()) do
-    table.insert(selectedIds, set.id)
-  end
-
   local desiredCount = tonumber(self.questionCountInput and self.questionCountInput:GetText() or "")
   self:ApplyTimerInput()
   -- Persist selected mode before starting
@@ -526,7 +482,7 @@ function UI:StartGame()
       end
     end
   end
-  local meta = TriviaClassic:StartGame(selectedIds, desiredCount, categoriesBySet)
+  local meta = self.presenter and self.presenter:StartGame(desiredCount, categoriesBySet) or TriviaClassic:StartGame({}, desiredCount, categoriesBySet)
   if not meta then
     print("|cffff5050TriviaClassic: No questions available.|r")
     return
@@ -545,15 +501,14 @@ function UI:StartGame()
   self.timerRunning = false
   self.questionNumber = 0
   self:UpdateSessionBoard()
-
-  TriviaClassic.chat:SendStart(meta)
+  -- Chat already sent by presenter
   if self.endButton then
     self.endButton:Enable()
   end
 end
 
 function UI:AnnounceQuestion()
-  local result = TriviaClassic:PerformPrimaryAction("announce_question")
+  local result = self.presenter and self.presenter:AnnounceQuestion() or TriviaClassic:PerformPrimaryAction("announce_question")
   local q = result and result.question
   local index = result and result.index
   local total = result and result.total
@@ -600,12 +555,12 @@ function UI:AnnounceQuestion()
     self.skipButton:Enable()
   end
 
-  TriviaClassic.chat:SendQuestion(index, total, q, activeTeamName)
+  -- Chat already sent by presenter
   self:RefreshPrimaryButton()
 end
 
 function UI:StartSteal()
-  local result = TriviaClassic:PerformPrimaryAction("start_steal")
+  local result = self.presenter and self.presenter:StartSteal() or TriviaClassic:PerformPrimaryAction("start_steal")
   local teamName = result and result.teamName
   local q = result and result.question or TriviaClassic:GetCurrentQuestion()
   local activeLabel = teamName or "Next team"
@@ -638,9 +593,7 @@ function UI:StartSteal()
   if self.skipButton then
     self.skipButton:Enable()
   end
-  TriviaClassic.chat:SendSteal(teamName, q, timerSeconds)
-  -- Provide a reminder in chat for clarity
-  TriviaClassic.chat:SendActiveTeamReminder(activeLabel)
+  -- Chat already sent by presenter
   self:RefreshPrimaryButton()
 end
 
@@ -678,15 +631,14 @@ function UI:AnnounceWinner()
   if not winnerName then
     return
   end
-  local q = TriviaClassic:GetCurrentQuestion()
-  TriviaClassic.chat:SendWinner(winnerName, elapsed or 0, q and q.points, teamName, teamMembers)
+  if self.presenter then self.presenter:AnnounceWinner() end
   if teamName then
     local memberText = (teamMembers and #teamMembers > 0) and (" (" .. table.concat(teamMembers, ", ") .. ")") or ""
     self.frame.statusText:SetText(string.format("%s answered correctly in %.2fs. Click Next for the next question.", teamName .. memberText, elapsed or 0))
   else
     self.frame.statusText:SetText("Winner announced. Click Next for the next question.")
   end
-  TriviaClassic:PerformPrimaryAction("announce_winner")
+  -- Game state advanced by presenter
   self.nextButton:Enable()
   if self.skipButton then
     self.skipButton:Disable()
@@ -695,15 +647,7 @@ function UI:AnnounceWinner()
 end
 
 function UI:AnnounceNoWinner()
-  local q = TriviaClassic:GetCurrentQuestion()
-  local answersText = ""
-  if q and q.displayAnswers then
-    answersText = table.concat(q.displayAnswers, ", ")
-  elseif q and q.answers then
-    answersText = table.concat(q.answers, ", ")
-  end
-  TriviaClassic.chat:SendNoWinner(answersText)
-  TriviaClassic:PerformPrimaryAction("announce_no_winner")
+  if self.presenter then self.presenter:AnnounceNoWinner() end
   self.nextButton:Enable()
   if self.skipButton then
     self.skipButton:Disable()
@@ -712,9 +656,7 @@ function UI:AnnounceNoWinner()
 end
 
 function UI:EndGame()
-  local rows, fastestName, fastestTime = TriviaClassic:GetSessionScoreboard()
-  TriviaClassic.chat:SendEnd(rows, fastestName, fastestTime)
-  TriviaClassic:EndGame()
+  if self.presenter then self.presenter:EndGame() end
   self.frame.statusText:SetText("Game ended. Press Start to begin a new game.")
   self:RefreshPrimaryButton()
   if self.skipButton then
@@ -756,8 +698,7 @@ function UI:SkipQuestion()
     return
   end
   if TriviaClassic:IsQuestionOpen() then
-    TriviaClassic:SkipCurrentQuestion()
-    TriviaClassic.chat:SendSkipped()
+    if self.presenter then self.presenter:SkipQuestion() end
     self.frame.statusText:SetText("Question skipped. Click Next for the next question.")
     -- Reset local question number so the next announcement reuses the same slot number.
     local idx = select(1, TriviaClassic:GetCurrentQuestionIndex()) or 0
@@ -786,7 +727,7 @@ function UI:SendWarning()
   if not TriviaClassic:IsQuestionOpen() then
     return
   end
-  TriviaClassic.chat:SendWarning()
+  if self.presenter then self.presenter:SendWarning() end
 end
 
 function UI:OnWinnerFound(result)
@@ -883,6 +824,7 @@ function UI:BuildUI()
 
   local frame = TriviaClassic_UI_BuildLayout(self)
   self:SetChannel(self.channelKey)
+  self.presenter = TriviaClassic_UI_CreatePresenter(TriviaClassic)
 
   -- Subscribe to core events to keep UI in sync (no chat sends here)
   if TriviaClassic_On then
@@ -1065,7 +1007,7 @@ function UI:AnnounceHint()
   end
   local hint = q.hint or (q.hints and q.hints[1])
   if hint and hint ~= "" then
-    TriviaClassic.chat:SendHint(hint)
+    if self.presenter then self.presenter:AnnounceHint() end
     self.frame.statusText:SetText("Hint announced.")
   else
     self.frame.statusText:SetText("No hint available for this question.")

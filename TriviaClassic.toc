@@ -11,6 +11,8 @@ Types.lua
 Events.lua
 MessageFormatter.lua
 TimerService.lua
+ScoreboardService.lua
+Repo/TriviaBotImporter.lua
 QuestionRepository.lua
 GameModes/Registry.lua
 GameModes/Fastest.lua
@@ -22,6 +24,7 @@ Chat.lua
 Core.lua
 UI/Constants.lua
 UI/Helpers.lua
+UI/Presenter.lua
 UI/Components/SelectableList.lua
 UI/Layout.lua
 QuestionLoader.lua
