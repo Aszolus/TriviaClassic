@@ -788,7 +788,6 @@ function UI:OnWinnerFound(result)
   if not result then
     return
   end
-  local mode = result.mode or TriviaClassic:GetGameMode()
   if self.presenter and self.presenter.StatusWinnerPending then
     self.frame.statusText:SetText(self.presenter:StatusWinnerPending(result))
   else
@@ -796,13 +795,6 @@ function UI:OnWinnerFound(result)
     local elapsed = result.elapsed
     local teamName = result.teamName
     local teamMembers = result.teamMembers
-    if mode == "ALL_CORRECT" then
-      local total = result.totalWinners or 1
-      local suffix = (total == 1) and "" or "s"
-      self.frame.statusText:SetText(string.format("%s answered correctly in %.2fs. %d player%s credited so far; waiting until time expires.", winnerName or "Someone", elapsed or 0, total, suffix))
-      self:UpdateSessionBoard()
-      return
-    end
     if teamName then
       local memberText = (teamMembers and #teamMembers > 0) and (" (" .. table.concat(teamMembers, ", ") .. ")") or ""
       self.frame.statusText:SetText(string.format("%s answered correctly in %.2fs. Click 'Announce Winner' to broadcast.", teamName .. memberText, elapsed or 0))
@@ -810,16 +802,19 @@ function UI:OnWinnerFound(result)
       self.frame.statusText:SetText(string.format("%s answered correctly in %.2fs. Click 'Announce Winner' to broadcast.", winnerName, elapsed or 0))
     end
   end
-  self.timerRunning = false
-  self.warningButton:Disable()
-  if self.hintButton then
-    self.hintButton:Disable()
-  end
-  self:RefreshPrimaryButton()
-  if self.skipButton then
-    self.skipButton:Disable()
-  end
   self:UpdateSessionBoard()
+  -- Only stop timer/controls when the window is closed or a winner announcement is pending.
+  if not TriviaClassic:IsQuestionOpen() or TriviaClassic:IsPendingWinner() then
+    self.timerRunning = false
+    self.warningButton:Disable()
+    if self.hintButton then
+      self.hintButton:Disable()
+    end
+    self:RefreshPrimaryButton()
+    if self.skipButton then
+      self.skipButton:Disable()
+    end
+  end
 end
 
 function UI:UpdateTimer(elapsed)

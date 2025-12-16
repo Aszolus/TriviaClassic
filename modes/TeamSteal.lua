@@ -23,6 +23,7 @@ local handler = {
       lastIncorrectTeam = nil,
       nextStealTeam = nil,
       activeTeamName = nil,
+      lastMissReason = nil,
     }
   end,
   beginQuestion = function(ctx, game)
@@ -38,6 +39,7 @@ local handler = {
     ctx.data.attempted = {}
     ctx.data.lastIncorrectTeam = nil
     ctx.data.nextStealTeam = nil
+    ctx.data.lastMissReason = nil
     ctx.data.activeTeamName = nil
 
     -- Build ordered team list each question to reflect changes
@@ -109,6 +111,7 @@ local handler = {
     ctx.data.attempted[nextIdx] = true
     ctx.data.lastIncorrectTeam = ctx.data.teams and ctx.data.teams[ctx.data.activeIndex or 0]
     ctx.data.nextStealTeam = ctx.data.teams and ctx.data.teams[nextIdx]
+    ctx.data.lastMissReason = "timeout"
   end,
   pendingWinners = function(game, ctx)
     if not ctx.lastTeamName then
@@ -218,15 +221,16 @@ local handler = {
         return nil
       end
       ctx.pendingStealQueued = true
-      ctx.pendingSteal = false
-      ctx.pendingWinner = false
-      ctx.pendingNoWinner = false
-      ctx.stealIndex = nextIdx
-      ctx.data.attempted[nextIdx] = true
-      local nextTeam = ctx.data.teams[nextIdx]
-      ctx.data.lastIncorrectTeam = teamName
-      ctx.data.nextStealTeam = nextTeam
-      return { pendingSteal = true, teamName = nextTeam, prevTeamName = teamName, incorrect = true }
+        ctx.pendingSteal = false
+        ctx.pendingWinner = false
+        ctx.pendingNoWinner = false
+        ctx.stealIndex = nextIdx
+        ctx.data.attempted[nextIdx] = true
+        local nextTeam = ctx.data.teams[nextIdx]
+        ctx.data.lastIncorrectTeam = teamName
+        ctx.data.nextStealTeam = nextTeam
+        ctx.data.lastMissReason = "incorrect"
+        return { pendingSteal = true, teamName = nextTeam, prevTeamName = teamName, incorrect = true }
     else
       ctx.pendingSteal = false
       ctx.pendingStealQueued = false
@@ -263,13 +267,13 @@ local handler = {
         ctx.pendingStealQueued = false
         ctx.pendingSteal = true
         -- stash once; we do not resend this when starting the steal
-        ctx.data._announceIncorrect = { prev = prev, next = nxt }
+        ctx.data._announceIncorrect = { prev = prev, next = nxt, reason = ctx.data.lastMissReason }
         return { announceIncorrect = ctx.data._announceIncorrect, pendingStealQueued = false, pendingSteal = true }
       end
       -- Otherwise, advance into steal setup
       ctx.pendingStealQueued = false
       ctx.pendingSteal = true
-      ctx.data._announceIncorrect = { prev = prev, next = nxt }
+      ctx.data._announceIncorrect = { prev = prev, next = nxt, reason = ctx.data.lastMissReason }
     end
     if ctx.pendingSteal then
       local h = ctx.handler or handler
@@ -307,6 +311,7 @@ local handler = {
     ctx.data.lastIncorrectTeam = nil
     ctx.data.nextStealTeam = nil
     ctx.data.activeTeamName = nil
+    ctx.data.lastMissReason = nil
   end,
 }
 

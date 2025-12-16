@@ -67,11 +67,12 @@ function F.formatSteal(teamName, question, timer)
   return base
 end
 
--- When a team is wrong and the next team can steal (before opening the steal window).
-function F.formatIncorrect(teamName, nextTeamName)
+-- When a team misses (incorrect or timeout) and the next team can steal (before opening the steal window).
+function F.formatIncorrect(teamName, nextTeamName, reason)
   local current = teamName or "Team"
   local nextUp = nextTeamName or "Next team"
-  return string.format("[Trivia] %s was incorrect. Next up: %s can steal (host: click the button to offer the steal).", current, nextUp)
+  local missText = (reason == "timeout") and "timed out" or "was incorrect"
+  return string.format("[Trivia] %s %s. Next up: %s can steal (host: click the button to offer the steal).", current, missText, nextUp)
 end
 
 function F.formatWarning(remainingSeconds)

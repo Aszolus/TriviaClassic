@@ -121,8 +121,9 @@ function Presenter:OnPrimaryPressed()
         local F = getFormatter(self.trivia and self.trivia.game)
         local prev = res.announceIncorrect.prev
         local nxt = res.announceIncorrect.next
+        local reason = res.announceIncorrect.reason
         if F and F.formatIncorrect then
-          self.trivia.chat:Send(F.formatIncorrect(prev, nxt))
+          self.trivia.chat:Send(F.formatIncorrect(prev, nxt, reason))
         end
         -- If still queued, do not progress further
         if res.pendingStealQueued then
