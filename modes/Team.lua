@@ -78,5 +78,31 @@ local handler = {
   end,
 }
 
+-- Optional view hooks (none needed for basic TEAM mode at this time)
+handler.view = handler.view or {}
+handler.view.scoreboardRows = function(game)
+  local list = {}
+  for name, info in pairs((game.state and game.state.teamScores) or {}) do
+    table.insert(list, {
+      name = name,
+      points = info.points or 0,
+      correct = info.correct or 0,
+      members = game:GetTeamMembers(name),
+    })
+  end
+  table.sort(list, function(a, b)
+    if a.points == b.points then
+      return (a.correct or 0) > (b.correct or 0)
+    end
+    return (a.points or 0) > (b.points or 0)
+  end)
+  local fastestName, fastestTime = nil, nil
+  if game.state and game.state.fastest then
+    fastestName = game.state.fastest.name
+    fastestTime = game.state.fastest.time
+  end
+  return list, fastestName, fastestTime
+end
+
 TriviaClassic_RegisterMode(MODE_TEAM, handler)
 

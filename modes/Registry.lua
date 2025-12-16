@@ -132,3 +132,9 @@ function TriviaClassic_CreateModeState(modeKey)
   local handler = resolveHandler(resolvedKey)
   return ModeContext:new(resolvedKey, handler)
 end
+
+-- Expose a resolver so other systems (Presenter/Chat) can access optional
+-- handler.view and handler.format without reimplementing registry logic.
+function TriviaClassic_GetModeHandler(modeKey)
+  return resolveHandler(modeKey)
+end

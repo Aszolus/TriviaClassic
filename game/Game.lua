@@ -1,3 +1,5 @@
+--- Game state machine for running a trivia session.
+---@class Game
 local Game = {}
 Game.__index = Game
 
@@ -118,6 +120,14 @@ end
 
 function Game:GetMode()
   return normalizeModeKey(self.mode)
+end
+
+--- Returns the full mode handler for the current mode (logic + optional view/format).
+function Game:GetModeHandler()
+  if TriviaClassic_GetModeHandler then
+    return TriviaClassic_GetModeHandler(self:GetMode())
+  end
+  return nil
 end
 
 function Game:SetTeams(teamMap)
@@ -346,18 +356,6 @@ local function recordTeamSessionWin(state, teamName, points)
   state.teamScores[teamName] = row
 end
 
-local function normalizeMessage(msg)
-  local s = tostring(msg or ""):lower()
-  s = s:gsub("^%s+", ""):gsub("%s+$", "")
-  s = s:gsub("%s+", " ")
-
-  -- strip punctuation/symbols only at the start/end
-  s = s:gsub("^%p+", ""):gsub("%p+$", "")
-
-  s = s:gsub("^%s+", ""):gsub("%s+$", "")
-  return s
-end
-
 local function updateFastest(state, store, sender, elapsed)
   if not sender or not elapsed then
     return
@@ -421,15 +419,13 @@ function Game:HandleChatAnswer(msg, sender)
     return modeState:EvaluateAnswer(self, sender, msg)
   end
 
-  local norm = normalizeMessage(msg)
-  for _, ans in ipairs(s.currentQuestion.answers or {}) do
-    if norm == normalizeMessage(ans) then
-      local elapsed = math.max(0.01, GetTime() - (s.questionStartTime or GetTime()))
-      if modeState and modeState.HandleCorrect then
-        return modeState:HandleCorrect(self, sender, elapsed)
-      end
-      return nil
+  local A = _G.TriviaClassic_Answer
+  if A and A.match and A.match(msg, s.currentQuestion) then
+    local elapsed = math.max(0.01, GetTime() - (s.questionStartTime or GetTime()))
+    if modeState and modeState.HandleCorrect then
+      return modeState:HandleCorrect(self, sender, elapsed)
     end
+    return nil
   end
   return nil
 end
@@ -449,26 +445,19 @@ function Game:CompleteNoWinnerBroadcast()
 end
 
 function Game:GetSessionScoreboard()
+  local handler = self.GetModeHandler and self:GetModeHandler() or nil
+  if handler and handler.view and type(handler.view.scoreboardRows) == "function" then
+    local rows, fastestName, fastestTime = handler.view.scoreboardRows(self)
+    if rows then return rows, fastestName, fastestTime end
+  end
   local list = {}
-  local mode = self:GetMode()
-  if mode == "TEAM" or mode == "TEAM_STEAL" then
-    for name, info in pairs(self.state.teamScores or {}) do
-      table.insert(list, {
-        name = name,
-        points = info.points or 0,
-        correct = info.correct or 0,
-        members = collectTeamMembers(self.store, normalizeKey(name)),
-      })
-    end
-  else
-    for name, info in pairs(self.state.gameScores or {}) do
-      table.insert(list, {
-        name = name,
-        points = info.points or 0,
-        correct = info.correct or 0,
-        bestTime = info.times and #info.times > 0 and math.min(unpack(info.times)) or nil,
-      })
-    end
+  for name, info in pairs(self.state.gameScores or {}) do
+    table.insert(list, {
+      name = name,
+      points = info.points or 0,
+      correct = info.correct or 0,
+      bestTime = info.times and #info.times > 0 and math.min(unpack(info.times)) or nil,
+    })
   end
   table.sort(list, function(a, b)
     if a.points == b.points then
@@ -612,6 +601,16 @@ function Game:PerformPrimaryAction(command)
   if not action or action.enabled == false or action.command == "waiting" or action.command == "wait" then
     return nil
   end
+  local cmd = command or action.command
+  if action.command == "advance" or command == "advance" or cmd == "announce_incorrect" then
+    local modeState = self:_modeState()
+    if modeState and modeState.handler and type(modeState.handler.onAdvance) == "function" then
+      return modeState.handler.onAdvance(self, modeState, cmd)
+    end
+    -- Default advance: behave like announce_question
+    local q, idx, total = self:NextQuestion()
+    return { command = "announce_question", question = q, index = idx, total = total }
+  end
   if action.command == "announce_question" then
     local q, idx, total = self:NextQuestion()
     return { command = action.command, question = q, index = idx, total = total }
@@ -625,11 +624,8 @@ function Game:PerformPrimaryAction(command)
     self:EndGame()
     return { command = action.command, finished = true }
   elseif action.command == "start_steal" then
-    local modeState = self:_modeState()
-    if modeState and modeState.handler and modeState.handler.startSteal then
-      local teamName, teamMembers = modeState.handler.startSteal(self, modeState)
-      return { command = action.command, teamName = teamName, teamMembers = teamMembers, question = self:GetCurrentQuestion(), index = self.state.askedCount, total = self.state.totalQuestions }
-    end
+    -- Map legacy start_steal into generic advance
+    return self:PerformPrimaryAction("advance")
   end
   return nil
 end

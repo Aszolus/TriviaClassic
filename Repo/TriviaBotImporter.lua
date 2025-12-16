@@ -1,38 +1,30 @@
-local Repo = {}
-Repo.__index = Repo
+-- Importer for TriviaBot-format question sets into Repo
 
 local function trim(text)
-  local s = text or ""
-  s = s:gsub("^%s+", "")
-  s = s:gsub("%s+$", "")
-  return s
+  return TriviaClassic_Trim(text)
 end
 
 local function normalizeCategory(name)
   return trim(name):lower()
 end
 
-function Repo:new()
-  local o = {
-    sets = {},
-  }
-  setmetatable(o, self)
-  return o
-end
-
 local function normalizeAnswers(answerList)
   local normalized = {}
+  local A = _G.TriviaClassic_Answer
   for _, answer in ipairs(answerList or {}) do
     if type(answer) == "string" then
-      local cleaned = answer:lower():gsub("^%s+", "")
-      cleaned = cleaned:gsub("%s+$", "")
+      local cleaned = (A and A.normalize and A.normalize(answer)) or answer
       table.insert(normalized, cleaned)
     end
   end
   return normalized
 end
 
-function Repo:RegisterTriviaBotSet(label, triviaTable)
+--- Imports a TriviaBot_Questions-like table into the provided Repo instance.
+---@param self Repo
+---@param label string|nil
+---@param triviaTable table
+function TriviaClassic_Repo_ImportTriviaBotSet(self, label, triviaTable)
   if type(triviaTable) ~= "table" then
     return
   end
@@ -73,17 +65,11 @@ function Repo:RegisterTriviaBotSet(label, triviaTable)
     end
     table.sort(keys)
 
-    -- Track actually used category names to ensure the set's category list reflects questions accurately
     local usedCategoryOrder, usedCategorySet = {}, {}
 
     for _, i in ipairs(keys) do
       local qText = block["Question"][i]
       local categoryIndex = block["Category"] and block["Category"][i]
-      -- Derive the category name robustly:
-      -- - If it's a number, use Categories[number]
-      -- - If it's a numeric-like string, tonumber and use Categories[n]
-      -- - If it's a non-numeric string, treat it directly as a category name
-      -- - Otherwise, fallback to "General"
       local categoryName
       if type(categoryIndex) == "number" then
         categoryName = categories and categories[categoryIndex]
@@ -92,7 +78,6 @@ function Repo:RegisterTriviaBotSet(label, triviaTable)
         if n then
           categoryName = categories and categories[n]
         else
-          -- Direct category label supplied per-question
           categoryName = trim(categoryIndex)
         end
       end
@@ -116,14 +101,10 @@ function Repo:RegisterTriviaBotSet(label, triviaTable)
         category = categoryName,
         categoryKey = categoryKey,
         points = tonumber(block["Points"] and block["Points"][i]) or 1,
-        -- Keep original numeric key to build a stable per-question id later
         sourceIndex = i,
       })
     end
 
-    -- Build the visible category list for this set.
-    -- Start with the Categories array in numeric order, then append any per-question
-    -- category labels that weren't present there.
     local catList, presentKeys = {}, {}
     if type(categories) == "table" then
       local catKeys = {}
@@ -145,7 +126,6 @@ function Repo:RegisterTriviaBotSet(label, triviaTable)
         end
       end
     end
-    -- Append any used categories not already included
     for _, name in ipairs(usedCategoryOrder or {}) do
       local key = normalizeCategory(name)
       if not presentKeys[key] then
@@ -158,15 +138,12 @@ function Repo:RegisterTriviaBotSet(label, triviaTable)
     local setId = baseId
     local suffix = 2
     while self.sets[setId] do
-      -- If same title, reuse this id and overwrite (e.g., re-registering with more data).
       if self.sets[setId].title == meta.title then
         break
       end
       setId = baseId .. " (" .. suffix .. ")"
       suffix = suffix + 1
     end
-    -- Attach a stable question id to each question for cross-game/session tracking.
-    -- Id format: <setId>::<originalIndex>
     for _, q in ipairs(questions) do
       if not q.qid then
         q.qid = tostring(setId) .. "::" .. tostring(q.sourceIndex or "?")
@@ -182,57 +159,4 @@ function Repo:RegisterTriviaBotSet(label, triviaTable)
       questions = questions,
     }
   end
-end
-
-function Repo:GetAllSets()
-  local list = {}
-  for _, set in pairs(self.sets) do
-    table.insert(list, set)
-  end
-  table.sort(list, function(a, b)
-    return a.title < b.title
-  end)
-  return list
-end
-
-function Repo:BuildPool(selectedIds, allowedCategories)
-  local questions = {}
-  local names = {}
-  -- Determine if allowedCategories is a global set of category keys or
-  -- a per-set map: { [setId] = { [catKey]=true } }
-  local perSet = nil
-  if type(allowedCategories) == "table" then
-    -- Heuristic: if any value is a table, treat as per-set map
-    for _, v in pairs(allowedCategories) do
-      if type(v) == "table" then
-        perSet = allowedCategories
-        break
-      end
-    end
-  end
-  for _, id in ipairs(selectedIds) do
-    local set = self.sets[id]
-    if set then
-      table.insert(names, set.title or id)
-      for _, q in ipairs(set.questions or {}) do
-        local catKey = q.categoryKey or (q.category and q.category:lower())
-        local allow
-        if perSet then
-          local allowedForSet = perSet[id]
-          -- Default-deny per set: only include if this set has an explicit map and the category is selected
-          allow = (allowedForSet and catKey and allowedForSet[catKey]) or false
-        else
-          allow = (not allowedCategories) or (catKey and allowedCategories[catKey])
-        end
-        if allow then
-          table.insert(questions, q)
-        end
-      end
-    end
-  end
-  return questions, names
-end
-
-function TriviaClassic_CreateRepo()
-  return Repo:new()
 end

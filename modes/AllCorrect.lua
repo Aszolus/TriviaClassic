@@ -87,5 +87,40 @@ local handler = {
   end,
 }
 
+-- View and Format hooks for All Correct mode to keep specifics encapsulated
+handler.view = {
+  onWinnerFound = function(game, ctx, result)
+    local winnerName = result and result.winner or ctx.lastWinnerName or "Someone"
+    local elapsed = result and result.elapsed or ctx.lastWinnerTime or 0
+    local total = (ctx.GetWinnerCount and ctx:GetWinnerCount()) or (result and result.totalWinners) or 1
+    local suffix = (total == 1) and "" or "s"
+    return string.format("%s answered correctly in %.2fs. %d player%s credited so far; waiting until time expires.", winnerName, elapsed, total, suffix)
+  end,
+  evaluateAnswer = function(game, ctx, sender, rawMsg)
+    if not game:IsQuestionOpen() then return nil end
+    local q = game:GetCurrentQuestion()
+    if not q or not q.answers then return nil end
+    local A = _G.TriviaClassic_Answer
+    local candidate = rawMsg
+    if A and A.match and A.match(candidate, q) then
+      local elapsed = math.max(0.01, GetTime() - (game.state.questionStartTime or GetTime()))
+      if ctx.handler and ctx.handler.handleCorrect then
+        return ctx.handler.handleCorrect(game, ctx, sender, elapsed)
+      end
+    end
+    return nil
+  end,
+}
+
+handler.format = {
+  formatWinners = function(winners, question)
+    local parts = {}
+    for _, row in ipairs(winners or {}) do
+      table.insert(parts, string.format("%s (+%s pts)", row.name or "?", tostring(row.points or (question and question.points) or 1)))
+    end
+    return string.format("[Trivia] Time's up! %d answered correctly: %s", #winners, table.concat(parts, ", "))
+  end,
+}
+
 TriviaClassic_RegisterMode(MODE_ALL_CORRECT, handler)
 
