@@ -101,6 +101,18 @@ function UI:GetTimerSeconds()
   return TriviaClassic:GetTimer()
 end
 
+function UI:GetCurrentTimerRemaining()
+  local remaining = nil
+  if self.timerRunning and self.timerService and self.timerService.remaining then
+    remaining = self.timerService.remaining
+  elseif self.timerBar and self.timerBar.GetValue then
+    remaining = self.timerBar:GetValue()
+  end
+  if remaining and remaining >= 0 then
+    return math.ceil(remaining)
+  end
+end
+
 function UI:GetStealTimerSeconds()
   return TriviaClassic:GetStealTimer()
 end
@@ -768,7 +780,8 @@ function UI:SendWarning()
   if not TriviaClassic:IsQuestionOpen() then
     return
   end
-  if self.presenter then self.presenter:SendWarning() end
+  local remaining = self:GetCurrentTimerRemaining()
+  if self.presenter then self.presenter:SendWarning(remaining) end
 end
 
 function UI:OnWinnerFound(result)

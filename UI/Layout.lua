@@ -208,7 +208,7 @@ function TriviaClassic_UI_BuildLayout(ui)
   skipButton:Disable()
   ui.skipButton = skipButton
 
-  local warningButton = Button(gamePage, "10s Left", 80, 24)
+  local warningButton = Button(gamePage, "Time Left", 80, 24)
   warningButton:SetPoint("LEFT", skipButton, "RIGHT", 8, 0)
   warningButton:Disable()
   ui.warningButton = warningButton

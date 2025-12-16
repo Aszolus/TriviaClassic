@@ -177,9 +177,9 @@ function Presenter:AnnounceNoWinner()
   return self.trivia:PerformPrimaryAction("announce_no_winner")
 end
 
-function Presenter:SendWarning()
+function Presenter:SendWarning(remainingSeconds)
   local F = getFormatter(self.trivia and self.trivia.game)
-  self.trivia.chat:Send(F.formatWarning())
+  self.trivia.chat:Send(F.formatWarning(remainingSeconds))
 end
 
 function Presenter:AnnounceHint()

@@ -175,9 +175,10 @@ function Chat:SendSteal(teamName, question, timer)
 end
 
 --- Warns that only a short time remains.
-function Chat:SendWarning()
+---@param remainingSeconds number|nil Seconds remaining on the timer
+function Chat:SendWarning(remainingSeconds)
   local F = TriviaClassic_MessageFormatter
-  self:Send(F.formatWarning())
+  self:Send(F.formatWarning(remainingSeconds))
 end
 
 --- Announces a hint, if provided.

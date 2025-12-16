@@ -74,8 +74,14 @@ function F.formatIncorrect(teamName, nextTeamName)
   return string.format("[Trivia] %s was incorrect. Next up: %s can steal (host: click the button to offer the steal).", current, nextUp)
 end
 
-function F.formatWarning()
-  return "[Trivia] 10 seconds remaining!"
+function F.formatWarning(remainingSeconds)
+  local seconds = tonumber(remainingSeconds)
+  if seconds and seconds >= 0 then
+    local rounded = math.ceil(seconds)
+    local label = (rounded == 1) and "1 second" or (tostring(rounded) .. " seconds")
+    return string.format("[Trivia] %s remaining!", label)
+  end
+  return "[Trivia] Time remaining!"
 end
 
 function F.formatHint(text)
