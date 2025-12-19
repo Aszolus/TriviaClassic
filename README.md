@@ -87,7 +87,7 @@ Answer Policy (shared)
 - All modes share the same normalization/matching via `TriviaClassic_Answer`:
   - `normalize(text)`: lowercase, trim, collapse spaces, strip leading/trailing punctuation
   - `extract(raw, opts)`: apply small input rules (e.g., `requiredPrefix="final:"`)
-  - `match(candidate, question)`: compares to pre-normalized `question.answers`
+  - `match(candidate, question)`: exact match first, then lenient checks (punctuation-insensitive, compact/no-space, token containment ignoring common stop-words)
 - Use AnswerService in `evaluateAnswer`; do not hand-roll normalization.
 
 Advance Flow (generic)
@@ -113,3 +113,4 @@ Commands
 --------
 - `/trivia` — toggle the main UI.
 - `/trivia scores` — print the top leaderboard entries to your chat frame.
+

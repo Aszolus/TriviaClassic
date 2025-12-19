@@ -195,6 +195,24 @@ function Presenter:AnnounceHint()
   return false
 end
 
+-- Broadcasts the current teams and their members to the configured channel.
+function Presenter:AnnounceTeams()
+  if not self.trivia or not self.trivia.chat or not self.trivia.GetTeams then
+    return
+  end
+  local teams = self.trivia:GetTeams() or {}
+  if #teams == 0 then
+    self.trivia.chat:Send("[Trivia] No teams configured.")
+    return
+  end
+  self.trivia.chat:Send("[Trivia] Teams roster:")
+  for _, team in ipairs(teams) do
+    local name = team.name or team.key or "Team"
+    local members = (team.members and #team.members > 0) and table.concat(team.members, ", ") or "No members"
+    self.trivia.chat:Send(string.format("[Trivia] %s: %s", name, members))
+  end
+end
+
 function Presenter:SkipQuestion()
   if self.trivia:IsQuestionOpen() then
     self.trivia:SkipCurrentQuestion()

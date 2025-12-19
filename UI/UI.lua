@@ -963,6 +963,16 @@ function UI:BuildUI()
   self.moveLeftBtn:SetScript("OnClick", function()
     self:RemoveMembersToWaiting()
   end)
+  if self.announceTeamsBtn then
+    self.announceTeamsBtn:SetScript("OnClick", function()
+      if self.presenter and self.presenter.AnnounceTeams then
+        self.presenter:AnnounceTeams()
+        if self.teamStatus then
+          self.teamStatus:SetText("|cff20ff20Teams announced to chat.|r")
+        end
+      end
+    end)
+  end
   self.teamNameInput:SetScript("OnEnterPressed", function(box)
     self:AddTeam()
     box:ClearFocus()
@@ -1044,6 +1054,12 @@ function UI:BuildUI()
     if command == "scores" then
       for _, entry in ipairs(TriviaClassic:GetLeaderboard(10)) do
         DEFAULT_CHAT_FRAME:AddMessage(string.format("|cffffff00[Trivia]|r %s - %d pts (%d correct)", entry.name, entry.points or 0, entry.correct or 0))
+      end
+      return
+    end
+    if command == "teams" then
+      if self.presenter and self.presenter.AnnounceTeams then
+        self.presenter:AnnounceTeams()
       end
       return
     end

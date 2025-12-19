@@ -888,7 +888,7 @@ TriviaBot_Questions[1]['Category'][138] = 4
 TriviaBot_Questions[1]['Points'][138] = "1"
 TriviaBot_Questions[1]['Hints'][138] = {}
 
-TriviaBot_Questions[1]['Question'][139] = "Which organization is dedicated to combating the scourge in the Plaguelands?"
+TriviaBot_Questions[1]['Question'][139] = "Which organization is dedicated to combatting the scourge in the Plaguelands?"
 TriviaBot_Questions[1]['Answers'][139] = {"The Argent Dawn", "Argent Dawn"}
 TriviaBot_Questions[1]['Category'][139] = 4
 TriviaBot_Questions[1]['Points'][139] = "1"
@@ -961,7 +961,7 @@ TriviaBot_Questions[1]['Points'][150] = "1"
 TriviaBot_Questions[1]['Hints'][150] = {}
 
 TriviaBot_Questions[1]['Question'][151] = "What is the name of the weapon, located in gnomeregan, which is commonly farmed by Feral Druids?"
-TriviaBot_Questions[1]['Answers'][151] = {"Manual Crowd Pummeler"}
+TriviaBot_Questions[1]['Answers'][151] = {"Manual Crowd Pummeler", "[Manual Crowd Pummeler]"}
 TriviaBot_Questions[1]['Category'][151] = 4
 TriviaBot_Questions[1]['Points'][151] = "1"
 TriviaBot_Questions[1]['Hints'][151] = {}

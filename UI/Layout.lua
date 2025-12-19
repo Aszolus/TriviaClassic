@@ -394,6 +394,10 @@ function TriviaClassic_UI_BuildLayout(ui)
   teamListLabel:SetPoint("TOPLEFT", memberScroll, "BOTTOMLEFT", 0, -30)
   teamListLabel:SetText("Teams:")
 
+  local announceTeamsBtn = Button(teamsPage, "Announce Teams", 140, 22)
+  announceTeamsBtn:SetPoint("LEFT", teamListLabel, "RIGHT", 12, 0)
+  ui.announceTeamsBtn = announceTeamsBtn
+
   local teamScroll = CreateFrame("ScrollFrame", "TriviaClassicTeamScrollFrame", teamsPage, "UIPanelScrollFrameTemplate")
   teamScroll:SetPoint("TOPLEFT", teamListLabel, "BOTTOMLEFT", 0, -6)
   teamScroll:SetSize(C.leftWidth, 220)
