@@ -18,7 +18,13 @@ end
 TC_TEST("Game Fastest mode flow", function()
   local repo = make_repo()
   local store = { leaderboard = {}, teams = { teams = {} } }
-  local game = TriviaClassic_CreateGame(repo, store)
+  local runtime = TriviaClassic_GetRuntime()
+  local deps = {
+    clock = runtime.clock,
+    date = runtime.date,
+    answer = runtime.answer,
+  }
+  local game = TriviaClassic_CreateGame(repo, store, deps)
 
   local started = game:Start({ "set" }, 2, nil, "FASTEST")
   TC_ASSERT_TRUE(started ~= nil, "game started")

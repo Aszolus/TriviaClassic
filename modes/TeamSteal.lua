@@ -194,7 +194,7 @@ local handler = {
     if not startsWithFinalPrefix(rawMsg) then
       return nil -- must use final:
     end
-    local A = _G.TriviaClassic_Answer
+    local A = game.deps.answer
     local extracted = (A and A.extract and A.extract(rawMsg, { requiredPrefix = "final:", dropPrefix = true })) or stripFinalPrefix(rawMsg)
     local candidate = extracted
     local q = game:GetCurrentQuestion()
@@ -202,7 +202,7 @@ local handler = {
       return nil
     end
     if A and A.match and candidate and A.match(candidate, q) then
-      local elapsed = math.max(0.01, GetTime() - (game.state.questionStartTime or GetTime()))
+      local elapsed = math.max(0.01, game:Now() - (game.state.questionStartTime or game:Now()))
       if ctx.handler and ctx.handler.handleCorrect then
         return ctx.handler.handleCorrect(game, ctx, sender, elapsed)
       end
@@ -251,7 +251,7 @@ local handler = {
     ctx.pendingNoWinner = false
     ctx.pendingWinner = false
     game.state.questionOpen = true
-    game.state.questionStartTime = GetTime()
+    game.state.questionStartTime = game:Now()
     game:_debug(string.format("Starting steal attempt for team index %d.", targetIndex))
     local teamName = ctx.data.teams[targetIndex]
     local members = game:GetTeamMembers(teamName)
@@ -320,10 +320,10 @@ handler.view = {
   --- Returns the timer seconds for the current answer window (main vs reuse).
   getQuestionTimerSeconds = function(game, ctx)
     local isReuse = ctx and ctx.data and ctx.data.reuseWindow
-    if isReuse and TriviaClassic and TriviaClassic.GetStealTimer then
-      return TriviaClassic:GetStealTimer()
+    if isReuse then
+      return game.deps and game.deps.getStealTimer and game.deps.getStealTimer() or 20
     end
-    return (TriviaClassic and TriviaClassic.GetTimer and TriviaClassic:GetTimer()) or 20
+    return game.deps and game.deps.getTimer and game.deps.getTimer() or 20
   end,
   scoreboardRows = function(game)
     local list = {}

@@ -24,3 +24,12 @@ function TC_MAKE_TEAM_MAP(entries)
   end
   return map
 end
+
+function TC_RESET_DB()
+  local runtime = TriviaClassic_GetRuntime and TriviaClassic_GetRuntime()
+  if runtime and runtime.storage and runtime.storage.set then
+    runtime.storage.set({})
+  else
+    _G.TriviaClassicCharacterDB = {}
+  end
+end

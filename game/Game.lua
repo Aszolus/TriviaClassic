@@ -78,10 +78,11 @@ local function collectTeamMembers(store, teamKey, displayName)
   return list
 end
 
-function Game:new(repo, store)
+function Game:new(repo, store, deps)
   local o = {
     repo = repo,
     store = store,
+    deps = deps or {},
     mode = normalizeModeKey(MODE_FASTEST),
     state = {
       activeSets = {},
@@ -185,8 +186,21 @@ end
 
 function Game:_debug(msg)
   if TriviaClassic and TriviaClassic.IsDebugLogging and TriviaClassic:IsDebugLogging() then
-    print("|cffffff00[Trivia Debug]|r " .. tostring(msg))
+    local logger = TriviaClassic_GetLogger and TriviaClassic_GetLogger()
+    if logger and logger.log then
+      logger.log("|cffffff00[Trivia Debug]|r " .. tostring(msg))
+    end
   end
+end
+
+function Game:Now()
+  local clock = (self.deps and self.deps.clock) or TriviaClassic_GetRuntime().clock
+  return clock.now()
+end
+
+function Game:NowDate(fmt)
+  local dateFn = (self.deps and self.deps.date) or (TriviaClassic_GetRuntime().date)
+  return dateFn(fmt)
 end
 
 function Game:_currentPoints()
@@ -286,7 +300,7 @@ function Game:NextQuestion()
     s.askedRegistry[s.currentQuestion.qid] = true
   end
   s.questionOpen = true
-  s.questionStartTime = GetTime()
+  s.questionStartTime = self:Now()
   self:_initQuestionState()
   return s.currentQuestion, s.askedCount, s.totalQuestions
 end
@@ -371,7 +385,7 @@ local function updateFastest(state, store, sender, elapsed)
   end
 end
 
-local function recordPersistent(store, sender, points)
+local function recordPersistent(game, store, sender, points)
   if not store or not sender then
     return
   end
@@ -381,7 +395,7 @@ local function recordPersistent(store, sender, points)
   end
   entry.points = entry.points + (points or 1)
   entry.correct = entry.correct + 1
-  entry.lastCorrect = date("%Y-%m-%d %H:%M")
+  entry.lastCorrect = game:NowDate("%Y-%m-%d %H:%M")
 end
 
 function Game:GetCurrentWinnerCount()
@@ -401,7 +415,7 @@ function Game:_recordCorrectAnswer(sender, elapsed)
     recordTeamSessionWin(s, teamName, points)
   end
   updateFastest(s, self.store, sender, elapsed)
-  recordPersistent(self.store, sender, points)
+  recordPersistent(self, self.store, sender, points)
   return points
 end
 
@@ -419,9 +433,9 @@ function Game:HandleChatAnswer(msg, sender)
     return modeState:EvaluateAnswer(self, sender, msg)
   end
 
-  local A = _G.TriviaClassic_Answer
+  local A = self.deps.answer
   if A and A.match and A.match(msg, s.currentQuestion) then
-    local elapsed = math.max(0.01, GetTime() - (s.questionStartTime or GetTime()))
+    local elapsed = math.max(0.01, self:Now() - (s.questionStartTime or self:Now()))
     if modeState and modeState.HandleCorrect then
       return modeState:HandleCorrect(self, sender, elapsed)
     end
@@ -630,6 +644,6 @@ function Game:PerformPrimaryAction(command)
   return nil
 end
 
-function TriviaClassic_CreateGame(repo, store)
-  return Game:new(repo, store)
+function TriviaClassic_CreateGame(repo, store, deps)
+  return Game:new(repo, store, deps)
 end

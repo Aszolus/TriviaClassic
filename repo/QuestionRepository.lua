@@ -24,7 +24,7 @@ end
 
 local function normalizeAnswers(answerList)
   local normalized = {}
-  local A = _G.TriviaClassic_Answer
+  local A = TriviaClassic_GetRuntime and TriviaClassic_GetRuntime().answer or nil
   for _, answer in ipairs(answerList or {}) do
     if type(answer) == "string" then
       local cleaned = (A and A.normalize and A.normalize(answer)) or answer

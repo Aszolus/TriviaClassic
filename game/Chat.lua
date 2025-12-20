@@ -9,7 +9,6 @@ local Chat = {}
 Chat.__index = Chat
 
 local channelMap = TriviaClassic_GetChannelMap()
-local channels = TriviaClassic_GetChannels()
 
 local function baseChannelName(raw)
   if not raw then
@@ -40,12 +39,15 @@ end
 
 --- Creates a new Chat instance.
 ---@return Chat
-function Chat:new()
+function Chat:new(transport)
+  local runtime = TriviaClassic_GetRuntime()
+  local resolved = transport or (runtime and runtime.chatTransport)
   local o = {
     channelKey = TriviaClassic_GetDefaultChannel(),
     customName = nil,
     customNameLower = nil,
     customId = nil,
+    transport = resolved,
   }
   setmetatable(o, self)
   return o
@@ -72,9 +74,8 @@ function Chat:SetCustomChannel(name)
   self.channelKey = "CUSTOM"
   self.customName = name
   self.customNameLower = name:lower()
-  JoinChannelByName(name)
-  local id = GetChannelName(name)
-  self.customId = id ~= 0 and id or nil
+  self.transport.joinChannel(name)
+  self.customId = self.transport.getChannelId(name)
 end
 
 --- Ensures the custom channel is joined and has an id.
@@ -84,9 +85,8 @@ function Chat:EnsureCustomChannel()
     return true
   end
   if not self.customId then
-    JoinChannelByName(self.customName)
-    local id = GetChannelName(self.customName)
-    self.customId = id ~= 0 and id or nil
+    self.transport.joinChannel(self.customName)
+    self.customId = self.transport.getChannelId(self.customName)
   end
   return self.customId ~= nil
 end
@@ -97,14 +97,6 @@ end
 ---@return boolean
 function Chat:AcceptsEvent(event, channelName)
   return shouldAccept(event, self.channelKey, channelName, self.customNameLower)
-end
-
-local function safeSendMessage(msg, entry, customId)
-  if entry.key == "CUSTOM" then
-    SendChatMessage(msg, "CHANNEL", nil, customId)
-  else
-    SendChatMessage(msg, entry.sendKey or entry.key or "GUILD")
-  end
 end
 
 --- Sends a raw message to the configured channel.
@@ -119,26 +111,26 @@ function Chat:Send(msg)
 
   local entry = channelMap[self.channelKey]
   if not entry then
-    DEFAULT_CHAT_FRAME:AddMessage("|cffff5050[Trivia]|r Invalid channel configured.")
+    self.transport.system("|cffff5050[Trivia]|r Invalid channel configured.")
     return
   end
-  if self.channelKey == "RAID" and not IsInRaid() then
-    DEFAULT_CHAT_FRAME:AddMessage("|cffff5050[Trivia]|r You are not in a raid.")
+  if self.channelKey == "RAID" and not self.transport.isInRaid() then
+    self.transport.system("|cffff5050[Trivia]|r You are not in a raid.")
     return
   end
-  if self.channelKey == "PARTY" and not IsInGroup() then
-    DEFAULT_CHAT_FRAME:AddMessage("|cffff5050[Trivia]|r You are not in a party.")
+  if self.channelKey == "PARTY" and not self.transport.isInGroup() then
+    self.transport.system("|cffff5050[Trivia]|r You are not in a party.")
     return
   end
 
   if self.channelKey == "CUSTOM" then
     if not self:EnsureCustomChannel() then
-      DEFAULT_CHAT_FRAME:AddMessage("|cffff5050[Trivia]|r Could not join custom channel '" .. (self.customName or "?") .. "'.")
+      self.transport.system("|cffff5050[Trivia]|r Could not join custom channel '" .. (self.customName or "?") .. "'.")
       return
     end
   end
 
-  safeSendMessage(msg, entry, self.customId)
+  self.transport.send(msg, entry, self.customId)
 end
 
 --- Announces the start of a game.
@@ -244,6 +236,6 @@ end
 
 --- Factory: creates a new Chat.
 ---@return Chat
-function TriviaClassic_CreateChat()
-  return Chat:new()
+function TriviaClassic_CreateChat(transport)
+  return Chat:new(transport)
 end

@@ -33,6 +33,22 @@ local function normalizeKey(text)
   return name and name:lower() or nil
 end
 
+local runtime = TriviaClassic_GetRuntime and TriviaClassic_GetRuntime() or nil
+
+local function getDB()
+  local storage = runtime and runtime.storage
+  local db = storage and storage.get and storage.get() or nil
+  if not db then
+    db = {}
+    if storage and storage.set then
+      storage.set(db)
+    else
+      _G.TriviaClassicCharacterDB = db
+    end
+  end
+  return db
+end
+
 local function clampTimerValue(seconds)
   local n = tonumber(seconds)
   if not n then
@@ -47,39 +63,48 @@ local function clampTimerValue(seconds)
 end
 
 local function ensureTeamStore()
-  TriviaClassicCharacterDB.teams = TriviaClassicCharacterDB.teams or { teams = {}, playerTeam = {}, waiting = {} }
-  TriviaClassicCharacterDB.teams.teams = TriviaClassicCharacterDB.teams.teams or {}
-  TriviaClassicCharacterDB.teams.playerTeam = TriviaClassicCharacterDB.teams.playerTeam or {}
-  TriviaClassicCharacterDB.teams.waiting = TriviaClassicCharacterDB.teams.waiting or {}
-  TriviaClassicCharacterDB.teams.config = TriviaClassicCharacterDB.teams.config or {}
+  local db = getDB()
+  db.teams = db.teams or { teams = {}, playerTeam = {}, waiting = {} }
+  db.teams.teams = db.teams.teams or {}
+  db.teams.playerTeam = db.teams.playerTeam or {}
+  db.teams.waiting = db.teams.waiting or {}
+  db.teams.config = db.teams.config or {}
+  return db
 end
 
 TriviaClassic.repo = TriviaClassic_CreateRepo()
-TriviaClassic.chat = TriviaClassic_CreateChat()
+TriviaClassic.chat = TriviaClassic_CreateChat(runtime and runtime.chatTransport)
 TriviaClassic.game = nil
 
 local function initDatabase()
-  TriviaClassicCharacterDB = TriviaClassicCharacterDB or {}
-  TriviaClassicCharacterDB.schema = TriviaClassicCharacterDB.schema or SCHEMA_VERSION
-  TriviaClassicCharacterDB.scores = TriviaClassicCharacterDB.scores or {}
-  TriviaClassicCharacterDB.leaderboard = TriviaClassicCharacterDB.leaderboard or {}
+  local db = getDB()
+  db.schema = db.schema or SCHEMA_VERSION
+  db.scores = db.scores or {}
+  db.leaderboard = db.leaderboard or {}
   -- Track all-time fastest correct answer across all games for this character
   -- Format: { name = "Player", time = 1.23 }
-  if not TriviaClassicCharacterDB.fastest then
-    TriviaClassicCharacterDB.fastest = nil
+  if not db.fastest then
+    db.fastest = nil
   end
-  if not TriviaClassicCharacterDB.mode or not MODE_MAP[TriviaClassicCharacterDB.mode] then
-    TriviaClassicCharacterDB.mode = TriviaClassic_GetDefaultMode()
+  if not db.mode or not MODE_MAP[db.mode] then
+    db.mode = TriviaClassic_GetDefaultMode()
   end
-  TriviaClassicCharacterDB.timer = clampTimerValue(TriviaClassicCharacterDB.timer or DEFAULT_TIMER)
-  if not TriviaClassicCharacterDB.teams.config.stealTimer then
-    TriviaClassicCharacterDB.teams.config.stealTimer = DEFAULT_STEAL_TIMER
+  db.timer = clampTimerValue(db.timer or DEFAULT_TIMER)
+  if not db.teams.config.stealTimer then
+    db.teams.config.stealTimer = DEFAULT_STEAL_TIMER
   end
   ensureTeamStore()
 end
 
 local function initGame()
-  TriviaClassic.game = TriviaClassic_CreateGame(TriviaClassic.repo, TriviaClassicCharacterDB)
+  local deps = {
+    clock = runtime and runtime.clock,
+    date = runtime and runtime.date,
+    answer = runtime and runtime.answer,
+    getTimer = runtime and runtime.chatTransport and runtime.chatTransport.getTimer,
+    getStealTimer = runtime and runtime.chatTransport and runtime.chatTransport.getStealTimer,
+  }
+  TriviaClassic.game = TriviaClassic_CreateGame(TriviaClassic.repo, getDB(), deps)
   TriviaClassic.game:SetMode(TriviaClassic:GetGameMode())
 end
 
@@ -120,7 +145,8 @@ function TriviaClassic:SetGameMode(modeKey)
   if not modeMap[modeKey] then
     modeKey = TriviaClassic_GetDefaultMode()
   end
-  TriviaClassicCharacterDB.mode = modeKey
+  local db = getDB()
+  db.mode = modeKey
   if self.game and self.game.SetMode then
     self.game:SetMode(modeKey)
   end
@@ -129,7 +155,8 @@ end
 --- Gets the current valid game mode key.
 ---@return string
 function TriviaClassic:GetGameMode()
-  local modeKey = TriviaClassicCharacterDB and TriviaClassicCharacterDB.mode or TriviaClassic_GetDefaultMode()
+  local db = getDB()
+  local modeKey = db.mode or TriviaClassic_GetDefaultMode()
   local modeMap = MODE_MAP or TriviaClassic_GetModeMap()
   if modeMap[modeKey] then
     return modeKey
@@ -148,10 +175,10 @@ end
 ---@param teamName string
 ---@return boolean ok
 function TriviaClassic:AddTeam(teamName)
-  ensureTeamStore()
+  local db = ensureTeamStore()
   local key = normalizeKey(teamName)
   if not key then return false end
-  local teams = TriviaClassicCharacterDB.teams.teams
+  local teams = db.teams.teams
   teams[key] = teams[key] or { name = normalizeName(teamName), members = {} }
   return true
 end
@@ -160,13 +187,13 @@ end
 ---@param teamName string
 ---@return boolean ok
 function TriviaClassic:RemoveTeam(teamName)
-  ensureTeamStore()
+  local db = ensureTeamStore()
   local key = normalizeKey(teamName)
   if not key then return false end
-  local teams = TriviaClassicCharacterDB.teams.teams
+  local teams = db.teams.teams
   if not teams[key] then return false end
   -- remove member mappings
-  local playerTeam = TriviaClassicCharacterDB.teams.playerTeam or {}
+  local playerTeam = db.teams.playerTeam or {}
   for player, tkey in pairs(playerTeam) do
     if tkey == key then
       playerTeam[player] = nil
@@ -181,17 +208,17 @@ end
 ---@param teamName string
 ---@return boolean ok
 function TriviaClassic:AddPlayerToTeam(playerName, teamName)
-  ensureTeamStore()
+  local db = ensureTeamStore()
   local playerKey = normalizeKey(playerName)
   local teamKey = normalizeKey(teamName)
   if not playerKey or not teamKey then return false end
-  self:AddTeam(teamName) -- ensure team exists
-  local teams = TriviaClassicCharacterDB.teams.teams
-  local playerTeam = TriviaClassicCharacterDB.teams.playerTeam
+  local teams = db.teams.teams
+  local playerTeam = db.teams.playerTeam
+  teams[teamKey] = teams[teamKey] or { name = normalizeName(teamName), members = {} }
   playerTeam[playerKey] = teamKey
   teams[teamKey].members[playerKey] = normalizeName(playerName)
   -- remove from waiting list if present
-  TriviaClassicCharacterDB.teams.waiting[playerKey] = nil
+  db.teams.waiting[playerKey] = nil
   return true
 end
 
@@ -199,13 +226,13 @@ end
 ---@param playerName string
 ---@return boolean ok
 function TriviaClassic:RemovePlayerFromTeam(playerName)
-  ensureTeamStore()
+  local db = ensureTeamStore()
   local playerKey = normalizeKey(playerName)
   if not playerKey then return false end
-  local playerTeam = TriviaClassicCharacterDB.teams.playerTeam
+  local playerTeam = db.teams.playerTeam
   local teamKey = playerTeam[playerKey]
   if teamKey then
-    local teams = TriviaClassicCharacterDB.teams.teams or {}
+    local teams = db.teams.teams or {}
     if teams[teamKey] and teams[teamKey].members then
       teams[teamKey].members[playerKey] = nil
     end
@@ -217,9 +244,9 @@ end
 --- Returns sorted team summaries with member display names.
 ---@return table[] teams
 function TriviaClassic:GetTeams()
-  ensureTeamStore()
+  local db = ensureTeamStore()
   local list = {}
-  for key, team in pairs(TriviaClassicCharacterDB.teams.teams or {}) do
+  for key, team in pairs(db.teams.teams or {}) do
     local members = {}
     for mKey, display in pairs(team.members or {}) do
       table.insert(members, display or mKey)
@@ -234,9 +261,9 @@ end
 --- Returns a map of player key -> team key.
 ---@return table map
 function TriviaClassic:GetTeamMap()
-  ensureTeamStore()
+  local db = ensureTeamStore()
   local map = {}
-  for playerKey, teamKey in pairs(TriviaClassicCharacterDB.teams.playerTeam or {}) do
+  for playerKey, teamKey in pairs(db.teams.playerTeam or {}) do
     map[playerKey] = teamKey
   end
   return map
@@ -246,12 +273,12 @@ end
 ---@param playerName string
 ---@return string|nil teamName, string|nil teamKey
 function TriviaClassic:GetTeamForPlayer(playerName)
-  ensureTeamStore()
+  local db = ensureTeamStore()
   local key = normalizeKey(playerName)
   if not key then return nil end
-  local teamKey = TriviaClassicCharacterDB.teams.playerTeam[key]
+  local teamKey = db.teams.playerTeam[key]
   if not teamKey then return nil end
-  local team = TriviaClassicCharacterDB.teams.teams[teamKey]
+  local team = db.teams.teams[teamKey]
   return team and team.name or nil, teamKey
 end
 
@@ -259,11 +286,11 @@ end
 ---@param name string
 ---@return boolean ok
 function TriviaClassic:RegisterPlayer(name)
-  ensureTeamStore()
+  local db = ensureTeamStore()
   local key = normalizeKey(name)
   local disp = normalizeName(name)
   if not key or not disp then return false end
-  TriviaClassicCharacterDB.teams.waiting[key] = disp
+  db.teams.waiting[key] = disp
   return true
 end
 
@@ -271,19 +298,19 @@ end
 ---@param name string
 ---@return boolean ok
 function TriviaClassic:UnregisterPlayer(name)
-  ensureTeamStore()
+  local db = ensureTeamStore()
   local key = normalizeKey(name)
   if not key then return false end
-  TriviaClassicCharacterDB.teams.waiting[key] = nil
+  db.teams.waiting[key] = nil
   return true
 end
 
 --- Returns waiting player display names (sorted).
 ---@return string[] names
 function TriviaClassic:GetWaitingPlayers()
-  ensureTeamStore()
+  local db = ensureTeamStore()
   local list = {}
-  for key, disp in pairs(TriviaClassicCharacterDB.teams.waiting or {}) do
+  for key, disp in pairs(db.teams.waiting or {}) do
     table.insert(list, disp or key)
   end
   table.sort(list, function(a, b) return a:lower() < b:lower() end)
@@ -294,13 +321,15 @@ end
 ---@param seconds number
 function TriviaClassic:SetTimer(seconds)
   local clamped = clampTimerValue(seconds)
-  TriviaClassicCharacterDB.timer = clamped
+  local db = getDB()
+  db.timer = clamped
 end
 
 --- Gets the configured per-question timer (seconds).
 ---@return integer
 function TriviaClassic:GetTimer()
-  local value = TriviaClassicCharacterDB and TriviaClassicCharacterDB.timer
+  local db = getDB()
+  local value = db.timer
   if value == nil then
     return DEFAULT_TIMER
   end
@@ -329,17 +358,17 @@ end
 --- Sets the steal timer (seconds).
 ---@param seconds number
 function TriviaClassic:SetStealTimer(seconds)
-  ensureTeamStore()
-  TriviaClassicCharacterDB.teams.config = TriviaClassicCharacterDB.teams.config or {}
-  TriviaClassicCharacterDB.teams.config.stealTimer = clampStealTimer(seconds)
+  local db = ensureTeamStore()
+  db.teams.config = db.teams.config or {}
+  db.teams.config.stealTimer = clampStealTimer(seconds)
 end
 
 --- Gets the configured steal timer (seconds).
 ---@return integer
 function TriviaClassic:GetStealTimer()
-  ensureTeamStore()
-  TriviaClassicCharacterDB.teams.config = TriviaClassicCharacterDB.teams.config or {}
-  local value = TriviaClassicCharacterDB.teams.config.stealTimer
+  local db = ensureTeamStore()
+  db.teams.config = db.teams.config or {}
+  local value = db.teams.config.stealTimer
   if value == nil then
     return DEFAULT_STEAL_TIMER
   end
@@ -548,7 +577,7 @@ local function handleIncomingChat(event, msg, sender, languageName, channelNameF
   local lowered = tostring(msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
   if lowered == "trivia register" or lowered == "trivia join" then
     if TriviaClassic:RegisterPlayer(sender) then
-      DEFAULT_CHAT_FRAME:AddMessage("|cffffff00[Trivia]|r Registered " .. (sender or "?") .. " for team placement.")
+      TriviaClassic.chat.transport.system("|cffffff00[Trivia]|r Registered " .. (sender or "?") .. " for team placement.")
       if TriviaClassic_Emit then TriviaClassic_Emit("teams_updated") end
     end
     return
@@ -575,15 +604,9 @@ local channelEvents = {
   "CHAT_MSG_CHANNEL",
 }
 
-local eventFrame = CreateFrame("Frame")
-eventFrame:RegisterEvent("ADDON_LOADED")
-eventFrame:RegisterEvent("PLAYER_LOGIN")
-for _, evt in ipairs(channelEvents) do
-  eventFrame:RegisterEvent(evt)
-end
-eventFrame:SetScript("OnEvent", function(_, event, ...)
-  if event == "ADDON_LOADED" then
-    local name = ...
+local events = runtime and runtime.events
+if events and events.on then
+  events:on("ADDON_LOADED", function(_, name)
     if name == addonName then
       initDatabase()
       initGame()
@@ -594,11 +617,17 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
         TriviaClassic.repo:RegisterTriviaBotSet("TriviaBot Import", _G.TriviaBot_Questions)
       end
     end
-  elseif event == "PLAYER_LOGIN" then
+  end)
+
+  events:on("PLAYER_LOGIN", function()
     if TriviaClassicUI and TriviaClassicUI.BuildUI then
       TriviaClassicUI:BuildUI()
     end
-  elseif event:find("CHAT_MSG_") then
-    handleIncomingChat(event, ...)
+  end)
+
+  for _, evt in ipairs(channelEvents) do
+    events:on(evt, function(event, ...)
+      handleIncomingChat(event, ...)
+    end)
   end
-end)
+end

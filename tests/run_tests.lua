@@ -32,9 +32,11 @@ function TC_TEST(name, fn)
   end
 end
 
-dofile("tests/wow_shim.lua")
+dofile("core/Runtime.lua")
+dofile("tests/fake_runtime.lua")
 dofile("core/Util.lua")
 dofile("game/AnswerService.lua")
+TriviaClassic_GetRuntime().answer = _G.TriviaClassic_Answer
 dofile("Repo/TriviaBotImporter.lua")
 
 dofile("tests/test_helpers.lua")
@@ -46,6 +48,7 @@ dofile("tests/test_game_team.lua")
 dofile("tests/test_game_all_correct.lua")
 dofile("tests/test_game_team_steal.lua")
 dofile("tests/test_game_head_to_head.lua")
+dofile("tests/test_presenter_flows.lua")
 dofile("tests/test_team_map.lua")
 
 if failures > 0 then
