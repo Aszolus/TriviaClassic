@@ -3,13 +3,16 @@
 local Answer = {}
 
 --- Normalize a free-form answer string: lowercase, remove all spaces,
---- and remove all punctuation/symbols.
+--- and remove punctuation/symbols except apostrophes inside words.
 ---@param text any
 ---@return string
 function Answer.normalize(text)
   local s = tostring(text or ""):lower()
   s = s:gsub("%s+", "") -- Remove all spaces (tabs, newlines, etc. too)
+  local marker = string.char(1)
+  s = s:gsub("(%w)'(%w)", "%1" .. marker .. "%2")
   s = s:gsub("%p+", "") -- Remove all punctuation/symbols
+  s = s:gsub(marker, "'")
   return s
 end
 
