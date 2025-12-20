@@ -54,6 +54,13 @@ function F.formatParticipants(participants)
   return string.format("[Trivia] Head-to-Head: %s", table.concat(parts, " vs "))
 end
 
+function F.formatRerollParticipant(teamName, playerName, prevName)
+  local team = teamName or "Team"
+  local player = playerName or "Player"
+  local prev = prevName and (" (was " .. prevName .. ")") or ""
+  return string.format("[Trivia] Head-to-Head: %s now selecting %s%s", team, player, prev)
+end
+
 function F.formatActiveTeamReminder(teamName)
   if teamName and teamName ~= "" then
     return string.format("[Trivia] Waiting on %s to answer (use 'final: ...').", teamName)
@@ -107,7 +114,7 @@ end
 function F.formatWinner(name, elapsed, points, teamName, teamMembers)
   if teamName then
     local members = teamMembers and #teamMembers > 0 and (" (" .. table.concat(teamMembers, ", ") .. ")") or ""
-    return string.format("[Trivia] %s answered correctly in %.2fs!%s (+%s pts)", teamName, elapsed or 0, members, tostring(points or 1))
+    return string.format("[Trivia] %s answered correctly in %.2fs.%s %s has earned +%s points!", name or "Player", elapsed or 0, members, teamName, tostring(points or 1))
   else
     return string.format("[Trivia] %s answered correctly in %.2fs! (+%s pts)", name, elapsed or 0, tostring(points or 1))
   end

@@ -31,6 +31,7 @@ function UI:RefreshPrimaryButton()
   local vm = (self.presenter and self.presenter:PrimaryView()) or { label = "Next", enabled = true }
   self.nextButton:SetText(vm.label or "Next")
   if vm.enabled == false then self.nextButton:Disable() else self.nextButton:Enable() end
+  self:UpdateRerollControls()
 end
 
 function UI:OnPendingSteal(event)
@@ -162,6 +163,66 @@ function UI:RefreshTeamDropdown()
     end
   end)
   self:SetSelectedTeam(current)
+end
+
+function UI:SetRerollTeam(name)
+  self.rerollTeamName = name
+  if self.rerollTeamDropDown then
+    UIDropDownMenu_SetSelectedValue(self.rerollTeamDropDown, name)
+    UIDropDownMenu_SetText(self.rerollTeamDropDown, name or "Select team")
+  end
+end
+
+function UI:RefreshRerollTeamDropdown()
+  if not self.rerollTeamDropDown then
+    return
+  end
+  local teams = (TriviaClassic.game and TriviaClassic.game.GetTeamList and TriviaClassic.game:GetTeamList()) or {}
+  local current = self.rerollTeamName
+  if not current and teams[1] then
+    current = teams[1]
+  end
+  UIDropDownMenu_Initialize(self.rerollTeamDropDown, function()
+    for _, name in ipairs(teams) do
+      local info = UIDropDownMenu_CreateInfo()
+      info.text = name
+      info.value = name
+      info.func = function()
+        self:SetRerollTeam(name)
+      end
+      info.checked = (self.rerollTeamName == name)
+      UIDropDownMenu_AddButton(info)
+    end
+  end)
+  self:SetRerollTeam(current)
+end
+
+function UI:UpdateRerollControls()
+  if not (self.rerollTeamButton and self.rerollTeamDropDown and self.rerollLabel) then
+    return
+  end
+  local mode = TriviaClassic:GetGameMode()
+  if mode ~= "HEAD_TO_HEAD" then
+    self.rerollLabel:Hide()
+    self.rerollTeamDropDown:Hide()
+    self.rerollTeamButton:Hide()
+    return
+  end
+  self.rerollLabel:Show()
+  self.rerollTeamDropDown:Show()
+  self.rerollTeamButton:Show()
+  self:RefreshRerollTeamDropdown()
+
+  local ready = false
+  local game = TriviaClassic.game
+  if game and game.state and game.state.modeState and game.state.modeState.data then
+    ready = game.state.modeState.data.pairAnnounced == true
+  end
+  if ready and self.rerollTeamName then
+    self.rerollTeamButton:Enable()
+  else
+    self.rerollTeamButton:Disable()
+  end
 end
 
 function UI:RefreshTeamList()
@@ -512,6 +573,7 @@ function UI:StartGame()
   self.timerRunning = false
   self.questionNumber = 0
   self:UpdateSessionBoard()
+  self:UpdateRerollControls()
   -- Chat already sent by presenter
   if self.endButton then
     self.endButton:Enable()
@@ -681,6 +743,24 @@ function UI:EndGame()
   end
   self.warningButton:Disable()
   self.timerRunning = false
+  self:UpdateRerollControls()
+end
+
+function UI:RerollTeamParticipant()
+  local teamName = self.rerollTeamName
+  if not teamName or teamName == "" then
+    self.frame.statusText:SetText("Select a team to rotate.")
+    return
+  end
+  local res = self.presenter and self.presenter.RerollTeam and self.presenter:RerollTeam(teamName)
+  if res and res.player then
+    local msg = string.format("Head-to-Head: %s now selecting %s.", res.teamName or teamName, res.player)
+    if res.prevPlayer and res.prevPlayer ~= res.player then
+      msg = string.format("Head-to-Head: %s now selecting %s (was %s).", res.teamName or teamName, res.player, res.prevPlayer)
+    end
+    self.frame.statusText:SetText(msg)
+  end
+  self:UpdateRerollControls()
 end
 
 function UI:OnNextPressed()
@@ -1025,6 +1105,11 @@ function UI:BuildUI()
   if self.hintButton then
     self.hintButton:SetScript("OnClick", function()
       self:AnnounceHint()
+    end)
+  end
+  if self.rerollTeamButton then
+    self.rerollTeamButton:SetScript("OnClick", function()
+      self:RerollTeamParticipant()
     end)
   end
   self.sessionBtn:SetScript("OnClick", function()

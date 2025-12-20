@@ -294,6 +294,21 @@ function TriviaClassic_UI_BuildLayout(ui)
   statusText:SetText("Load a set and press Start.")
   frame.statusText = statusText
 
+  local rerollLabel = gamePage:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  rerollLabel:SetPoint("TOPLEFT", statusText, "BOTTOMLEFT", 0, -10)
+  rerollLabel:SetText("Head-to-Head: Next player")
+  ui.rerollLabel = rerollLabel
+
+  local rerollDropDown = CreateFrame("Frame", "TriviaClassicRerollTeamDropDown", gamePage, "UIDropDownMenuTemplate")
+  rerollDropDown:SetPoint("LEFT", rerollLabel, "RIGHT", 6, -2)
+  UIDropDownMenu_SetWidth(rerollDropDown, 140)
+  ui.rerollTeamDropDown = rerollDropDown
+
+  local rerollButton = Button(gamePage, "Next Player", 90, 22)
+  rerollButton:SetPoint("LEFT", rerollDropDown, "RIGHT", 6, 2)
+  rerollButton:Disable()
+  ui.rerollTeamButton = rerollButton
+
   -- Right column
   local sessionLabel = gamePage:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   -- Anchor the right column to the inset area to keep it inside the panel borders

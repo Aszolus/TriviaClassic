@@ -458,6 +458,14 @@ function Game:CompleteNoWinnerBroadcast()
   return s.askedCount >= s.totalQuestions
 end
 
+function Game:RerollTeam(teamName)
+  local modeState = self:_modeState()
+  if modeState and modeState.handler and modeState.handler.rerollTeam then
+    return modeState.handler.rerollTeam(self, modeState, teamName)
+  end
+  return nil
+end
+
 function Game:GetSessionScoreboard()
   local handler = self.GetModeHandler and self:GetModeHandler() or nil
   if handler and handler.view and type(handler.view.scoreboardRows) == "function" then
