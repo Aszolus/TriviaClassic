@@ -195,6 +195,20 @@ function Presenter:AnnounceHint()
   return false
 end
 
+function Presenter:RerollTeam(teamName)
+  if not self.trivia or not self.trivia.game or not self.trivia.game.RerollTeam then
+    return nil
+  end
+  local res = self.trivia.game:RerollTeam(teamName)
+  if res and res.teamName and res.player then
+    local F = getFormatter(self.trivia and self.trivia.game)
+    if F and F.formatRerollParticipant then
+      self.trivia.chat:Send(F.formatRerollParticipant(res.teamName, res.player, res.prevPlayer))
+    end
+  end
+  return res
+end
+
 -- Broadcasts the current teams and their members to the configured channel.
 function Presenter:AnnounceTeams()
   if not self.trivia or not self.trivia.chat or not self.trivia.GetTeams then

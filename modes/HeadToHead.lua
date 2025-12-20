@@ -50,25 +50,115 @@ local handler = {
     for _, name in ipairs(tnames) do table.insert(data.teamNames, name) end
     data.selectedByTeam = {}
     for _, team in ipairs(data.teamNames) do
-      -- build or refresh permutation
+      local members = game:GetTeamMembers(team) or {}
       local perm = data.permByTeam[team]
       local idx = data.idxByTeam[team] or 1
-      if not perm or #perm == 0 or idx > #perm then
+
+      local function permInvalid()
+        if not perm or #perm == 0 then return true end
+        if idx > #perm then return true end
+        local set = {}
+        for _, m in ipairs(members) do
+          set[m] = true
+        end
+        for _, p in ipairs(perm) do
+          if not set[p] then
+            return true
+          end
+          set[p] = nil
+        end
+        for _ in pairs(set) do
+          return true
+        end
+        return false
+      end
+
+      if permInvalid() then
         perm = {}
-        for _, m in ipairs(game:GetTeamMembers(team) or {}) do
+        for _, m in ipairs(members) do
           table.insert(perm, m)
         end
-        -- keep non-empty
         if #perm > 1 then shuffle(perm) end
         data.permByTeam[team] = perm
         idx = 1
       end
+
       local player = perm[idx]
       data.idxByTeam[team] = idx + 1
       if player and player ~= "" then
         data.selectedByTeam[team] = player
       end
     end
+  end,
+
+  rerollTeam = function(game, ctx, teamName)
+    if not ctx.data.pairAnnounced then
+      return nil
+    end
+    local target = tostring(teamName or ""):lower()
+    if target == "" then
+      return nil
+    end
+    local data = ctx.data
+    local resolved = nil
+    for _, name in ipairs(data.teamNames or {}) do
+      if tostring(name or ""):lower() == target then
+        resolved = name
+        break
+      end
+    end
+    if not resolved then
+      return nil
+    end
+
+    local members = game:GetTeamMembers(resolved) or {}
+    if #members == 0 then
+      return nil
+    end
+
+    local perm = data.permByTeam[resolved]
+    local idx = data.idxByTeam[resolved] or 1
+
+    local function permInvalid()
+      if not perm or #perm == 0 then return true end
+      local set = {}
+      for _, m in ipairs(members) do
+        set[m] = true
+      end
+      for _, p in ipairs(perm) do
+        if not set[p] then
+          return true
+        end
+        set[p] = nil
+      end
+      for _ in pairs(set) do
+        return true
+      end
+      return false
+    end
+
+    local function rebuild()
+      perm = {}
+      for _, m in ipairs(members) do
+        table.insert(perm, m)
+      end
+      if #perm > 1 then shuffle(perm) end
+      data.permByTeam[resolved] = perm
+      idx = 1
+    end
+
+    if permInvalid() or idx > #perm then
+      rebuild()
+    end
+
+    local prev = data.selectedByTeam[resolved]
+    local player = perm[idx]
+    data.idxByTeam[resolved] = idx + 1
+    if player and player ~= "" then
+      data.selectedByTeam[resolved] = player
+    end
+
+    return { teamName = resolved, player = player, prevPlayer = prev }
   end,
 
   onAdvance = function(game, ctx)
