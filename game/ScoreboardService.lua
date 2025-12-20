@@ -2,6 +2,32 @@
 
 local S = {}
 
+local function sortRowsByPoints(rows)
+  local list = {}
+  for i, entry in ipairs(rows or {}) do
+    list[i] = entry
+  end
+  table.sort(list, function(a, b)
+    local ap = tonumber(a.points) or 0
+    local bp = tonumber(b.points) or 0
+    if ap == bp then
+      local ac = tonumber(a.correct) or 0
+      local bc = tonumber(b.correct) or 0
+      if ac == bc then
+        local at = tonumber(a.bestTime) or math.huge
+        local bt = tonumber(b.bestTime) or math.huge
+        if at == bt then
+          return tostring(a.name or ""):lower() < tostring(b.name or ""):lower()
+        end
+        return at < bt
+      end
+      return ac > bc
+    end
+    return ap > bp
+  end)
+  return list
+end
+
 --- Format scoreboard text for UI panel.
 ---@param rows TC_ScoreRow[]
 ---@param fastestName string|nil
@@ -11,6 +37,7 @@ function S.formatUIPanel(rows, fastestName, fastestTime)
   if not rows or #rows == 0 then
     return "No answers yet."
   end
+  rows = sortRowsByPoints(rows)
   local lines = {}
   for i, entry in ipairs(rows) do
     if i > 12 then break end
@@ -35,6 +62,7 @@ function S.sessionChatLines(rows, fastestName, fastestTime)
     table.insert(lines, "No answers yet.")
     return lines
   end
+  rows = sortRowsByPoints(rows)
   for _, entry in ipairs(rows) do
     table.insert(lines, string.format("%s - %d pts (%d correct, best %.2fs)", entry.name, entry.points or 0, entry.correct or 0, (entry.bestTime or 0)))
   end
@@ -55,6 +83,7 @@ function S.allTimeChatLines(rows, fastestName, fastestTime)
     table.insert(lines, "No scores recorded.")
     return lines
   end
+  rows = sortRowsByPoints(rows)
   for i, entry in ipairs(rows) do
     table.insert(lines, string.format("%d) %s - %d pts (%d correct)", i, entry.name, entry.points or 0, entry.correct or 0))
   end

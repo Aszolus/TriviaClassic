@@ -1,0 +1,16 @@
+TC_TEST("TriviaClassic_Trim trims spaces", function()
+  TC_ASSERT_EQ(TriviaClassic_Trim("  hi  "), "hi", "trim spaces")
+  TC_ASSERT_EQ(TriviaClassic_Trim(nil), "", "trim nil")
+end)
+
+TC_TEST("TriviaClassic_NormalizeName/Key", function()
+  TC_ASSERT_EQ(TriviaClassic_NormalizeName("   "), nil, "normalize empty")
+  TC_ASSERT_EQ(TriviaClassic_NormalizeKey(" Bob "), "bob", "normalize key")
+end)
+
+TC_TEST("TriviaClassic_ClampNumber clamps and rounds", function()
+  TC_ASSERT_EQ(TriviaClassic_ClampNumber("2.6", 1, 5, 3), 3, "round up")
+  TC_ASSERT_EQ(TriviaClassic_ClampNumber("-10", 1, 5, 3), 1, "clamp low")
+  TC_ASSERT_EQ(TriviaClassic_ClampNumber("10", 1, 5, 3), 5, "clamp high")
+  TC_ASSERT_EQ(TriviaClassic_ClampNumber("abc", 1, 5, 3), 3, "default")
+end)
