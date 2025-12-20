@@ -37,7 +37,7 @@ TC_TEST("Game Head-to-Head enforces eligibility", function()
 end)
 
 TC_TEST("Head-to-Head uses team map and enforces eligibility", function()
-  _G.TriviaClassicCharacterDB = {}
+  TC_RESET_DB()
   dofile("Repo/QuestionRepository.lua")
   dofile("game/Chat.lua")
   dofile("core/Init.lua")
@@ -65,7 +65,9 @@ TC_TEST("Head-to-Head uses team map and enforces eligibility", function()
     },
   }
 
-  TriviaClassic.game = TriviaClassic_CreateGame(TriviaClassic.repo, TriviaClassicCharacterDB)
+  local runtime = TriviaClassic_GetRuntime()
+  local db = runtime.storage.get()
+  TriviaClassic.game = TriviaClassic_CreateGame(TriviaClassic.repo, db, runtime)
   TriviaClassic:SetGameMode("HEAD_TO_HEAD")
 
   local meta = TriviaClassic:StartGame({ "Test Set" }, 1, nil)

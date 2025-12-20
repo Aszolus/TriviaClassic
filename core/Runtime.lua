@@ -12,6 +12,12 @@ local function buildRuntime()
   if TriviaClassic_CreateWowStorage then
     runtime.storage = TriviaClassic_CreateWowStorage()
   end
+  if runtime.chatTransport and runtime.chatTransport.log then
+    runtime.logger = runtime.chatTransport
+  end
+  if runtime.clock and runtime.clock.date then
+    runtime.date = runtime.clock.date
+  end
   return runtime
 end
 
@@ -35,4 +41,9 @@ function TriviaClassic_EnsureDB()
     end
   end
   return _G.TriviaClassicCharacterDB
+end
+
+function TriviaClassic_GetLogger()
+  local runtime = TriviaClassic_GetRuntime()
+  return runtime and runtime.logger
 end

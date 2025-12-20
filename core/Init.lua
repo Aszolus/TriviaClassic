@@ -97,7 +97,12 @@ local function initDatabase()
 end
 
 local function initGame()
-  local deps = runtime or (TriviaClassic_GetRuntime and TriviaClassic_GetRuntime()) or nil
+  local deps = {
+    clock = runtime and runtime.clock,
+    date = runtime and runtime.date,
+    getTimer = runtime and runtime.chatTransport and runtime.chatTransport.getTimer,
+    getStealTimer = runtime and runtime.chatTransport and runtime.chatTransport.getStealTimer,
+  }
   TriviaClassic.game = TriviaClassic_CreateGame(TriviaClassic.repo, getDB(), deps)
   TriviaClassic.game:SetMode(TriviaClassic:GetGameMode())
 end
@@ -598,7 +603,7 @@ local channelEvents = {
   "CHAT_MSG_CHANNEL",
 }
 
-local events = (runtime and runtime.events) or (TriviaClassic_CreateWowEvents and TriviaClassic_CreateWowEvents())
+local events = runtime and runtime.events
 if events and events.on then
   events:on("ADDON_LOADED", function(_, name)
     if name == addonName then

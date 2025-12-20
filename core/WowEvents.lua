@@ -20,5 +20,14 @@ function TriviaClassic_CreateWowEvents()
       end
       table.insert(handlers[event], handler)
     end,
+    emit = function(self, event, ...)
+      local list = handlers[event]
+      if not list then
+        return
+      end
+      for _, handler in ipairs(list) do
+        handler(event, ...)
+      end
+    end,
   }
 end

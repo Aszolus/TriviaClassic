@@ -6,10 +6,6 @@ dofile("modes/Fastest.lua")
 dofile("modes/HeadToHead.lua")
 dofile("game/Game.lua")
 
-local function reset_db()
-  _G.TriviaClassicCharacterDB = {}
-end
-
 local function find_team(list, name)
   for _, team in ipairs(list or {}) do
     if team.name == name then
@@ -20,7 +16,7 @@ local function find_team(list, name)
 end
 
 TC_TEST("Team map created from assignments", function()
-  reset_db()
+  TC_RESET_DB()
   dofile("core/Init.lua")
 
   TC_ASSERT_TRUE(TriviaClassic:AddTeam("Alpha Team"), "add team")
@@ -39,7 +35,7 @@ TC_TEST("Team map created from assignments", function()
 end)
 
 TC_TEST("Team map updates on removal", function()
-  reset_db()
+  TC_RESET_DB()
   dofile("core/Init.lua")
 
   TriviaClassic:AddTeam("Alpha")

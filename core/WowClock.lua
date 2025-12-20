@@ -3,5 +3,8 @@ function TriviaClassic_CreateWowClock()
     now = function()
       return GetTime()
     end,
+    date = function(fmt)
+      return date(fmt)
+    end,
   }
 end

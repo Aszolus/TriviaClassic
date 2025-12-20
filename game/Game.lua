@@ -186,13 +186,21 @@ end
 
 function Game:_debug(msg)
   if TriviaClassic and TriviaClassic.IsDebugLogging and TriviaClassic:IsDebugLogging() then
-    print("|cffffff00[Trivia Debug]|r " .. tostring(msg))
+    local logger = TriviaClassic_GetLogger and TriviaClassic_GetLogger()
+    if logger and logger.log then
+      logger.log("|cffffff00[Trivia Debug]|r " .. tostring(msg))
+    end
   end
 end
 
 function Game:Now()
   local clock = (self.deps and self.deps.clock) or TriviaClassic_GetRuntime().clock
   return clock.now()
+end
+
+function Game:NowDate(fmt)
+  local dateFn = (self.deps and self.deps.date) or (TriviaClassic_GetRuntime().date)
+  return dateFn(fmt)
 end
 
 function Game:_currentPoints()
@@ -377,7 +385,7 @@ local function updateFastest(state, store, sender, elapsed)
   end
 end
 
-local function recordPersistent(store, sender, points)
+local function recordPersistent(game, store, sender, points)
   if not store or not sender then
     return
   end
@@ -387,7 +395,7 @@ local function recordPersistent(store, sender, points)
   end
   entry.points = entry.points + (points or 1)
   entry.correct = entry.correct + 1
-  entry.lastCorrect = date("%Y-%m-%d %H:%M")
+  entry.lastCorrect = game:NowDate("%Y-%m-%d %H:%M")
 end
 
 function Game:GetCurrentWinnerCount()
@@ -407,7 +415,7 @@ function Game:_recordCorrectAnswer(sender, elapsed)
     recordTeamSessionWin(s, teamName, points)
   end
   updateFastest(s, self.store, sender, elapsed)
-  recordPersistent(self.store, sender, points)
+  recordPersistent(self, self.store, sender, points)
   return points
 end
 

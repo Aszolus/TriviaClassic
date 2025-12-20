@@ -320,10 +320,10 @@ handler.view = {
   --- Returns the timer seconds for the current answer window (main vs reuse).
   getQuestionTimerSeconds = function(game, ctx)
     local isReuse = ctx and ctx.data and ctx.data.reuseWindow
-    if isReuse and TriviaClassic and TriviaClassic.GetStealTimer then
-      return TriviaClassic:GetStealTimer()
+    if isReuse then
+      return game.deps and game.deps.getStealTimer and game.deps.getStealTimer() or 20
     end
-    return (TriviaClassic and TriviaClassic.GetTimer and TriviaClassic:GetTimer()) or 20
+    return game.deps and game.deps.getTimer and game.deps.getTimer() or 20
   end,
   scoreboardRows = function(game)
     local list = {}

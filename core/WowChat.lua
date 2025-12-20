@@ -25,5 +25,20 @@ function TriviaClassic_CreateWowChatTransport()
     isInGroup = function()
       return IsInGroup()
     end,
+    getTimer = function()
+      if TriviaClassic and TriviaClassic.GetTimer then
+        return TriviaClassic:GetTimer()
+      end
+      return 20
+    end,
+    getStealTimer = function()
+      if TriviaClassic and TriviaClassic.GetStealTimer then
+        return TriviaClassic:GetStealTimer()
+      end
+      return 20
+    end,
+    log = function(msg)
+      print(msg)
+    end,
   }
 end

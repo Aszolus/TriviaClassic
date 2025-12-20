@@ -180,7 +180,7 @@ handler.view = {
     return label, nil
   end,
   getQuestionTimerSeconds = function(game, ctx)
-    return (TriviaClassic and TriviaClassic.GetTimer and TriviaClassic:GetTimer()) or 20
+    return game.deps and game.deps.getTimer and game.deps.getTimer() or 20
   end,
   scoreboardRows = function(game)
     local list = {}
