@@ -33,6 +33,11 @@ function TC_TEST(name, fn)
 end
 
 dofile("tests/wow_shim.lua")
+dofile("core/WowClock.lua")
+dofile("core/WowChat.lua")
+dofile("core/WowEvents.lua")
+dofile("core/WowStorage.lua")
+dofile("core/Runtime.lua")
 dofile("core/Util.lua")
 dofile("game/AnswerService.lua")
 dofile("Repo/TriviaBotImporter.lua")

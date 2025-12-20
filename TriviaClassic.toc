@@ -9,6 +9,11 @@ core/Constants.lua
 core/Types.lua
 core/Util.lua
 core/Events.lua
+core/WowClock.lua
+core/WowChat.lua
+core/WowEvents.lua
+core/WowStorage.lua
+core/Runtime.lua
 
 game/MessageFormatter.lua
 game/AnswerService.lua

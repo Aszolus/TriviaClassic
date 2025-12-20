@@ -108,7 +108,7 @@ local handler = {
     local A = _G.TriviaClassic_Answer
     local candidate = A and A.extract and A.extract(rawMsg) or rawMsg
     if candidate and A and A.match and A.match(candidate, q) then
-      local elapsed = math.max(0.01, GetTime() - (game.state.questionStartTime or GetTime()))
+      local elapsed = math.max(0.01, game:Now() - (game.state.questionStartTime or game:Now()))
       if ctx.handler and ctx.handler.handleCorrect then
         return ctx.handler.handleCorrect(game, ctx, sender, elapsed)
       end

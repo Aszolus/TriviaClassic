@@ -202,7 +202,7 @@ local handler = {
       return nil
     end
     if A and A.match and candidate and A.match(candidate, q) then
-      local elapsed = math.max(0.01, GetTime() - (game.state.questionStartTime or GetTime()))
+      local elapsed = math.max(0.01, game:Now() - (game.state.questionStartTime or game:Now()))
       if ctx.handler and ctx.handler.handleCorrect then
         return ctx.handler.handleCorrect(game, ctx, sender, elapsed)
       end
@@ -251,7 +251,7 @@ local handler = {
     ctx.pendingNoWinner = false
     ctx.pendingWinner = false
     game.state.questionOpen = true
-    game.state.questionStartTime = GetTime()
+    game.state.questionStartTime = game:Now()
     game:_debug(string.format("Starting steal attempt for team index %d.", targetIndex))
     local teamName = ctx.data.teams[targetIndex]
     local members = game:GetTeamMembers(teamName)

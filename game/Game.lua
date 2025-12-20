@@ -78,10 +78,11 @@ local function collectTeamMembers(store, teamKey, displayName)
   return list
 end
 
-function Game:new(repo, store)
+function Game:new(repo, store, deps)
   local o = {
     repo = repo,
     store = store,
+    deps = deps or {},
     mode = normalizeModeKey(MODE_FASTEST),
     state = {
       activeSets = {},
@@ -189,6 +190,11 @@ function Game:_debug(msg)
   end
 end
 
+function Game:Now()
+  local clock = (self.deps and self.deps.clock) or TriviaClassic_GetRuntime().clock
+  return clock.now()
+end
+
 function Game:_currentPoints()
   if self.state and self.state.currentQuestion and self.state.currentQuestion.points then
     return self.state.currentQuestion.points
@@ -286,7 +292,7 @@ function Game:NextQuestion()
     s.askedRegistry[s.currentQuestion.qid] = true
   end
   s.questionOpen = true
-  s.questionStartTime = GetTime()
+  s.questionStartTime = self:Now()
   self:_initQuestionState()
   return s.currentQuestion, s.askedCount, s.totalQuestions
 end
@@ -421,7 +427,7 @@ function Game:HandleChatAnswer(msg, sender)
 
   local A = _G.TriviaClassic_Answer
   if A and A.match and A.match(msg, s.currentQuestion) then
-    local elapsed = math.max(0.01, GetTime() - (s.questionStartTime or GetTime()))
+    local elapsed = math.max(0.01, self:Now() - (s.questionStartTime or self:Now()))
     if modeState and modeState.HandleCorrect then
       return modeState:HandleCorrect(self, sender, elapsed)
     end
@@ -630,6 +636,6 @@ function Game:PerformPrimaryAction(command)
   return nil
 end
 
-function TriviaClassic_CreateGame(repo, store)
-  return Game:new(repo, store)
+function TriviaClassic_CreateGame(repo, store, deps)
+  return Game:new(repo, store, deps)
 end
