@@ -12,7 +12,14 @@ TC_TEST("Game Head-to-Head enforces eligibility", function()
   TC_ADD_TEAM(store, "beta", "Beta", { "Bob" })
   TC_ADD_TEAM(store, "charlie", "Charlie", { "Charlie" })
 
-  local game = TriviaClassic_CreateGame(repo, store)
+  local runtime = TriviaClassic_GetRuntime()
+  local deps = {
+    clock = runtime.clock,
+    date = runtime.date,
+    answer = runtime.answer,
+    getTimer = runtime.chatTransport.getTimer,
+  }
+  local game = TriviaClassic_CreateGame(repo, store, deps)
   game:SetTeams(TC_MAKE_TEAM_MAP({ Alice = "alpha", Bob = "beta", Charlie = "charlie" }))
 
   local meta = game:Start({ "set" }, 1, nil, "HEAD_TO_HEAD")

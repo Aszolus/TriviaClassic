@@ -194,7 +194,7 @@ local handler = {
     if not startsWithFinalPrefix(rawMsg) then
       return nil -- must use final:
     end
-    local A = _G.TriviaClassic_Answer
+    local A = game.deps.answer
     local extracted = (A and A.extract and A.extract(rawMsg, { requiredPrefix = "final:", dropPrefix = true })) or stripFinalPrefix(rawMsg)
     local candidate = extracted
     local q = game:GetCurrentQuestion()

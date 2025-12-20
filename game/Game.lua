@@ -433,7 +433,7 @@ function Game:HandleChatAnswer(msg, sender)
     return modeState:EvaluateAnswer(self, sender, msg)
   end
 
-  local A = _G.TriviaClassic_Answer
+  local A = self.deps.answer
   if A and A.match and A.match(msg, s.currentQuestion) then
     local elapsed = math.max(0.01, self:Now() - (s.questionStartTime or self:Now()))
     if modeState and modeState.HandleCorrect then

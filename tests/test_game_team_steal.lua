@@ -11,7 +11,15 @@ TC_TEST("Game Team Steal flow", function()
   TC_ADD_TEAM(store, "alpha", "Alpha", { "Alice" })
   TC_ADD_TEAM(store, "beta", "Beta", { "Bob" })
 
-  local game = TriviaClassic_CreateGame(repo, store)
+  local runtime = TriviaClassic_GetRuntime()
+  local deps = {
+    clock = runtime.clock,
+    date = runtime.date,
+    answer = runtime.answer,
+    getTimer = runtime.chatTransport.getTimer,
+    getStealTimer = runtime.chatTransport.getStealTimer,
+  }
+  local game = TriviaClassic_CreateGame(repo, store, deps)
   game:SetTeams(TC_MAKE_TEAM_MAP({ Alice = "alpha", Bob = "beta" }))
 
   local meta = game:Start({ "set" }, 1, nil, "TEAM_STEAL")

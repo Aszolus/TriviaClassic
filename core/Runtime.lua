@@ -18,6 +18,7 @@ local function buildRuntime()
   if runtime.clock and runtime.clock.date then
     runtime.date = runtime.clock.date
   end
+  runtime.answer = _G.TriviaClassic_Answer
   return runtime
 end
 

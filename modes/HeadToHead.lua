@@ -105,7 +105,7 @@ local handler = {
       if snd == tostring(player or ""):lower() then eligible = true break end
     end
     if not eligible then return nil end
-    local A = _G.TriviaClassic_Answer
+    local A = game.deps.answer
     local candidate = A and A.extract and A.extract(rawMsg) or rawMsg
     if candidate and A and A.match and A.match(candidate, q) then
       local elapsed = math.max(0.01, game:Now() - (game.state.questionStartTime or game:Now()))

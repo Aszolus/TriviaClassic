@@ -9,7 +9,13 @@ TC_TEST("Game All Correct credits multiple winners", function()
   })
   local store = TC_MAKE_STORE({})
 
-  local game = TriviaClassic_CreateGame(repo, store)
+  local runtime = TriviaClassic_GetRuntime()
+  local deps = {
+    clock = runtime.clock,
+    date = runtime.date,
+    answer = runtime.answer,
+  }
+  local game = TriviaClassic_CreateGame(repo, store, deps)
   local meta = game:Start({ "set" }, 1, nil, "ALL_CORRECT")
   TC_ASSERT_TRUE(meta ~= nil, "game started")
   game:NextQuestion()

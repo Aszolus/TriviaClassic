@@ -100,6 +100,7 @@ local function initGame()
   local deps = {
     clock = runtime and runtime.clock,
     date = runtime and runtime.date,
+    answer = runtime and runtime.answer,
     getTimer = runtime and runtime.chatTransport and runtime.chatTransport.getTimer,
     getStealTimer = runtime and runtime.chatTransport and runtime.chatTransport.getStealTimer,
   }
