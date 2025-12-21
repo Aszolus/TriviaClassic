@@ -1,11 +1,7 @@
 -- Importer for TriviaBot-format question sets into Repo
 
-local function trim(text)
-  return TriviaClassic_Trim(text)
-end
-
 local function normalizeCategory(name)
-  return trim(name):lower()
+  return TriviaClassic_Trim(name):lower()
 end
 
 local function normalizeAnswers(answerList)
@@ -63,7 +59,7 @@ function TriviaClassic_Repo_ImportTriviaBotSet(self, label, triviaTable)
         if n then
           categoryName = categories and categories[n]
         else
-          categoryName = trim(categoryIndex)
+          categoryName = TriviaClassic_Trim(categoryIndex)
         end
       end
       if not categoryName or categoryName == "" then
@@ -139,7 +135,7 @@ function TriviaClassic_Repo_ImportTriviaBotSet(self, label, triviaTable)
       end
       table.sort(catKeys)
       for _, k in ipairs(catKeys) do
-        local name = trim(categories[k])
+        local name = TriviaClassic_Trim(categories[k])
         local key = normalizeCategory(name)
         if name ~= "" and not presentKeys[key] then
           table.insert(catList, name)

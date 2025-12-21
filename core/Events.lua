@@ -29,7 +29,16 @@ function TriviaClassic_Emit(name, ...)
   local copy = {}
   for i = 1, #arr do copy[i] = arr[i] end
   for _, fn in ipairs(copy) do
-    pcall(fn, ...)
+    local ok, err = pcall(fn, ...)
+    if not ok then
+      local logger = TriviaClassic_GetLogger and TriviaClassic_GetLogger()
+      local msg = string.format("[Trivia Error] Event '%s' failed: %s", tostring(name), tostring(err))
+      if logger and logger.log then
+        logger.log(msg)
+      elseif _G and _G.print then
+        print(msg)
+      end
+    end
   end
 end
 

@@ -1,6 +1,6 @@
 dofile("core/Constants.lua")
+dofile("modes/AxisComposer.lua")
 dofile("modes/Registry.lua")
-dofile("modes/Fastest.lua")
 dofile("game/Game.lua")
 
 local function make_repo()
@@ -25,6 +25,7 @@ TC_TEST("Game Fastest mode flow", function()
     answer = runtime.answer,
   }
   local game = TriviaClassic_CreateGame(repo, store, deps)
+  game:SetModeConfig({ participation = "INDIVIDUAL", flow = "OPEN", scoring = "FASTEST" })
 
   local started = game:Start({ "set" }, 2, nil, "FASTEST")
   TC_ASSERT_TRUE(started ~= nil, "game started")

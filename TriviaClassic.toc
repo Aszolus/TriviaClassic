@@ -24,12 +24,18 @@ repo/TriviaBotImporter.lua
 repo/QuestionRepository.lua
 repo/QuestionLoader.lua
 
+modes/participation/Individual.lua
+modes/participation/Team.lua
+modes/participation/HeadToHead.lua
+modes/scoring/Fastest.lua
+modes/scoring/AllCorrect.lua
+modes/view/TeamScoreboard.lua
+modes/flow/TurnBased.lua
+modes/flow/TurnBasedSteal.lua
+modes/flow/FinalPrefix.lua
+modes/flow/Open.lua
+modes/AxisComposer.lua
 modes/Registry.lua
-modes/Fastest.lua
-modes/AllCorrect.lua
-modes/Team.lua
-modes/TeamSteal.lua
-modes/HeadToHead.lua
 
 game/Game.lua
 game/Chat.lua
@@ -41,6 +47,10 @@ ui/components/SelectableList.lua
 ui/Layout.lua
 ui/Presenter.lua
 ui/UI.lua
+ui/GamePanel.lua
+ui/OptionsPanel.lua
+ui/SetsPanel.lua
+ui/TeamsPanel.lua
 
 data/question_sets/TriviaQuestions.lua
 data/question_sets/LoreWalkersOfSilvermoon.lua

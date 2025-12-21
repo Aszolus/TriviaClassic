@@ -1,6 +1,6 @@
 dofile("core/Constants.lua")
+dofile("modes/AxisComposer.lua")
 dofile("modes/Registry.lua")
-dofile("modes/TeamSteal.lua")
 dofile("game/Game.lua")
 
 TC_TEST("Game Team Steal flow", function()
@@ -20,6 +20,7 @@ TC_TEST("Game Team Steal flow", function()
     getStealTimer = runtime.chatTransport.getStealTimer,
   }
   local game = TriviaClassic_CreateGame(repo, store, deps)
+  game:SetModeConfig({ participation = "TEAM", flow = "TURN_BASED_STEAL", scoring = "FASTEST", attempt = "SINGLE_ATTEMPT" })
   game:SetTeams(TC_MAKE_TEAM_MAP({ Alice = "alpha", Bob = "beta" }))
 
   local meta = game:Start({ "set" }, 1, nil, "TEAM_STEAL")

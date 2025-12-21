@@ -151,9 +151,9 @@ function Chat:SendQuestion(index, total, question, activeTeamName)
 end
 --- Reminds which team is active for final answers.
 ---@param teamName string|nil Team name
-function Chat:SendActiveTeamReminder(teamName)
+function Chat:SendActiveTeamReminder(teamName, modeConfig)
   local F = TriviaClassic_MessageFormatter
-  local msg = F.formatActiveTeamReminder(teamName)
+  local msg = F.formatActiveTeamReminder(teamName, modeConfig)
   if msg then self:Send(msg) end
 end
 
@@ -196,9 +196,10 @@ end
 ---@param winners table[]
 ---@param question table|nil
 ---@param mode string|nil
-function Chat:SendWinners(winners, question, mode)
+---@param modeConfig table|nil
+function Chat:SendWinners(winners, question, mode, modeConfig)
   local F = TriviaClassic_MessageFormatter
-  local msg = F.formatWinners(winners, question, mode)
+  local msg = F.formatWinners(winners, question, mode, modeConfig)
   if msg then self:Send(msg) end
 end
 
