@@ -49,10 +49,7 @@ local function ensureLeaderboardEntry(store, playerName)
   return store.leaderboard[playerName]
 end
 
-local function normalizeKey(name)
-  if not name then return nil end
-  return tostring(name):lower()
-end
+local normalizeKey = TriviaClassic_NormalizeKey
 
 local function collectTeamMembers(store, teamKey, displayName)
   local list = {}

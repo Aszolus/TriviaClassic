@@ -1,5 +1,5 @@
 local function trim(text)
-  return (text or ""):gsub("^%s+", ""):gsub("%s+$", "")
+  return TriviaClassic_Trim(text)
 end
 
 local function createButton(parent, label, width, height, onClick)

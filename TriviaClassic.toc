@@ -47,6 +47,9 @@ ui/components/SelectableList.lua
 ui/Layout.lua
 ui/Presenter.lua
 ui/UI.lua
+ui/GamePanel.lua
+ui/SetsPanel.lua
+ui/TeamsPanel.lua
 
 data/question_sets/TriviaQuestions.lua
 data/question_sets/LoreWalkersOfSilvermoon.lua

@@ -3,6 +3,13 @@
 local Answer = {}
 local MIN_SUBSTRING_LEN = 4
 
+local function stripLeadingThe(value)
+  if value and value:find("^the") then
+    return value:sub(4)
+  end
+  return value
+end
+
 --- Normalize a free-form answer string: lowercase, remove all spaces,
 --- and remove punctuation/symbols except apostrophes inside words.
 ---@param text any
@@ -44,12 +51,6 @@ end
 ---@return boolean
 function Answer.match(candidate, question)
   local norm = Answer.normalize(candidate)
-  local function stripLeadingThe(value)
-    if value and value:find("^the") then
-      return value:sub(4)
-    end
-    return value
-  end
   for _, ans in ipairs((question and question.answers) or {}) do
     local target = Answer.normalize(ans)
     if target ~= "" then

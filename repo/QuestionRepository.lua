@@ -4,14 +4,6 @@
 local Repo = {}
 Repo.__index = Repo
 
-local function trim(text)
-  return TriviaClassic_Trim(text)
-end
-
-local function normalizeCategory(name)
-  return TriviaClassic_Trim(name):lower()
-end
-
 --- Creates a new repository instance.
 ---@return Repo
 function Repo:new()
@@ -51,7 +43,9 @@ function Repo:GetAllSets()
     table.insert(list, set)
   end
   table.sort(list, function(a, b)
-    return a.title < b.title
+    local at = a.title or ""
+    local bt = b.title or ""
+    return at < bt
   end)
   return list
 end

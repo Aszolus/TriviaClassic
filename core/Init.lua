@@ -21,17 +21,9 @@ local MIN_STEAL_TIMER = 5
 local MAX_STEAL_TIMER = 120
 local DEBUG_ENABLED = false
 
-local function normalizeName(text)
-  if not text then return nil end
-  local trimmed = tostring(text):gsub("^%s+", ""):gsub("%s+$", "")
-  if trimmed == "" then return nil end
-  return trimmed
-end
-
-local function normalizeKey(text)
-  local name = normalizeName(text)
-  return name and name:lower() or nil
-end
+local normalizeName = TriviaClassic_NormalizeName
+local normalizeKey = TriviaClassic_NormalizeKey
+local clampNumber = TriviaClassic_ClampNumber
 
 local runtime = TriviaClassic_GetRuntime and TriviaClassic_GetRuntime() or nil
 
@@ -50,16 +42,7 @@ local function getDB()
 end
 
 local function clampTimerValue(seconds)
-  local n = tonumber(seconds)
-  if not n then
-    return DEFAULT_TIMER
-  end
-  if n < MIN_TIMER then
-    n = MIN_TIMER
-  elseif n > MAX_TIMER then
-    n = MAX_TIMER
-  end
-  return math.floor(n + 0.5)
+  return clampNumber(seconds, MIN_TIMER, MAX_TIMER, DEFAULT_TIMER)
 end
 
 local function normalizeAxisConfig(config)
@@ -426,16 +409,7 @@ function TriviaClassic:GetTimerBounds()
 end
 
 local function clampStealTimer(seconds)
-  local n = tonumber(seconds)
-  if not n then
-    return DEFAULT_STEAL_TIMER
-  end
-  if n < MIN_STEAL_TIMER then
-    n = MIN_STEAL_TIMER
-  elseif n > MAX_STEAL_TIMER then
-    n = MAX_STEAL_TIMER
-  end
-  return math.floor(n + 0.5)
+  return clampNumber(seconds, MIN_STEAL_TIMER, MAX_STEAL_TIMER, DEFAULT_STEAL_TIMER)
 end
 
 --- Sets the steal timer (seconds).
