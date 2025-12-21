@@ -52,24 +52,9 @@ function TriviaClassic_Repo_ImportTriviaBotSet(self, label, triviaTable)
       author = block["Author"],
     }
 
-    local keys = {}
-    for k in pairs(block["Question"] or {}) do
-      if type(k) == "number" then
-        table.insert(keys, k)
-      elseif type(k) == "string" then
-        local n = tonumber(k)
-        if n then
-          table.insert(keys, n)
-        end
-      end
-    end
-    table.sort(keys)
-
     local usedCategoryOrder, usedCategorySet = {}, {}
 
-    for _, i in ipairs(keys) do
-      local qText = block["Question"][i]
-      local categoryIndex = block["Category"] and block["Category"][i]
+    local function addQuestion(i, qText, rawAnswers, categoryIndex, pointsValue, hintsValue)
       local categoryName
       if type(categoryIndex) == "number" then
         categoryName = categories and categories[categoryIndex]
@@ -86,7 +71,6 @@ function TriviaClassic_Repo_ImportTriviaBotSet(self, label, triviaTable)
       end
 
       local categoryKey = normalizeCategory(categoryName)
-      local rawAnswers = block["Answers"] and block["Answers"][i]
 
       if not usedCategorySet[categoryKey] then
         usedCategorySet[categoryKey] = true
@@ -97,12 +81,49 @@ function TriviaClassic_Repo_ImportTriviaBotSet(self, label, triviaTable)
         question = qText,
         answers = normalizeAnswers(rawAnswers),
         displayAnswers = rawAnswers,
-        hint = block["Hints"] and block["Hints"][i] and block["Hints"][i][1],
+        hint = hintsValue and hintsValue[1],
         category = categoryName,
         categoryKey = categoryKey,
-        points = tonumber(block["Points"] and block["Points"][i]) or 1,
+        points = tonumber(pointsValue) or 1,
         sourceIndex = i,
       })
+    end
+
+    if type(block["Questions"]) == "table" then
+      for i, q in ipairs(block["Questions"]) do
+        addQuestion(
+          i,
+          q["Question"] or q.question,
+          q["Answers"] or q.answers,
+          q["Category"] or q.category,
+          q["Points"] or q.points,
+          q["Hints"] or q.hints
+        )
+      end
+    else
+      local keys = {}
+      for k in pairs(block["Question"] or {}) do
+        if type(k) == "number" then
+          table.insert(keys, k)
+        elseif type(k) == "string" then
+          local n = tonumber(k)
+          if n then
+            table.insert(keys, n)
+          end
+        end
+      end
+      table.sort(keys)
+
+      for _, i in ipairs(keys) do
+        addQuestion(
+          i,
+          block["Question"][i],
+          block["Answers"] and block["Answers"][i],
+          block["Category"] and block["Category"][i],
+          block["Points"] and block["Points"][i],
+          block["Hints"] and block["Hints"][i]
+        )
+      end
     end
 
     local catList, presentKeys = {}, {}
