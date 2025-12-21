@@ -1,6 +1,14 @@
 -- Shared answer normalization and matching utilities
 
 local Answer = {}
+local MIN_SUBSTRING_LEN = 4
+
+local function stripLeadingThe(value)
+  if value and value:find("^the") then
+    return value:sub(4)
+  end
+  return value
+end
 
 --- Normalize a free-form answer string: lowercase, remove all spaces,
 --- and remove punctuation/symbols except apostrophes inside words.
@@ -45,8 +53,19 @@ function Answer.match(candidate, question)
   local norm = Answer.normalize(candidate)
   for _, ans in ipairs((question and question.answers) or {}) do
     local target = Answer.normalize(ans)
-    if norm == target or (target ~= "" and norm:find(target, 1, true)) then
-      return true
+    if target ~= "" then
+      if norm == target or norm == stripLeadingThe(target) then
+        return true
+      end
+      if not target:find("^%d+$") then
+        if #target >= MIN_SUBSTRING_LEN and norm:find(target, 1, true) then
+          return true
+        end
+        local stripped = stripLeadingThe(target)
+        if stripped and stripped ~= "" and #stripped >= MIN_SUBSTRING_LEN and norm:find(stripped, 1, true) then
+          return true
+        end
+      end
     end
   end
   return false
