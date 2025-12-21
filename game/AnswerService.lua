@@ -44,7 +44,8 @@ end
 function Answer.match(candidate, question)
   local norm = Answer.normalize(candidate)
   for _, ans in ipairs((question and question.answers) or {}) do
-    if norm == Answer.normalize(ans) then
+    local target = Answer.normalize(ans)
+    if norm == target or (target ~= "" and norm:find(target, 1, true)) then
       return true
     end
   end

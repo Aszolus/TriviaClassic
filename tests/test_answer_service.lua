@@ -21,6 +21,11 @@ TC_TEST("Answer.match supports normalized matches", function()
   TC_ASSERT_FALSE(TriviaClassic_Answer.match("City of Stormwind", q), "token mismatch")
 end)
 
+TC_TEST("Answer.match allows answers inside longer phrases", function()
+  local q = { answers = { "Nightsaber" } }
+  TC_ASSERT_TRUE(TriviaClassic_Answer.match("It's Nightsabers!", q), "substring match")
+end)
+
 TC_TEST("Answer.match handles edge cases and punctuation", function()
   local q = { answers = { "Ner'zhul", "A-B", "C.D", "E, F", "G (H)" } }
   TC_ASSERT_TRUE(TriviaClassic_Answer.match("ner'zhul", q), "apostrophe preserved")

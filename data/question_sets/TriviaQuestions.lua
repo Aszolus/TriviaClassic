@@ -1200,7 +1200,7 @@ TriviaBot_Questions[1]['Category'][188] = 1
 TriviaBot_Questions[1]['Points'][188] = "1"
 TriviaBot_Questions[1]['Hints'][188] = {}
 
-TriviaBot_Questions[1]['Question'][189] = "Who created Stitches, the abomination in Duskwood, as a gift for Lord Ello Ebonlocke, the mayer of Darkshire?"
+TriviaBot_Questions[1]['Question'][189] = "Who created Stitches, the abomination in Duskwood, as a gift for Lord Ello Ebonlocke, the mayor of Darkshire?"
 TriviaBot_Questions[1]['Answers'][189] = {"Abercrombie the Embalmer", "Abercrombie"}
 TriviaBot_Questions[1]['Category'][189] = 1
 TriviaBot_Questions[1]['Points'][189] = "1"
@@ -1302,7 +1302,7 @@ TriviaBot_Questions[1]['Category'][205] = 3
 TriviaBot_Questions[1]['Points'][205] = "1"
 TriviaBot_Questions[1]['Hints'][205] = {}
 
-TriviaBot_Questions[1]['Question'][206] = "Which NPC at Blackrock Mountain can teleport attuned players directly into Molten Core?"
+TriviaBot_Questions[1]['Question'][206] = "Which NPC at Blackrock Mountain can teleport attuned players directly into Molten Core? (Full NPC Name)"
 TriviaBot_Questions[1]['Answers'][206] = {"Lothos Riftwaker"}
 TriviaBot_Questions[1]['Category'][206] = 1
 TriviaBot_Questions[1]['Points'][206] = "1"
