@@ -67,6 +67,23 @@ TC_TEST("Answer.match supports multiple acceptable answers", function()
   TC_ASSERT_TRUE(TriviaClassic_Answer.match("the dark portal", q), "primary answer")
 end)
 
+TC_TEST("Answer.match ignores leading 'the' in answers", function()
+  local q = { answers = { "The Dark Portal" } }
+  TC_ASSERT_TRUE(TriviaClassic_Answer.match("dark portal", q), "leading article ignored")
+end)
+
+TC_TEST("Answer.match avoids numeric substring matches", function()
+  local q = { answers = { "2" } }
+  TC_ASSERT_TRUE(TriviaClassic_Answer.match("2", q), "exact numeric match")
+  TC_ASSERT_FALSE(TriviaClassic_Answer.match("22", q), "numeric substring should not match")
+end)
+
+TC_TEST("Answer.match does not allow short answer substrings", function()
+  local q = { answers = { "at", "an" } }
+  TC_ASSERT_FALSE(TriviaClassic_Answer.match("cat", q), "short substring should not match")
+  TC_ASSERT_FALSE(TriviaClassic_Answer.match("anduin", q), "short substring should not match")
+end)
+
 TC_TEST("Answer.match handles leading/trailing punctuation", function()
   local q = { answers = { "Stranglethorn Vale" } }
   TC_ASSERT_TRUE(TriviaClassic_Answer.match("...Stranglethorn Vale!!!", q), "leading/trailing punctuation")
