@@ -1,6 +1,6 @@
 dofile("core/Constants.lua")
+dofile("modes/AxisComposer.lua")
 dofile("modes/Registry.lua")
-dofile("modes/Team.lua")
 dofile("game/Game.lua")
 
 TC_TEST("Game Team mode awards team points", function()
@@ -18,6 +18,7 @@ TC_TEST("Game Team mode awards team points", function()
     answer = runtime.answer,
   }
   local game = TriviaClassic_CreateGame(repo, store, deps)
+  game:SetModeConfig({ participation = "TEAM", flow = "OPEN", scoring = "FASTEST" })
   game:SetTeams(TC_MAKE_TEAM_MAP({ Alice = "alpha", Bob = "beta" }))
 
   local meta = game:Start({ "set" }, 1, nil, "TEAM")

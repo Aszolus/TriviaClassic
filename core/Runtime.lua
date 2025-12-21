@@ -30,6 +30,7 @@ function TriviaClassic_GetRuntime()
 end
 
 function TriviaClassic_SetRuntime(runtime)
+  -- Must be called before core/Init.lua runs; Init captures runtime-dependent singletons.
   _G.TriviaClassic_Runtime = runtime
 end
 

@@ -1,9 +1,8 @@
 dofile("core/Constants.lua")
 dofile("Repo/QuestionRepository.lua")
 dofile("game/Chat.lua")
+dofile("modes/AxisComposer.lua")
 dofile("modes/Registry.lua")
-dofile("modes/Fastest.lua")
-dofile("modes/HeadToHead.lua")
 dofile("game/Game.lua")
 
 local function find_team(list, name)

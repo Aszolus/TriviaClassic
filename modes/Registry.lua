@@ -122,19 +122,30 @@ function TriviaClassic_RegisterMode(key, handler)
   registry[key] = handler
 end
 
-local function resolveHandler(modeKey)
+local function resolveHandler(modeKey, modeConfig)
   local resolvedKey = normalizeModeKey(modeKey)
+  local axisConfig = modeConfig
+  if not axisConfig and TriviaClassic_GetModeAxisConfig then
+    axisConfig = TriviaClassic_GetModeAxisConfig(resolvedKey)
+  end
+  -- Prefer composed axis handlers, fall back to legacy registry if needed.
+  if axisConfig and TriviaClassic_BuildAxisHandler then
+    local composed = TriviaClassic_BuildAxisHandler(axisConfig, resolvedKey)
+    if composed then
+      return composed
+    end
+  end
   return registry[resolvedKey] or registry[DEFAULT_MODE]
 end
 
-function TriviaClassic_CreateModeState(modeKey)
+function TriviaClassic_CreateModeState(modeKey, modeConfig)
   local resolvedKey = normalizeModeKey(modeKey)
-  local handler = resolveHandler(resolvedKey)
+  local handler = resolveHandler(resolvedKey, modeConfig)
   return ModeContext:new(resolvedKey, handler)
 end
 
 -- Expose a resolver so other systems (Presenter/Chat) can access optional
 -- handler.view and handler.format without reimplementing registry logic.
-function TriviaClassic_GetModeHandler(modeKey)
-  return resolveHandler(modeKey)
+function TriviaClassic_GetModeHandler(modeKey, modeConfig)
+  return resolveHandler(modeKey, modeConfig)
 end

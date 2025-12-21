@@ -9,14 +9,40 @@ local channelLabels = {}
 for _, ch in ipairs(channels) do
   channelLabels[ch.key] = ch.label
 end
-local gameModes = TriviaClassic_GetGameModes()
-local modeLabels = {}
-for _, mode in ipairs(gameModes) do
-  modeLabels[mode.key] = mode.label
+local participationTypes = TriviaClassic_GetParticipationTypes()
+local flowTypes = TriviaClassic_GetFlowTypes()
+local scoringTypes = TriviaClassic_GetScoringTypes()
+local attemptTypes = TriviaClassic_GetAttemptTypes()
+local participationLabels = {}
+for _, entry in ipairs(participationTypes) do
+  participationLabels[entry.key] = entry.label
+end
+local flowLabels = {}
+for _, entry in ipairs(flowTypes) do
+  flowLabels[entry.key] = entry.label
+end
+local scoringLabels = {}
+for _, entry in ipairs(scoringTypes) do
+  scoringLabels[entry.key] = entry.label
+end
+local attemptLabels = {}
+for _, entry in ipairs(attemptTypes) do
+  attemptLabels[entry.key] = entry.label
+end
+local flowOptions = {}
+for _, entry in ipairs(flowTypes) do
+  if entry.key ~= "TURN_BASED_STEAL" then
+    table.insert(flowOptions, entry)
+  end
 end
 
 local function normalizeCategoryName(name)
   return trim(name or ""):lower()
+end
+
+local function getAxisLabel()
+  local cfg = TriviaClassic:GetGameAxisConfig()
+  return TriviaClassic_GetAxisLabel(cfg) or TriviaClassic:GetGameModeLabel()
 end
 
 -- Scoreboard UI formatting moved to ScoreboardService.lua
@@ -88,14 +114,95 @@ function UI:SetCustomChannel(name)
   end
 end
 
-function UI:SetGameMode(key)
-  local modeKey = modeLabels[key] and key or TriviaClassic_GetDefaultMode()
-  self.gameModeKey = modeKey
-  if self.modeDropDown then
-    UIDropDownMenu_SetSelectedValue(self.modeDropDown, modeKey)
-    UIDropDownMenu_SetText(self.modeDropDown, modeLabels[modeKey] or modeKey)
+function UI:ApplyAxisConstraints()
+  if not participationLabels[self.participationKey] then
+    self.participationKey = "INDIVIDUAL"
   end
-  TriviaClassic:SetGameMode(modeKey)
+  if not flowLabels[self.flowKey] then
+    self.flowKey = "OPEN"
+  end
+  if not scoringLabels[self.scoringKey] then
+    self.scoringKey = "FASTEST"
+  end
+  if not attemptLabels[self.attemptKey] then
+    self.attemptKey = "MULTI"
+  end
+  if self.flowKey ~= "TURN_BASED" then
+    self.stealAllowed = false
+  end
+  if self.participationKey == "INDIVIDUAL" and self.flowKey == "TURN_BASED" then
+    self.flowKey = "OPEN"
+    self.stealAllowed = false
+  end
+  if self.flowKey == "TURN_BASED" then
+    if self.scoringKey ~= "FASTEST" then
+      self.scoringKey = "FASTEST"
+    end
+  end
+end
+
+function UI:ComputeAxisFlow()
+  if self.flowKey == "TURN_BASED" and self.stealAllowed then
+    return "TURN_BASED_STEAL"
+  end
+  return self.flowKey
+end
+
+function UI:SyncAxisSelectors()
+  if self.participationDropDown then
+    UIDropDownMenu_SetSelectedValue(self.participationDropDown, self.participationKey)
+    UIDropDownMenu_SetText(self.participationDropDown, participationLabels[self.participationKey] or self.participationKey)
+  end
+  if self.flowDropDown then
+    UIDropDownMenu_SetSelectedValue(self.flowDropDown, self.flowKey)
+    UIDropDownMenu_SetText(self.flowDropDown, flowLabels[self.flowKey] or self.flowKey)
+  end
+  if self.scoringDropDown then
+    UIDropDownMenu_SetSelectedValue(self.scoringDropDown, self.scoringKey)
+    UIDropDownMenu_SetText(self.scoringDropDown, scoringLabels[self.scoringKey] or self.scoringKey)
+  end
+  if self.attemptDropDown then
+    UIDropDownMenu_SetSelectedValue(self.attemptDropDown, self.attemptKey)
+    UIDropDownMenu_SetText(self.attemptDropDown, attemptLabels[self.attemptKey] or self.attemptKey)
+  end
+  if self.stealCheck then
+    if self.flowKey == "TURN_BASED" then
+      self.stealCheck:Show()
+      self.stealCheck:SetChecked(self.stealAllowed and true or false)
+      self.stealCheck:Enable()
+    else
+      self.stealCheck:SetChecked(false)
+      self.stealCheck:Disable()
+      self.stealCheck:Hide()
+    end
+  end
+end
+
+function UI:SetAxisSelection(participationKey, flowKey, scoringKey, attemptKey, stealAllowed)
+  if participationKey then
+    self.participationKey = participationKey
+  end
+  if flowKey then
+    self.flowKey = flowKey
+  end
+  if scoringKey then
+    self.scoringKey = scoringKey
+  end
+  if attemptKey then
+    self.attemptKey = attemptKey
+  end
+  if stealAllowed ~= nil then
+    self.stealAllowed = stealAllowed and true or false
+  end
+  self:ApplyAxisConstraints()
+  self:SyncAxisSelectors()
+  TriviaClassic:SetGameAxisConfig({
+    participation = self.participationKey,
+    flow = self:ComputeAxisFlow(),
+    scoring = self.scoringKey,
+    attempt = self.attemptKey,
+  })
+  self:UpdateRerollControls()
 end
 
 function UI:GetTimerSeconds()
@@ -201,8 +308,8 @@ function UI:UpdateRerollControls()
   if not (self.rerollTeamButton and self.rerollTeamDropDown and self.rerollLabel) then
     return
   end
-  local mode = TriviaClassic:GetGameMode()
-  if mode ~= "HEAD_TO_HEAD" then
+  local cfg = TriviaClassic:GetGameAxisConfig()
+  if not cfg or cfg.participation ~= "HEAD_TO_HEAD" then
     self.rerollLabel:Hide()
     self.rerollTeamDropDown:Hide()
     self.rerollTeamButton:Hide()
@@ -541,8 +648,8 @@ end
 function UI:StartGame()
   local desiredCount = tonumber(self.questionCountInput and self.questionCountInput:GetText() or "")
   self:ApplyTimerInput()
-  -- Persist selected mode before starting
-  self:SetGameMode(self.gameModeKey or TriviaClassic:GetGameMode())
+  -- Persist selected axis config before starting
+  self:SetAxisSelection(self.participationKey, self.flowKey, self.scoringKey, self.attemptKey, self.stealAllowed)
   -- Build per-set categories map for all sets (default-deny when empty)
   local categoriesBySet = {}
   for _, set in ipairs(TriviaClassic:GetAllSets()) do
@@ -565,7 +672,7 @@ function UI:StartGame()
     self.skipButton:Enable()
   end
   self.warningButton:Disable()
-  self.frame.statusText:SetText(string.format("Game started (%s). %d questions ready.", meta.modeLabel or TriviaClassic:GetGameModeLabel(), meta.total))
+  self.frame.statusText:SetText(string.format("Game started (%s). %d questions ready.", meta.modeLabel or getAxisLabel(), meta.total))
   self.questionLabel:SetText("Press Next to announce Question 1.")
   self.categoryLabel:SetText("")
   local timerSeconds = self:GetTimerSeconds()
@@ -596,7 +703,7 @@ function UI:AnnounceQuestion()
   self.currentQuestion = q
   self.questionLabel:SetText(string.format("Q%d/%d: %s", index, total, q.question))
   self.categoryLabel:SetText(string.format("Category: %s  |  Points: %s", q.category or "General", tostring(q.points or 1)))
-  local modeLabel = TriviaClassic:GetGameModeLabel()
+  local modeLabel = getAxisLabel()
   if self.presenter and self.presenter.StatusQuestionAnnounced then
     self.frame.statusText:SetText(self.presenter:StatusQuestionAnnounced(activeTeamName, modeLabel, self:GetTimerSeconds()))
   else
@@ -634,54 +741,12 @@ function UI:AnnounceQuestion()
   self:RefreshPrimaryButton()
 end
 
-function UI:StartSteal()
-  local result = self.presenter and self.presenter:StartSteal() or TriviaClassic:PerformPrimaryAction("start_steal")
-  local teamName = result and result.teamName
-  local q = result and result.question or TriviaClassic:GetCurrentQuestion()
-  local activeLabel = teamName or "Next team"
-  if not q then
-    self.frame.statusText:SetText("No question available to steal.")
-    self:RefreshPrimaryButton()
-    return
-  end
-  self.currentQuestion = q
-  if self.presenter and self.presenter.StatusStealListening then
-    self.frame.statusText:SetText(self.presenter:StatusStealListening(activeLabel))
-  else
-    self.frame.statusText:SetText(string.format("%s can steal. Listening for answers...", activeLabel))
-  end
-  local timerSeconds = (self.presenter and self.presenter:GetStealTimerSeconds()) or self:GetTimerSeconds()
-  self.timerRemaining = timerSeconds
-  self.timerRunning = true
-  self.timerBar:SetMinMaxValues(0, timerSeconds)
-  self.timerBar:SetValue(timerSeconds)
-  self.timerBar:SetStatusBarColor(0.2, 0.8, 0.2)
-  self.timerText:SetText(string.format("Time: %ds (Steal)", timerSeconds))
-  self.warningButton:Enable()
-  if self.hintButton then
-    local hint = q.hint or (q.hints and q.hints[1])
-    if hint and hint ~= "" then
-      self.hintButton:Enable()
-    else
-      self.hintButton:Disable()
-    end
-  end
-  if self.skipButton then
-    self.skipButton:Enable()
-  end
-  -- Chat already sent by presenter
-  self:RefreshPrimaryButton()
-end
-
--- New: UI reaction when a steal phase starts (from presenter via event)
--- removed: mode-specific steal UI handler; handled via generic question announce
-
 function UI:AnnounceWinner()
   if not TriviaClassic:IsPendingWinner() then
     return
   end
-  local mode = TriviaClassic:GetGameMode()
-  if mode == "ALL_CORRECT" then
+  local cfg = TriviaClassic:GetGameAxisConfig()
+  if cfg and cfg.scoring == "ALL_CORRECT" then
     self.timerRunning = false
     local winners = TriviaClassic:GetPendingWinners()
     local q = TriviaClassic:GetCurrentQuestion()
@@ -784,7 +849,7 @@ function UI:OnNextPressed()
       self.currentQuestion = q
       self.questionLabel:SetText(string.format("Q%d/%d: %s", index, total, q.question))
       self.categoryLabel:SetText(string.format("Category: %s  |  Points: %s", q.category or "General", tostring(q.points or 1)))
-      local modeLabel = TriviaClassic:GetGameModeLabel()
+      local modeLabel = getAxisLabel()
       local activeTeamName = res.activeTeamName
       if self.presenter and self.presenter.StatusQuestionAnnounced then
         self.frame.statusText:SetText(self.presenter:StatusQuestionAnnounced(activeTeamName, modeLabel, res.timerSeconds or self:GetTimerSeconds()))
@@ -939,11 +1004,14 @@ end
 
 function UI:BuildUI()
   if self.frame then
-    self.gameModeKey = TriviaClassic:GetGameMode()
-    if self.modeDropDown then
-      UIDropDownMenu_SetSelectedValue(self.modeDropDown, self.gameModeKey)
-      UIDropDownMenu_SetText(self.modeDropDown, modeLabels[self.gameModeKey] or self.gameModeKey)
-    end
+    local cfg = TriviaClassic:GetGameAxisConfig()
+    self.participationKey = cfg.participation
+    self.flowKey = (cfg.flow == "TURN_BASED_STEAL") and "TURN_BASED" or cfg.flow
+    self.stealAllowed = (cfg.flow == "TURN_BASED_STEAL")
+    self.scoringKey = cfg.scoring
+    self.attemptKey = cfg.attempt or "MULTI"
+    self:ApplyAxisConstraints()
+    self:SyncAxisSelectors()
     self:SyncTimerInput()
     self:ResetTimerDisplay(self:GetTimerSeconds())
     self:RefreshSetList()
@@ -954,7 +1022,12 @@ function UI:BuildUI()
   end
 
   self.channelKey = TriviaClassic_GetDefaultChannel()
-  self.gameModeKey = TriviaClassic:GetGameMode()
+  local cfg = TriviaClassic:GetGameAxisConfig()
+  self.participationKey = cfg.participation
+  self.flowKey = (cfg.flow == "TURN_BASED_STEAL") and "TURN_BASED" or cfg.flow
+  self.stealAllowed = (cfg.flow == "TURN_BASED_STEAL")
+  self.scoringKey = cfg.scoring
+  self.attemptKey = cfg.attempt or "MULTI"
   self.selectedWaiting = {}
   self.selectedMembers = {}
 
@@ -980,13 +1053,17 @@ function UI:BuildUI()
   local function showPage(which)
     self.optionsPage:Hide()
     self.gamePage:Hide()
+    self.setsPage:Hide()
     self.teamsPage:Hide()
     if which == "options" then
       self.optionsPage:Show()
       PanelTemplates_SetTab(self.frame, 2)
+    elseif which == "sets" then
+      self.setsPage:Show()
+      PanelTemplates_SetTab(self.frame, 3)
     elseif which == "teams" then
       self.teamsPage:Show()
-      PanelTemplates_SetTab(self.frame, 3)
+      PanelTemplates_SetTab(self.frame, 4)
     else
       self.gamePage:Show()
       PanelTemplates_SetTab(self.frame, 1)
@@ -994,6 +1071,7 @@ function UI:BuildUI()
   end
   self.tabGame:SetScript("OnClick", function() showPage("game") end)
   self.tabOptions:SetScript("OnClick", function() showPage("options") end)
+  self.tabSets:SetScript("OnClick", function() showPage("sets") end)
   self.tabTeams:SetScript("OnClick", function() showPage("teams") end)
   showPage("game")
 
@@ -1013,21 +1091,72 @@ function UI:BuildUI()
     end
   end)
 
-  UIDropDownMenu_SetSelectedValue(self.modeDropDown, self.gameModeKey)
-  UIDropDownMenu_SetText(self.modeDropDown, modeLabels[self.gameModeKey] or self.gameModeKey)
-  UIDropDownMenu_Initialize(self.modeDropDown, function(_, _, _)
-    for _, mode in ipairs(gameModes) do
+  self:ApplyAxisConstraints()
+  UIDropDownMenu_Initialize(self.participationDropDown, function()
+    for _, entry in ipairs(participationTypes) do
       local info = UIDropDownMenu_CreateInfo()
-      info.text = mode.label
-      info.value = mode.key
+      info.text = entry.label
+      info.value = entry.key
       info.func = function()
-        UIDropDownMenu_SetSelectedValue(self.modeDropDown, mode.key)
-        self:SetGameMode(mode.key)
+        UIDropDownMenu_SetSelectedValue(self.participationDropDown, entry.key)
+        self:SetAxisSelection(entry.key, nil, nil, nil, nil)
       end
-      info.checked = (self.gameModeKey == mode.key)
+      info.checked = (self.participationKey == entry.key)
       UIDropDownMenu_AddButton(info)
     end
   end)
+
+  UIDropDownMenu_Initialize(self.flowDropDown, function()
+    for _, entry in ipairs(flowOptions) do
+      local info = UIDropDownMenu_CreateInfo()
+      info.text = entry.label
+      info.value = entry.key
+      info.func = function()
+        UIDropDownMenu_SetSelectedValue(self.flowDropDown, entry.key)
+        self:SetAxisSelection(nil, entry.key, nil, nil, nil)
+      end
+      info.checked = (self.flowKey == entry.key)
+      UIDropDownMenu_AddButton(info)
+    end
+  end)
+
+  UIDropDownMenu_Initialize(self.scoringDropDown, function()
+    for _, entry in ipairs(scoringTypes) do
+      if self.flowKey ~= "TURN_BASED" or entry.key == "FASTEST" then
+        local info = UIDropDownMenu_CreateInfo()
+        info.text = entry.label
+        info.value = entry.key
+        info.func = function()
+          UIDropDownMenu_SetSelectedValue(self.scoringDropDown, entry.key)
+          self:SetAxisSelection(nil, nil, entry.key, nil, nil)
+        end
+        info.checked = (self.scoringKey == entry.key)
+        UIDropDownMenu_AddButton(info)
+      end
+    end
+  end)
+
+  UIDropDownMenu_Initialize(self.attemptDropDown, function()
+    for _, entry in ipairs(attemptTypes) do
+      local info = UIDropDownMenu_CreateInfo()
+      info.text = entry.label
+      info.value = entry.key
+      info.func = function()
+        UIDropDownMenu_SetSelectedValue(self.attemptDropDown, entry.key)
+        self:SetAxisSelection(nil, nil, nil, entry.key, nil)
+      end
+      info.checked = (self.attemptKey == entry.key)
+      UIDropDownMenu_AddButton(info)
+    end
+  end)
+
+  if self.stealCheck then
+    self.stealCheck:SetScript("OnClick", function(btn)
+      self:SetAxisSelection(nil, nil, nil, nil, btn:GetChecked())
+    end)
+  end
+
+  self:SyncAxisSelectors()
 
   -- Teams tab wiring
   self:UpdateTeamUI()
@@ -1121,6 +1250,7 @@ function UI:BuildUI()
   self.endButton:SetScript("OnClick", function()
     self:EndGame()
   end)
+
 
   local ticker = CreateFrame("Frame", nil, frame)
   ticker:SetScript("OnUpdate", function(_, elapsed)

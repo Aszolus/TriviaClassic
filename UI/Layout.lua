@@ -34,15 +34,22 @@ function TriviaClassic_UI_BuildLayout(ui)
   tabOptions:SetPoint("LEFT", tabGame, "RIGHT", -14, 0)
   ui.tabOptions = tabOptions
 
-  local tabTeams = CreateFrame("Button", frame:GetName() .. "Tab3", frame, "CharacterFrameTabButtonTemplate")
-  tabTeams:SetID(3)
+  local tabSets = CreateFrame("Button", frame:GetName() .. "Tab3", frame, "CharacterFrameTabButtonTemplate")
+  tabSets:SetID(3)
+  tabSets:SetText("Sets")
+  PanelTemplates_TabResize(tabSets, 0)
+  tabSets:SetPoint("LEFT", tabOptions, "RIGHT", -14, 0)
+  ui.tabSets = tabSets
+
+  local tabTeams = CreateFrame("Button", frame:GetName() .. "Tab4", frame, "CharacterFrameTabButtonTemplate")
+  tabTeams:SetID(4)
   tabTeams:SetText("Teams")
   PanelTemplates_TabResize(tabTeams, 0)
-  tabTeams:SetPoint("LEFT", tabOptions, "RIGHT", -14, 0)
+  tabTeams:SetPoint("LEFT", tabSets, "RIGHT", -14, 0)
   ui.tabTeams = tabTeams
 
-  frame.numTabs = 3
-  PanelTemplates_SetNumTabs(frame, 3)
+  frame.numTabs = 4
+  PanelTemplates_SetNumTabs(frame, 4)
   PanelTemplates_SetTab(frame, 1)
 
   -- Pages
@@ -61,13 +68,17 @@ function TriviaClassic_UI_BuildLayout(ui)
   teamsPage:SetAllPoints(frame.InsetBg or frame)
   ui.teamsPage = teamsPage
 
-  -- Options page
-  local setLabel = optionsPage:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  local setsPage = CreateFrame("Frame", nil, frame)
+  setsPage:SetAllPoints(frame.InsetBg or frame)
+  ui.setsPage = setsPage
+
+  -- Sets page
+  local setLabel = setsPage:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   setLabel:SetPoint("TOPLEFT", originX, originY)
   setLabel:SetText("Question Sets:")
 
   -- Scrollable area for the (potentially long) list of sets and categories
-  local setScroll = CreateFrame("ScrollFrame", "TriviaClassicSetScrollFrame", optionsPage, "UIPanelScrollFrameTemplate")
+  local setScroll = CreateFrame("ScrollFrame", "TriviaClassicSetScrollFrame", setsPage, "UIPanelScrollFrameTemplate")
   setScroll:SetPoint("TOPLEFT", setLabel, "BOTTOMLEFT", 0, -6)
   setScroll:SetSize(C.leftWidth, C.setHeight)
   -- Enable mouse wheel scrolling for convenience
@@ -96,10 +107,30 @@ function TriviaClassic_UI_BuildLayout(ui)
   setScroll:SetScrollChild(setContent)
   ui.setContainer = setContent
 
+  local setCountLabel = setsPage:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  setCountLabel:SetPoint("TOPLEFT", setScroll, "BOTTOMLEFT", 0, -8)
+  setCountLabel:SetWidth(C.leftWidth)
+  setCountLabel:SetJustifyH("LEFT")
+  setCountLabel:SetText("Questions selected: 0")
+  ui.setCountLabel = setCountLabel
+
+  local questionCountLabel = setsPage:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  questionCountLabel:SetPoint("TOPLEFT", setCountLabel, "BOTTOMLEFT", 0, -6)
+  questionCountLabel:SetText("Questions this game:")
+
+  local questionCountInput = CreateFrame("EditBox", nil, setsPage, "InputBoxTemplate")
+  questionCountInput:SetSize(60, 20)
+  questionCountInput:SetPoint("LEFT", questionCountLabel, "RIGHT", 6, 0)
+  questionCountInput:SetAutoFocus(false)
+  questionCountInput:SetNumeric(true)
+  questionCountInput:SetMaxLetters(3)
+  -- Default to 10 questions instead of blank/random
+  questionCountInput:SetText("10")
+  ui.questionCountInput = questionCountInput
+
+  -- Options page
   local channelLabel = optionsPage:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  -- Place channel selection below the sets within the left column
-  -- Anchor channel controls under the scroll frame container (visual area)
-  channelLabel:SetPoint("TOPLEFT", setScroll, "BOTTOMLEFT", 0, -8)
+  channelLabel:SetPoint("TOPLEFT", originX, originY)
   channelLabel:SetText("Announce / listen channel:")
 
   local dropDown = CreateFrame("Frame", "TriviaClassicChannelDropDown", optionsPage, "UIDropDownMenuTemplate")
@@ -108,8 +139,7 @@ function TriviaClassic_UI_BuildLayout(ui)
   ui.dropDown = dropDown
 
   local customLabel = optionsPage:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  -- Keep custom channel controls stacked under the channel dropdown
-  customLabel:SetPoint("TOPLEFT", channelLabel, "BOTTOMLEFT", 0, -8)
+  customLabel:SetPoint("TOPLEFT", channelLabel, "BOTTOMLEFT", 0, -10)
   customLabel:SetText("Custom channel:")
   ui.customLabel = customLabel
 
@@ -120,37 +150,14 @@ function TriviaClassic_UI_BuildLayout(ui)
   ui.customInput = customInput
 
   local channelStatus = optionsPage:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-  channelStatus:SetPoint("TOPLEFT", customLabel, "BOTTOMLEFT", 0, -6)
-  -- Ensure status fits within the left column
+  channelStatus:SetPoint("TOPLEFT", customLabel, "BOTTOMLEFT", 0, -8)
   channelStatus:SetWidth(C.leftWidth)
   channelStatus:SetJustifyH("LEFT")
   channelStatus:SetText("Channel: Guild")
   ui.channelStatus = channelStatus
 
-  local setCountLabel = optionsPage:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  -- Move questions-selected label below the channel section
-  setCountLabel:SetPoint("TOPLEFT", channelStatus, "BOTTOMLEFT", 0, -8)
-  setCountLabel:SetWidth(C.leftWidth)
-  setCountLabel:SetJustifyH("LEFT")
-  setCountLabel:SetText("Questions selected: 0")
-  ui.setCountLabel = setCountLabel
-
-  local questionCountLabel = optionsPage:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  questionCountLabel:SetPoint("TOPLEFT", setCountLabel, "BOTTOMLEFT", 0, -6)
-  questionCountLabel:SetText("Questions this game:")
-
-  local questionCountInput = CreateFrame("EditBox", nil, optionsPage, "InputBoxTemplate")
-  questionCountInput:SetSize(60, 20)
-  questionCountInput:SetPoint("LEFT", questionCountLabel, "RIGHT", 6, 0)
-  questionCountInput:SetAutoFocus(false)
-  questionCountInput:SetNumeric(true)
-  questionCountInput:SetMaxLetters(3)
-  -- Default to 10 questions instead of blank/random
-  questionCountInput:SetText("10")
-  ui.questionCountInput = questionCountInput
-
   local timerLabel = optionsPage:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  timerLabel:SetPoint("TOPLEFT", questionCountLabel, "BOTTOMLEFT", 0, -8)
+  timerLabel:SetPoint("TOPLEFT", channelStatus, "BOTTOMLEFT", 0, -12)
   timerLabel:SetText("Timer (seconds):")
 
   local timerInput = CreateFrame("EditBox", nil, optionsPage, "InputBoxTemplate")
@@ -162,7 +169,7 @@ function TriviaClassic_UI_BuildLayout(ui)
   ui.timerInput = timerInput
 
   local stealTimerLabel = optionsPage:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  stealTimerLabel:SetPoint("TOPLEFT", timerLabel, "BOTTOMLEFT", 0, -8)
+  stealTimerLabel:SetPoint("TOPLEFT", timerLabel, "BOTTOMLEFT", 0, -10)
   stealTimerLabel:SetText("Steal timer (seconds):")
 
   local stealTimerInput = CreateFrame("EditBox", nil, optionsPage, "InputBoxTemplate")
@@ -173,22 +180,63 @@ function TriviaClassic_UI_BuildLayout(ui)
   stealTimerInput:SetMaxLetters(3)
   ui.stealTimerInput = stealTimerInput
 
-  local modeLabel = optionsPage:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  -- Place mode selection clearly below the timer input
-  modeLabel:SetPoint("TOPLEFT", timerLabel, "BOTTOMLEFT", 0, -20)
-  modeLabel:SetText("Game mode:")
+  local modeFrame = CreateFrame("Frame", nil, optionsPage, "InsetFrameTemplate")
+  modeFrame:SetPoint("TOPLEFT", stealTimerLabel, "BOTTOMLEFT", 0, -16)
+  modeFrame:SetSize(C.leftWidth, 150)
+  ui.modeFrame = modeFrame
 
-  local modeDropDown = CreateFrame("Frame", "TriviaClassicModeDropDown", optionsPage, "UIDropDownMenuTemplate")
-  modeDropDown:SetPoint("LEFT", modeLabel, "RIGHT", 4, -2)
-  UIDropDownMenu_SetWidth(modeDropDown, 240)
-  ui.modeDropDown = modeDropDown
+  local modeTitle = modeFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+  modeTitle:SetPoint("TOPLEFT", 10, -8)
+  modeTitle:SetText("Game Mode")
+  ui.modeTitle = modeTitle
 
-  local modeHint = optionsPage:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-  modeHint:SetPoint("TOPLEFT", modeLabel, "BOTTOMLEFT", 0, -4)
-  modeHint:SetWidth(C.leftWidth)
-  modeHint:SetJustifyH("LEFT")
-  modeHint:SetText("Choose how winners are scored for each question.")
-  ui.modeHint = modeHint
+  local participationLabel = modeFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  participationLabel:SetPoint("TOPLEFT", modeTitle, "BOTTOMLEFT", 0, -8)
+  participationLabel:SetText("Participants:")
+
+  local participationDropDown = CreateFrame("Frame", "TriviaClassicParticipationDropDown", modeFrame, "UIDropDownMenuTemplate")
+  participationDropDown:SetPoint("LEFT", participationLabel, "RIGHT", 6, -2)
+  UIDropDownMenu_SetWidth(participationDropDown, 180)
+  ui.participationDropDown = participationDropDown
+
+  local flowLabel = modeFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  flowLabel:SetPoint("TOPLEFT", participationLabel, "BOTTOMLEFT", 0, -10)
+  flowLabel:SetText("Answer flow:")
+
+  local flowDropDown = CreateFrame("Frame", "TriviaClassicFlowDropDown", modeFrame, "UIDropDownMenuTemplate")
+  flowDropDown:SetPoint("LEFT", flowLabel, "RIGHT", 6, -2)
+  UIDropDownMenu_SetWidth(flowDropDown, 140)
+  ui.flowDropDown = flowDropDown
+
+  local stealCheck = CreateFrame("CheckButton", nil, modeFrame, "ChatConfigCheckButtonTemplate")
+  stealCheck:SetPoint("LEFT", flowDropDown, "RIGHT", -4, 2)
+  stealCheck.Text:SetText("Allow steal")
+  ui.stealCheck = stealCheck
+
+  local scoringLabel = modeFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  scoringLabel:SetPoint("TOPLEFT", flowLabel, "BOTTOMLEFT", 0, -10)
+  scoringLabel:SetText("Scoring:")
+
+  local scoringDropDown = CreateFrame("Frame", "TriviaClassicScoringDropDown", modeFrame, "UIDropDownMenuTemplate")
+  scoringDropDown:SetPoint("LEFT", scoringLabel, "RIGHT", 6, -2)
+  UIDropDownMenu_SetWidth(scoringDropDown, 180)
+  ui.scoringDropDown = scoringDropDown
+
+  local attemptLabel = modeFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  attemptLabel:SetPoint("TOPLEFT", scoringLabel, "BOTTOMLEFT", 0, -10)
+  attemptLabel:SetText("Attempts:")
+
+  local attemptDropDown = CreateFrame("Frame", "TriviaClassicAttemptDropDown", modeFrame, "UIDropDownMenuTemplate")
+  attemptDropDown:SetPoint("LEFT", attemptLabel, "RIGHT", 6, -2)
+  UIDropDownMenu_SetWidth(attemptDropDown, 220)
+  ui.attemptDropDown = attemptDropDown
+
+  local axisHint = modeFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  axisHint:SetPoint("TOPLEFT", attemptLabel, "BOTTOMLEFT", 0, -6)
+  axisHint:SetWidth(C.leftWidth - 16)
+  axisHint:SetJustifyH("LEFT")
+  axisHint:SetText("Choose who can answer, how turns flow, and how points score.")
+  ui.axisHint = axisHint
 
   -- Removed obsolete hint label about blank/random question count
 

@@ -24,8 +24,22 @@ function F.formatStart(meta)
   local modeLabel = meta.modeLabel or "Fastest answer wins"
   local total = meta.total or 0
   local base = string.format("[Trivia] Game starting! Mode: %s. Questions: %d.", modeLabel, total)
-  if meta.mode == "TEAM_STEAL" then
-    base = base .. " Team Steal: answer with 'final: <answer>'. Others can steal after a miss/timeout using the same prefix."
+  local flow = meta.modeConfig and meta.modeConfig.flow or nil
+  local attempt = meta.modeConfig and meta.modeConfig.attempt or nil
+  if flow == "TURN_BASED_STEAL" or meta.mode == "TEAM_STEAL" then
+    if attempt == "SINGLE_ATTEMPT" then
+      base = base .. " Team Steal: answer with 'final: <answer>'. Others can steal after a miss/timeout using the same prefix."
+    else
+      base = base .. " Team Steal: active team answers; other teams can steal after a timeout."
+    end
+  elseif flow == "TURN_BASED" then
+    if attempt == "SINGLE_ATTEMPT" then
+      base = base .. " Turn-based: answer with 'final: <answer>'."
+    else
+      base = base .. " Turn-based: active team answers until time expires."
+    end
+  elseif attempt == "SINGLE_ATTEMPT" then
+    base = base .. " Final answer only: answer with 'final: <answer>' (one attempt each)."
   end
   if #base > MAX_CHAT_LEN then
     base = base:sub(1, MAX_CHAT_LEN - 3) .. "..."
@@ -61,9 +75,19 @@ function F.formatRerollParticipant(teamName, playerName, prevName)
   return string.format("[Trivia] Head-to-Head: %s now selecting %s%s", team, player, prev)
 end
 
-function F.formatActiveTeamReminder(teamName)
+function F.formatActiveTeamReminder(teamName, modeConfig)
   if teamName and teamName ~= "" then
-    return string.format("[Trivia] Waiting on %s to answer (use 'final: ...').", teamName)
+    local attempt = modeConfig and modeConfig.attempt or nil
+    if attempt == "SINGLE_ATTEMPT" then
+      return string.format("[Trivia] Waiting on %s to answer (use 'final: ...').", teamName)
+    end
+    return string.format("[Trivia] Waiting on %s to answer.", teamName)
+  end
+end
+
+function F.formatActiveTeamAnnounce(teamName)
+  if teamName and teamName ~= "" then
+    return string.format("[Trivia] Active team: %s. Get ready.", teamName)
   end
 end
 
@@ -120,12 +144,13 @@ function F.formatWinner(name, elapsed, points, teamName, teamMembers)
   end
 end
 
-function F.formatWinners(winners, question, mode)
+function F.formatWinners(winners, question, mode, modeConfig)
   if not winners or #winners == 0 then
     local answersText = question and (question.displayAnswers and table.concat(question.displayAnswers, ", ") or (question.answers and table.concat(question.answers, ", "))) or nil
     return F.formatNoWinner(answersText)
   end
-  if mode == "ALL_CORRECT" then
+  local scoring = modeConfig and modeConfig.scoring or nil
+  if scoring == "ALL_CORRECT" or mode == "ALL_CORRECT" then
     return string.format("[Trivia] Time's up! %d answered correctly: %s", #winners, formatWinnerNames(winners))
   else
     local first = winners[1]

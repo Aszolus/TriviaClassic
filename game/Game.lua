@@ -84,6 +84,7 @@ function Game:new(repo, store, deps)
     store = store,
     deps = deps or {},
     mode = normalizeModeKey(MODE_FASTEST),
+    modeConfig = nil,
     state = {
       activeSets = {},
       gameActive = false,
@@ -113,7 +114,7 @@ end
 function Game:SetMode(modeKey)
   local resolved = normalizeModeKey(modeKey)
   self.mode = resolved
-  self.state.modeState = TriviaClassic_CreateModeState(resolved)
+  self.state.modeState = TriviaClassic_CreateModeState(resolved, self:GetModeConfig())
   if self.state.modeState then
     self.state.modeState.gameRef = self
   end
@@ -123,10 +124,24 @@ function Game:GetMode()
   return normalizeModeKey(self.mode)
 end
 
+function Game:SetModeConfig(config)
+  self.modeConfig = config
+  if self.state and self.state.modeState then
+    self.state.modeState = TriviaClassic_CreateModeState(self:GetMode(), self.modeConfig)
+    if self.state.modeState then
+      self.state.modeState.gameRef = self
+    end
+  end
+end
+
+function Game:GetModeConfig()
+  return self.modeConfig
+end
+
 --- Returns the full mode handler for the current mode (logic + optional view/format).
 function Game:GetModeHandler()
   if TriviaClassic_GetModeHandler then
-    return TriviaClassic_GetModeHandler(self:GetMode())
+    return TriviaClassic_GetModeHandler(self:GetMode(), self:GetModeConfig())
   end
   return nil
 end
@@ -173,7 +188,7 @@ end
 function Game:_modeState()
   local current = self:GetMode()
   if not self.state.modeState or self.state.modeState.key ~= current then
-    self.state.modeState = TriviaClassic_CreateModeState(current)
+    self.state.modeState = TriviaClassic_CreateModeState(current, self:GetModeConfig())
     if self.state.modeState then
       self.state.modeState.gameRef = self
     end
@@ -257,6 +272,7 @@ function Game:Start(selectedIds, desiredCount, allowedCategories, modeKey)
 
   local s = self.state
   s.mode = self:GetMode()
+  s.modeConfig = self:GetModeConfig()
   s.activeSets = selectedIds
   s.gameQuestions = gameQuestions
   -- Build a reserve from the remainder of the shuffled pool. This can be large,
@@ -279,12 +295,20 @@ function Game:Start(selectedIds, desiredCount, allowedCategories, modeKey)
   modeState.lastWinnerName = nil
   modeState.lastWinnerTime = nil
 
+  local mode = self:GetMode()
+  local modeConfig = self:GetModeConfig()
+  local modeLabel = TriviaClassic_GetModeLabel(mode)
+  local mapped = TriviaClassic_GetModeKeyFromAxisConfig and TriviaClassic_GetModeKeyFromAxisConfig(modeConfig)
+  if modeConfig and TriviaClassic_GetAxisLabel and (not mapped or mapped ~= mode) then
+    modeLabel = TriviaClassic_GetAxisLabel(modeConfig) or modeLabel
+  end
   return {
     total = #gameQuestions,
     setNames = names,
     poolSize = #pool,
-    mode = self:GetMode(),
-    modeLabel = TriviaClassic_GetModeLabel(self:GetMode()),
+    mode = mode,
+    modeConfig = modeConfig,
+    modeLabel = modeLabel,
   }
 end
 

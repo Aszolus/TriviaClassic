@@ -1,6 +1,6 @@
 dofile("core/Constants.lua")
+dofile("modes/AxisComposer.lua")
 dofile("modes/Registry.lua")
-dofile("modes/HeadToHead.lua")
 dofile("game/Game.lua")
 
 TC_TEST("Game Head-to-Head enforces eligibility", function()
@@ -20,6 +20,7 @@ TC_TEST("Game Head-to-Head enforces eligibility", function()
     getTimer = runtime.chatTransport.getTimer,
   }
   local game = TriviaClassic_CreateGame(repo, store, deps)
+  game:SetModeConfig({ participation = "HEAD_TO_HEAD", flow = "OPEN", scoring = "FASTEST" })
   game:SetTeams(TC_MAKE_TEAM_MAP({ Alice = "alpha", Bob = "beta", Charlie = "charlie" }))
 
   local meta = game:Start({ "set" }, 1, nil, "HEAD_TO_HEAD")
@@ -75,7 +76,7 @@ TC_TEST("Head-to-Head uses team map and enforces eligibility", function()
   local runtime = TriviaClassic_GetRuntime()
   local db = runtime.storage.get()
   TriviaClassic.game = TriviaClassic_CreateGame(TriviaClassic.repo, db, runtime)
-  TriviaClassic:SetGameMode("HEAD_TO_HEAD")
+  TriviaClassic:SetGameAxisConfig({ participation = "HEAD_TO_HEAD", flow = "OPEN", scoring = "FASTEST" })
 
   local meta = TriviaClassic:StartGame({ "Test Set" }, 1, nil)
   TC_ASSERT_TRUE(meta ~= nil, "game started")
@@ -122,6 +123,7 @@ TC_TEST("Head-to-Head rotates and reshuffles per team", function()
   local runtime = TriviaClassic_GetRuntime()
   local deps = { clock = runtime.clock, date = runtime.date, answer = runtime.answer, getTimer = runtime.chatTransport.getTimer }
   local game = TriviaClassic_CreateGame(repo, store, deps)
+  game:SetModeConfig({ participation = "HEAD_TO_HEAD", flow = "OPEN", scoring = "FASTEST" })
   game:SetTeams(TC_MAKE_TEAM_MAP({ Alice = "alpha", Bob = "alpha", Cara = "alpha", Xena = "beta", Yuri = "beta" }))
 
   local queue = { 1, 1, 1, 1, 1, 3, 2, 2, 1, 1, 1 }
@@ -189,6 +191,7 @@ TC_TEST("Head-to-Head skips removed members", function()
   local runtime = TriviaClassic_GetRuntime()
   local deps = { clock = runtime.clock, date = runtime.date, answer = runtime.answer, getTimer = runtime.chatTransport.getTimer }
   local game = TriviaClassic_CreateGame(repo, store, deps)
+  game:SetModeConfig({ participation = "HEAD_TO_HEAD", flow = "OPEN", scoring = "FASTEST" })
   game:SetTeams(TC_MAKE_TEAM_MAP({ Alice = "alpha", Bob = "alpha", Cara = "alpha", Xena = "beta" }))
 
   local queue = { 1, 1, 1, 1, 3, 2 }
@@ -236,6 +239,7 @@ TC_TEST("Head-to-Head rerolls a single team participant", function()
   local runtime = TriviaClassic_GetRuntime()
   local deps = { clock = runtime.clock, date = runtime.date, answer = runtime.answer, getTimer = runtime.chatTransport.getTimer }
   local game = TriviaClassic_CreateGame(repo, store, deps)
+  game:SetModeConfig({ participation = "HEAD_TO_HEAD", flow = "OPEN", scoring = "FASTEST" })
   game:SetTeams(TC_MAKE_TEAM_MAP({ Alice = "alpha", Bob = "alpha", Xena = "beta" }))
 
   local queue = { 1, 1, 1 }

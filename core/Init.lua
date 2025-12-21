@@ -62,6 +62,51 @@ local function clampTimerValue(seconds)
   return math.floor(n + 0.5)
 end
 
+local function normalizeAxisConfig(config)
+  if type(config) ~= "table" then
+    return nil
+  end
+  local participation = config.participation
+  local flow = config.flow
+  local scoring = config.scoring
+  local attempt = config.attempt
+  if not TriviaClassic_IsValidParticipation(participation) then
+    participation = nil
+  end
+  if not TriviaClassic_IsValidFlow(flow) then
+    flow = nil
+  end
+  if not TriviaClassic_IsValidScoring(scoring) then
+    scoring = nil
+  end
+  if not TriviaClassic_IsValidAttempt(attempt) then
+    attempt = nil
+  end
+  if not participation or not flow or not scoring then
+    return nil
+  end
+  if not attempt then
+    attempt = "MULTI"
+  end
+  return {
+    participation = participation,
+    flow = flow,
+    scoring = scoring,
+    attempt = attempt,
+  }
+end
+
+local function ensureAxisConfig(db)
+  local normalized = normalizeAxisConfig(db.modeConfig)
+  if normalized then
+    db.modeConfig = normalized
+    return normalized
+  end
+  local fallback = TriviaClassic_GetModeAxisConfig(db.mode or TriviaClassic_GetDefaultMode())
+  db.modeConfig = fallback
+  return fallback
+end
+
 local function ensureTeamStore()
   local db = getDB()
   db.teams = db.teams or { teams = {}, playerTeam = {}, waiting = {} }
@@ -89,11 +134,12 @@ local function initDatabase()
   if not db.mode or not MODE_MAP[db.mode] then
     db.mode = TriviaClassic_GetDefaultMode()
   end
+  ensureAxisConfig(db)
   db.timer = clampTimerValue(db.timer or DEFAULT_TIMER)
+  ensureTeamStore()
   if not db.teams.config.stealTimer then
     db.teams.config.stealTimer = DEFAULT_STEAL_TIMER
   end
-  ensureTeamStore()
 end
 
 local function initGame()
@@ -106,6 +152,7 @@ local function initGame()
   }
   TriviaClassic.game = TriviaClassic_CreateGame(TriviaClassic.repo, getDB(), deps)
   TriviaClassic.game:SetMode(TriviaClassic:GetGameMode())
+  TriviaClassic.game:SetModeConfig(TriviaClassic:GetGameAxisConfig())
 end
 
 --- Returns all registered question sets.
@@ -147,8 +194,12 @@ function TriviaClassic:SetGameMode(modeKey)
   end
   local db = getDB()
   db.mode = modeKey
+  db.modeConfig = TriviaClassic_GetModeAxisConfig(modeKey)
   if self.game and self.game.SetMode then
     self.game:SetMode(modeKey)
+    if self.game.SetModeConfig then
+      self.game:SetModeConfig(db.modeConfig)
+    end
   end
 end
 
@@ -162,6 +213,38 @@ function TriviaClassic:GetGameMode()
     return modeKey
   end
   return TriviaClassic_GetDefaultMode()
+end
+
+--- Sets the axis-based game config (participation/flow/scoring).
+---@param config table
+function TriviaClassic:SetGameAxisConfig(config)
+  local db = getDB()
+  local normalized = normalizeAxisConfig(config)
+  if not normalized then
+    normalized = TriviaClassic_GetModeAxisConfig(self:GetGameMode())
+  end
+  db.modeConfig = normalized
+  local mappedMode = TriviaClassic_GetModeKeyFromAxisConfig(normalized)
+  if mappedMode then
+    db.mode = mappedMode
+  end
+  if self.game and self.game.SetModeConfig then
+    self.game:SetModeConfig(normalized)
+    if mappedMode and self.game.SetMode then
+      self.game:SetMode(mappedMode)
+    end
+  end
+end
+
+--- Gets the axis-based game config (participation/flow/scoring).
+---@return table
+function TriviaClassic:GetGameAxisConfig()
+  local db = getDB()
+  local normalized = normalizeAxisConfig(db.modeConfig)
+  if not normalized then
+    normalized = ensureAxisConfig(db)
+  end
+  return normalized
 end
 
 --- Returns the display label for the current mode.

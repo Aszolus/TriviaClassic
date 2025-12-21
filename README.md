@@ -10,18 +10,16 @@ Getting Started
 - Channel: pick Guild/Party/Raid/Say/Yell or a custom channel (joins automatically).
 - Sets & categories: choose which question sets/categories to include; the question counter updates live.
 - Timer: set the per-question timer (clamped to allowed min/max).
-- Steal timer: for Team Steal mode, set a separate timer used during steal attempts.
-- Mode: select a game mode (see below); the choice is saved per character.
+- Steal timer: for turn-based games with stealing, set a separate timer used during steal attempts.
+- Game config: choose participants, answer flow, and scoring; the choice is saved per character.
 - Start: click **Start**, then **Next** to announce questions. Use **Skip** to replace a question. Click **Announce Winner/Results** after timeouts.
 - Answers: players respond in the configured channel; correct answers are detected automatically.
 
-Game Modes
-----------
-- Fastest: first correct answer wins the question.
-- All Correct: all players who answer correctly before time expires score points; results are announced when time is up.
-- Team: credits the answering player’s team; announcements include team name and members.
-- Team Steal: active team must answer with `final:`; on wrong/timeout, another team can steal the same question with the same timer.
-New modes can be added by registering a handler under `GameModes/` (one file per mode, see existing examples).
+Game Configuration
+------------------
+- Participants: Individual, Team (all members), or Head-to-Head (one rep per team).
+- Flow: Open or Turn-based (optionally allow steals in turn-based).
+- Scoring: Fastest wins or All-correct scores (open flow only).
 
 Teams (optional)
 ----------------
@@ -51,10 +49,10 @@ Files & Structure
   - `repo/QuestionRepository.lua`: set storage and pool building
   - `repo/QuestionLoader.lua`: entry point for bundled sets
   - `repo/TriviaBotImporter.lua`: TriviaBot-format importer
-- `modes/` — encapsulated game modes (one file per mode)
-  - `modes/Registry.lua`: mode registration and resolver
-  - `modes/Fastest.lua`, `modes/AllCorrect.lua`, `modes/Team.lua`, `modes/TeamSteal.lua`
-    - Each mode can provide: `logic` (required), `view` (optional), `format` (optional)
+- `modes/` — composed axes (participation, flow, scoring)
+  - `modes/Registry.lua`: resolver for composed handlers
+  - `modes/AxisComposer.lua`: builds handlers from axis config
+  - `modes/participation/`, `modes/flow/`, `modes/scoring/`, `modes/view/`
 - `ui/` — thin view + presenter orchestration
   - `ui/Layout.lua`, `ui/Constants.lua`, `ui/Helpers.lua`
   - `ui/components/SelectableList.lua`
@@ -65,23 +63,11 @@ Files & Structure
 
 Development Notes
 -----------------
-Adding a Mode (encapsulated)
-- Create `modes/YourMode.lua` and call `TriviaClassic_RegisterMode("YOUR_MODE", handler)`.
-- Provide logic handlers:
-  - `createState()` — returns per-mode context
-  - `beginQuestion(ctx, game)` — reset flags at question start
-  - `evaluateAnswer(game, ctx, sender, rawMsg)` — enforce eligibility and use AnswerService
-    - Example: `local A = TriviaClassic_Answer; local msg = A.extract(rawMsg,{requiredPrefix="final:"}); if msg and A.match(msg, game:GetCurrentQuestion()) then ... end`
-  - `handleCorrect(game, ctx, sender, elapsed)` — record result and set pending flags
-  - `onTimeout(game, ctx)` — rotate or finalize when window expires
-  - Optional: `pendingWinners`, `winnerCount`, `resetProgress`, `onSkip`
-- Provide view hooks (optional):
-  - `view.primaryAction(game, ctx) -> {label, enabled, command}`
-  - `view.getQuestionTimerSeconds(game, ctx) -> number` (e.g., return a different timer for reuse windows)
-  - `view.scoreboardRows(game) -> rows, fastestName, fastestTime` (team/solo rows)
-  - Optional status text helpers like `view.onWinnerFound(game, ctx, result)`
-- Provide format hooks (optional): override pieces of MessageFormatter
-  - e.g., `format.formatQuestion(index,total,question,active)` or `format.formatWinners(winners, question)`
+Adding an axis component
+- Participation modules define eligibility and optional pre-advance hooks.
+- Flow modules manage question timing and turn logic (open vs turn-based).
+- Scoring modules implement fastest/all-correct point logic.
+- Axis composition happens in `modes/AxisComposer.lua`.
 
 Answer Policy (shared)
 - All modes share the same normalization/matching via `TriviaClassic_Answer`:

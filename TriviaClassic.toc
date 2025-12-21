@@ -24,12 +24,18 @@ repo/TriviaBotImporter.lua
 repo/QuestionRepository.lua
 repo/QuestionLoader.lua
 
+modes/participation/Individual.lua
+modes/participation/Team.lua
+modes/participation/HeadToHead.lua
+modes/scoring/Fastest.lua
+modes/scoring/AllCorrect.lua
+modes/view/TeamScoreboard.lua
+modes/flow/TurnBased.lua
+modes/flow/TurnBasedSteal.lua
+modes/flow/FinalPrefix.lua
+modes/flow/Open.lua
+modes/AxisComposer.lua
 modes/Registry.lua
-modes/Fastest.lua
-modes/AllCorrect.lua
-modes/Team.lua
-modes/TeamSteal.lua
-modes/HeadToHead.lua
 
 game/Game.lua
 game/Chat.lua

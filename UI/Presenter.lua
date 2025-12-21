@@ -25,6 +25,12 @@ local function getFormatter(game)
   return defaultF
 end
 
+local function isTurnBased(trivia)
+  local cfg = trivia and trivia.GetGameAxisConfig and trivia:GetGameAxisConfig()
+  local flow = cfg and cfg.flow
+  return flow == "TURN_BASED" or flow == "TURN_BASED_STEAL"
+end
+
 --- Starts a game and broadcasts to chat.
 ---@param desiredCount integer|nil
 ---@param categoriesBySet table|nil Per-set map of allowed category keys
@@ -78,6 +84,7 @@ function Presenter:AnnounceQuestion()
   if q and index and total then
     local activeTeamName = select(1, self.trivia:GetActiveTeam())
     local F = getFormatter(self.trivia and self.trivia.game)
+    local modeConfig = self.trivia.GetGameAxisConfig and self.trivia:GetGameAxisConfig() or nil
     self.trivia.chat:Send(F.formatQuestion(index, total, q, activeTeamName))
   end
   return result
@@ -130,12 +137,22 @@ function Presenter:OnPrimaryPressed()
           return res
         end
       end
+      if res and res.announceActiveTeam then
+        local F = getFormatter(self.trivia and self.trivia.game)
+        local msg = (F.formatActiveTeamAnnounce and F.formatActiveTeamAnnounce(res.announceActiveTeam))
+          or F.formatActiveTeamReminder(res.announceActiveTeam)
+        if msg then
+          self.trivia.chat:Send(msg)
+        end
+        return res
+      end
       if res and (res.command == "announce_question" or res.question) then
         local q = res.question or (self.trivia and self.trivia:GetCurrentQuestion())
         local idx = res.index or (self.trivia and select(1, self.trivia:GetCurrentQuestionIndex()))
         local total = res.total or (self.trivia and select(2, self.trivia:GetCurrentQuestionIndex()))
         local activeTeamName = select(1, self.trivia:GetActiveTeam())
         local F = getFormatter(self.trivia and self.trivia.game)
+        local modeConfig = self.trivia.GetGameAxisConfig and self.trivia:GetGameAxisConfig() or nil
         self.trivia.chat:Send(F.formatQuestion(idx or 0, total or 0, q, activeTeamName))
         local seconds = self:GetQuestionTimerSeconds()
         return { question = q, index = idx, total = total, timerSeconds = seconds, activeTeamName = activeTeamName }
@@ -150,7 +167,7 @@ function Presenter:AnnounceWinner()
   local winners = self.trivia:GetPendingWinners()
   local q = self.trivia:GetCurrentQuestion()
   if winners and #winners > 0 then
-    local msg = F.formatWinners(winners, q, self.trivia:GetGameMode())
+    local msg = F.formatWinners(winners, q, self.trivia:GetGameMode(), self.trivia:GetGameAxisConfig())
     if msg then self.trivia.chat:Send(msg) end
     local result = self.trivia:PerformPrimaryAction("announce_winner")
     return result

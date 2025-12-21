@@ -1,6 +1,6 @@
 dofile("core/Constants.lua")
+dofile("modes/AxisComposer.lua")
 dofile("modes/Registry.lua")
-dofile("modes/AllCorrect.lua")
 dofile("game/Game.lua")
 
 TC_TEST("Game All Correct credits multiple winners", function()
@@ -16,6 +16,7 @@ TC_TEST("Game All Correct credits multiple winners", function()
     answer = runtime.answer,
   }
   local game = TriviaClassic_CreateGame(repo, store, deps)
+  game:SetModeConfig({ participation = "INDIVIDUAL", flow = "OPEN", scoring = "ALL_CORRECT" })
   local meta = game:Start({ "set" }, 1, nil, "ALL_CORRECT")
   TC_ASSERT_TRUE(meta ~= nil, "game started")
   game:NextQuestion()
