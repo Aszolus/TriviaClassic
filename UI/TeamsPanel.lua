@@ -21,7 +21,7 @@ function UI:SetSelectedTeam(teamKey)
 end
 
 function UI:RefreshTeamDropdown()
-  local teams = TriviaClassic:GetTeams() or {}
+  local teams = (self.presenter and self.presenter.GetTeams and self.presenter:GetTeams()) or TriviaClassic:GetTeams() or {}
   self.teamNameByKey = {}
   self.teamDataByKey = {}
   for _, t in ipairs(teams) do
@@ -51,7 +51,7 @@ function UI:RefreshTeamList()
   if not self.teamList then
     return
   end
-  local teams = TriviaClassic:GetTeams() or {}
+  local teams = (self.presenter and self.presenter.GetTeams and self.presenter:GetTeams()) or TriviaClassic:GetTeams() or {}
   local lines = {}
   for _, team in ipairs(teams) do
     local members = team.members or {}
@@ -70,7 +70,7 @@ function UI:RefreshWaitingList()
   if not self.waitingContent then
     return
   end
-  local waiting = TriviaClassic:GetWaitingPlayers() or {}
+  local waiting = (self.presenter and self.presenter.GetWaitingPlayers and self.presenter:GetWaitingPlayers()) or TriviaClassic:GetWaitingPlayers() or {}
   table.sort(waiting, function(a, b) return a:lower() < b:lower() end)
   self.waitingNames = waiting
   self.selectedWaiting = self.selectedWaiting or {}
@@ -126,7 +126,11 @@ function UI:AddTeam()
     if self.teamStatus then self.teamStatus:SetText("|cffff5050Enter a team name.|r") end
     return
   end
-  TriviaClassic:AddTeam(name)
+  if self.presenter and self.presenter.AddTeam then
+    self.presenter:AddTeam(name)
+  else
+    TriviaClassic:AddTeam(name)
+  end
   if self.teamNameInput then self.teamNameInput:SetText("") end
   if self.teamStatus then self.teamStatus:SetText("|cff20ff20Team added.|r") end
   self:UpdateTeamUI()
@@ -138,7 +142,11 @@ function UI:RemoveTeam()
     return
   end
   local teamName = self.teamNameByKey and self.teamNameByKey[self.selectedTeamKey] or self.selectedTeamKey
-  TriviaClassic:RemoveTeam(teamName)
+  if self.presenter and self.presenter.RemoveTeam then
+    self.presenter:RemoveTeam(teamName)
+  else
+    TriviaClassic:RemoveTeam(teamName)
+  end
   self.selectedTeamKey = nil
   if self.teamStatus then self.teamStatus:SetText("|cff20ff20Team removed.|r") end
   self:UpdateTeamUI()
@@ -158,8 +166,16 @@ function UI:MoveWaitingToTeam()
   end
   local teamName = self.teamNameByKey and self.teamNameByKey[self.selectedTeamKey] or self.selectedTeamKey
   for name in pairs(selections) do
-    TriviaClassic:AddPlayerToTeam(name, teamName)
-    TriviaClassic:UnregisterPlayer(name)
+    if self.presenter and self.presenter.AddPlayerToTeam then
+      self.presenter:AddPlayerToTeam(name, teamName)
+    else
+      TriviaClassic:AddPlayerToTeam(name, teamName)
+    end
+    if self.presenter and self.presenter.UnregisterPlayer then
+      self.presenter:UnregisterPlayer(name)
+    else
+      TriviaClassic:UnregisterPlayer(name)
+    end
   end
   if self.teamStatus then self.teamStatus:SetText("|cff20ff20Moved selected players to team.|r") end
   self.selectedWaiting = {}
@@ -175,7 +191,11 @@ function UI:RemoveWaiting()
     return
   end
   for name in pairs(selections) do
-    TriviaClassic:UnregisterPlayer(name)
+    if self.presenter and self.presenter.UnregisterPlayer then
+      self.presenter:UnregisterPlayer(name)
+    else
+      TriviaClassic:UnregisterPlayer(name)
+    end
   end
   if self.teamStatus then self.teamStatus:SetText("|cff20ff20Removed selected registrations.|r") end
   self.selectedWaiting = {}
@@ -195,8 +215,16 @@ function UI:RemoveMembersToWaiting()
     return
   end
   for name in pairs(selections) do
-    TriviaClassic:RemovePlayerFromTeam(name)
-    TriviaClassic:RegisterPlayer(name)
+    if self.presenter and self.presenter.RemovePlayerFromTeam then
+      self.presenter:RemovePlayerFromTeam(name)
+    else
+      TriviaClassic:RemovePlayerFromTeam(name)
+    end
+    if self.presenter and self.presenter.RegisterPlayer then
+      self.presenter:RegisterPlayer(name)
+    else
+      TriviaClassic:RegisterPlayer(name)
+    end
   end
   self.selectedMembers = {}
   if self.teamStatus then self.teamStatus:SetText("|cff20ff20Moved selected members back to registered list.|r") end

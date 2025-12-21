@@ -48,6 +48,7 @@ ui/Layout.lua
 ui/Presenter.lua
 ui/UI.lua
 ui/GamePanel.lua
+ui/OptionsPanel.lua
 ui/SetsPanel.lua
 ui/TeamsPanel.lua
 

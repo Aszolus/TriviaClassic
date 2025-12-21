@@ -4,11 +4,6 @@ if not UI then
   TriviaClassicUI = UI
 end
 
-local function getAxisLabel()
-  local cfg = TriviaClassic:GetGameAxisConfig()
-  return TriviaClassic_GetAxisLabel(cfg) or TriviaClassic:GetGameModeLabel()
-end
-
 function UI:RefreshPrimaryButton()
   if not self.nextButton then
     return
@@ -110,6 +105,65 @@ function UI:ShowAllTimeScores()
   if self.presenter then self.presenter:ShowAllTimeScores() end
 end
 
+function UI:GetCurrentTimerRemaining()
+  local remaining = nil
+  if self.timerRunning and self.timerService and self.timerService.remaining then
+    remaining = self.timerService.remaining
+  elseif self.timerBar and self.timerBar.GetValue then
+    remaining = self.timerBar:GetValue()
+  end
+  if remaining and remaining >= 0 then
+    return math.ceil(remaining)
+  end
+end
+
+function UI:ResetTimerDisplay(seconds)
+  local secs = tonumber(seconds) or self:GetTimerSeconds()
+  self.timerRemaining = secs
+  self.timerRunning = false
+  if self.timerBar then
+    self.timerBar:SetMinMaxValues(0, secs)
+    self.timerBar:SetValue(secs)
+    self.timerBar:SetStatusBarColor(0.2, 0.8, 0.2)
+  end
+  if self.timerText then
+    self.timerText:SetText(string.format("Time: %ds", secs))
+  end
+end
+
+function UI:StartGame()
+  local desiredCount = tonumber(self.questionCountInput and self.questionCountInput:GetText() or "")
+  self:ApplyTimerInput()
+  -- Persist selected axis config before starting
+  self:SetAxisSelection(self.participationKey, self.flowKey, self.scoringKey, self.attemptKey, self.stealAllowed)
+  -- Build per-set categories map for all sets (default-deny when empty)
+  local categoriesBySet = self.BuildSelectedCategoriesBySet and self:BuildSelectedCategoriesBySet() or {}
+  local meta = self.presenter and self.presenter:StartGame(desiredCount, categoriesBySet) or TriviaClassic:StartGame({}, desiredCount, categoriesBySet)
+  if not meta then
+    print("|cffff5050TriviaClassic: No questions available.|r")
+    return
+  end
+
+  self:RefreshPrimaryButton()
+  if self.skipButton then
+    self.skipButton:Enable()
+  end
+  self.warningButton:Disable()
+  self.frame.statusText:SetText(string.format("Game started (%s). %d questions ready.", meta.modeLabel or self:GetAxisLabel(), meta.total))
+  self.questionLabel:SetText("Press Next to announce Question 1.")
+  self.categoryLabel:SetText("")
+  local timerSeconds = self:GetTimerSeconds()
+  self:ResetTimerDisplay(timerSeconds)
+  self.timerRunning = false
+  self.questionNumber = 0
+  self:UpdateSessionBoard()
+  self:UpdateRerollControls()
+  -- Chat already sent by presenter
+  if self.endButton then
+    self.endButton:Enable()
+  end
+end
+
 function UI:AnnounceQuestion()
   local result = self.presenter and self.presenter:AnnounceQuestion() or TriviaClassic:PerformPrimaryAction("announce_question")
   local q = result and result.question
@@ -126,7 +180,7 @@ function UI:AnnounceQuestion()
   self.currentQuestion = q
   self.questionLabel:SetText(string.format("Q%d/%d: %s", index, total, q.question))
   self.categoryLabel:SetText(string.format("Category: %s  |  Points: %s", q.category or "General", tostring(q.points or 1)))
-  local modeLabel = getAxisLabel()
+  local modeLabel = self:GetAxisLabel()
   if self.presenter and self.presenter.StatusQuestionAnnounced then
     self.frame.statusText:SetText(self.presenter:StatusQuestionAnnounced(activeTeamName, modeLabel, self:GetTimerSeconds()))
   else
@@ -172,15 +226,18 @@ function UI:AnnounceWinner()
   if cfg and cfg.scoring == "ALL_CORRECT" then
     self.timerRunning = false
     local winners = TriviaClassic:GetPendingWinners()
-    local q = TriviaClassic:GetCurrentQuestion()
+    local result = nil
     if winners and #winners > 0 then
-      if self.presenter then self.presenter:AnnounceWinner() end
+      if self.presenter and self.presenter.AnnounceWinner then
+        result = self.presenter:AnnounceWinner()
+      else
+        result = TriviaClassic:PerformPrimaryAction("announce_winner")
+      end
       self.frame.statusText:SetText("Results announced. Click Next for the next question.")
     else
       self:AnnounceNoWinner()
       return
     end
-    local result = TriviaClassic:PerformPrimaryAction("announce_winner")
     local finished = result and result.finished
     if finished then
       self.frame.statusText:SetText("Results announced. Click End to finish.")
@@ -272,7 +329,7 @@ function UI:OnNextPressed()
       self.currentQuestion = q
       self.questionLabel:SetText(string.format("Q%d/%d: %s", index, total, q.question))
       self.categoryLabel:SetText(string.format("Category: %s  |  Points: %s", q.category or "General", tostring(q.points or 1)))
-      local modeLabel = getAxisLabel()
+      local modeLabel = self:GetAxisLabel()
       local activeTeamName = res.activeTeamName
       if self.presenter and self.presenter.StatusQuestionAnnounced then
         self.frame.statusText:SetText(self.presenter:StatusQuestionAnnounced(activeTeamName, modeLabel, res.timerSeconds or self:GetTimerSeconds()))
@@ -392,14 +449,18 @@ function UI:UpdateTimer(elapsed)
   local snap = self.timerService and self.timerService:Tick(elapsed) or { remaining = 0, expired = true, color = "red" }
   if snap.expired then
     self.timerRunning = false
-    TriviaClassic:MarkTimeout()
+    if self.presenter and self.presenter.MarkTimeout then
+      self.presenter:MarkTimeout()
+    else
+      TriviaClassic:MarkTimeout()
+    end
     self.timerBar:SetValue(0)
     self.timerText:SetText("Time: 0s")
     self.timerBar:SetStatusBarColor(0.7, 0.1, 0.1)
     self.warningButton:Disable()
     if self.hintButton then self.hintButton:Disable() end
     if self.skipButton then self.skipButton:Disable() end
-    local action = TriviaClassic:GetPrimaryAction()
+    local action = (self.presenter and self.presenter:PrimaryAction()) or TriviaClassic:GetPrimaryAction()
     if self.presenter and self.presenter.StatusTimeExpired then
       self.frame.statusText:SetText(self.presenter:StatusTimeExpired(action and action.command, TriviaClassic:IsPendingWinner()))
     else

@@ -10,11 +10,6 @@ local function normalizeCategoryName(name)
   return trim(name or ""):lower()
 end
 
-local function getAxisLabel()
-  local cfg = TriviaClassic:GetGameAxisConfig()
-  return TriviaClassic_GetAxisLabel(cfg) or TriviaClassic:GetGameModeLabel()
-end
-
 function UI:RefreshSetList()
   if not self.setContainer then
     return
@@ -117,12 +112,7 @@ function UI:UpdateQuestionCount()
   end
 end
 
-function UI:StartGame()
-  local desiredCount = tonumber(self.questionCountInput and self.questionCountInput:GetText() or "")
-  self:ApplyTimerInput()
-  -- Persist selected axis config before starting
-  self:SetAxisSelection(self.participationKey, self.flowKey, self.scoringKey, self.attemptKey, self.stealAllowed)
-  -- Build per-set categories map for all sets (default-deny when empty)
+function UI:BuildSelectedCategoriesBySet()
   local categoriesBySet = {}
   for _, set in ipairs(TriviaClassic:GetAllSets()) do
     categoriesBySet[set.id] = {}
@@ -133,28 +123,5 @@ function UI:StartGame()
       end
     end
   end
-  local meta = self.presenter and self.presenter:StartGame(desiredCount, categoriesBySet) or TriviaClassic:StartGame({}, desiredCount, categoriesBySet)
-  if not meta then
-    print("|cffff5050TriviaClassic: No questions available.|r")
-    return
-  end
-
-  self:RefreshPrimaryButton()
-  if self.skipButton then
-    self.skipButton:Enable()
-  end
-  self.warningButton:Disable()
-  self.frame.statusText:SetText(string.format("Game started (%s). %d questions ready.", meta.modeLabel or getAxisLabel(), meta.total))
-  self.questionLabel:SetText("Press Next to announce Question 1.")
-  self.categoryLabel:SetText("")
-  local timerSeconds = self:GetTimerSeconds()
-  self:ResetTimerDisplay(timerSeconds)
-  self.timerRunning = false
-  self.questionNumber = 0
-  self:UpdateSessionBoard()
-  self:UpdateRerollControls()
-  -- Chat already sent by presenter
-  if self.endButton then
-    self.endButton:Enable()
-  end
+  return categoriesBySet
 end

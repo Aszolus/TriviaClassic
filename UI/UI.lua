@@ -2,238 +2,11 @@ local UI = {}
 TriviaClassicUI = UI
 
 local trim = TriviaClassic_UI_Trim
-local channels = TriviaClassic_GetChannels()
-local channelLabels = {}
-for _, ch in ipairs(channels) do
-  channelLabels[ch.key] = ch.label
-end
-local participationTypes = TriviaClassic_GetParticipationTypes()
-local flowTypes = TriviaClassic_GetFlowTypes()
-local scoringTypes = TriviaClassic_GetScoringTypes()
-local attemptTypes = TriviaClassic_GetAttemptTypes()
-local participationLabels = {}
-for _, entry in ipairs(participationTypes) do
-  participationLabels[entry.key] = entry.label
-end
-local flowLabels = {}
-for _, entry in ipairs(flowTypes) do
-  flowLabels[entry.key] = entry.label
-end
-local scoringLabels = {}
-for _, entry in ipairs(scoringTypes) do
-  scoringLabels[entry.key] = entry.label
-end
-local attemptLabels = {}
-for _, entry in ipairs(attemptTypes) do
-  attemptLabels[entry.key] = entry.label
-end
-local flowOptions = {}
-for _, entry in ipairs(flowTypes) do
-  if entry.key ~= "TURN_BASED_STEAL" then
-    table.insert(flowOptions, entry)
-  end
-end
 
-function UI:SetChannel(key)
-  key = key or TriviaClassic_GetDefaultChannel()
-  self.channelKey = key
-
-  if key == "CUSTOM" then
-    if self.customLabel then self.customLabel:Show() end
-    if self.customInput then self.customInput:Show() end
-    local name = trim(self.customInput and self.customInput:GetText() or "")
-    self:SetCustomChannel(name ~= "" and name or nil)
-  else
-    if self.customLabel then self.customLabel:Hide() end
-    if self.customInput then self.customInput:Hide() end
-    TriviaClassic:SetChannel(key)
-    if self.channelStatus then
-      self.channelStatus:SetText("Channel: " .. (channelLabels[key] or key))
-    end
-  end
-end
-
-function UI:SetCustomChannel(name)
-  name = trim(name or "")
-  self.channelKey = "CUSTOM"
-  if self.dropDown then
-    UIDropDownMenu_SetSelectedValue(self.dropDown, "CUSTOM")
-  end
-  if name == "" then
-    TriviaClassic:SetChannel("CUSTOM", nil)
-    if self.channelStatus then
-      self.channelStatus:SetText("Channel: Custom (enter a name)")
-    end
-    return
-  end
-  if self.customInput and self.customInput:GetText() ~= name then
-    self.customInput:SetText(name)
-  end
-  TriviaClassic:SetChannel("CUSTOM", name)
-  if self.channelStatus then
-    self.channelStatus:SetText("Channel: Custom - " .. name)
-  end
-end
-
-function UI:ApplyAxisConstraints()
-  if not participationLabels[self.participationKey] then
-    self.participationKey = "INDIVIDUAL"
-  end
-  if not flowLabels[self.flowKey] then
-    self.flowKey = "OPEN"
-  end
-  if not scoringLabels[self.scoringKey] then
-    self.scoringKey = "FASTEST"
-  end
-  if not attemptLabels[self.attemptKey] then
-    self.attemptKey = "MULTI"
-  end
-  if self.flowKey ~= "TURN_BASED" then
-    self.stealAllowed = false
-  end
-  if self.participationKey == "INDIVIDUAL" and self.flowKey == "TURN_BASED" then
-    self.flowKey = "OPEN"
-    self.stealAllowed = false
-  end
-  if self.flowKey == "TURN_BASED" then
-    if self.scoringKey ~= "FASTEST" then
-      self.scoringKey = "FASTEST"
-    end
-  end
-end
-
-function UI:ComputeAxisFlow()
-  if self.flowKey == "TURN_BASED" and self.stealAllowed then
-    return "TURN_BASED_STEAL"
-  end
-  return self.flowKey
-end
-
-function UI:SyncAxisSelectors()
-  if self.participationDropDown then
-    UIDropDownMenu_SetSelectedValue(self.participationDropDown, self.participationKey)
-    UIDropDownMenu_SetText(self.participationDropDown, participationLabels[self.participationKey] or self.participationKey)
-  end
-  if self.flowDropDown then
-    UIDropDownMenu_SetSelectedValue(self.flowDropDown, self.flowKey)
-    UIDropDownMenu_SetText(self.flowDropDown, flowLabels[self.flowKey] or self.flowKey)
-  end
-  if self.scoringDropDown then
-    UIDropDownMenu_SetSelectedValue(self.scoringDropDown, self.scoringKey)
-    UIDropDownMenu_SetText(self.scoringDropDown, scoringLabels[self.scoringKey] or self.scoringKey)
-  end
-  if self.attemptDropDown then
-    UIDropDownMenu_SetSelectedValue(self.attemptDropDown, self.attemptKey)
-    UIDropDownMenu_SetText(self.attemptDropDown, attemptLabels[self.attemptKey] or self.attemptKey)
-  end
-  if self.stealCheck then
-    if self.flowKey == "TURN_BASED" then
-      self.stealCheck:Show()
-      self.stealCheck:SetChecked(self.stealAllowed and true or false)
-      self.stealCheck:Enable()
-    else
-      self.stealCheck:SetChecked(false)
-      self.stealCheck:Disable()
-      self.stealCheck:Hide()
-    end
-  end
-end
-
-function UI:SetAxisSelection(participationKey, flowKey, scoringKey, attemptKey, stealAllowed)
-  if participationKey then
-    self.participationKey = participationKey
-  end
-  if flowKey then
-    self.flowKey = flowKey
-  end
-  if scoringKey then
-    self.scoringKey = scoringKey
-  end
-  if attemptKey then
-    self.attemptKey = attemptKey
-  end
-  if stealAllowed ~= nil then
-    self.stealAllowed = stealAllowed and true or false
-  end
-  self:ApplyAxisConstraints()
-  self:SyncAxisSelectors()
-  TriviaClassic:SetGameAxisConfig({
-    participation = self.participationKey,
-    flow = self:ComputeAxisFlow(),
-    scoring = self.scoringKey,
-    attempt = self.attemptKey,
-  })
-  self:UpdateRerollControls()
-end
-
-function UI:GetTimerSeconds()
-  return TriviaClassic:GetTimer()
-end
-
-function UI:GetCurrentTimerRemaining()
-  local remaining = nil
-  if self.timerRunning and self.timerService and self.timerService.remaining then
-    remaining = self.timerService.remaining
-  elseif self.timerBar and self.timerBar.GetValue then
-    remaining = self.timerBar:GetValue()
-  end
-  if remaining and remaining >= 0 then
-    return math.ceil(remaining)
-  end
-end
-
-function UI:GetStealTimerSeconds()
-  return TriviaClassic:GetStealTimer()
-end
-
-function UI:SetStealTimerSeconds(seconds)
-  TriviaClassic:SetStealTimer(seconds)
-  self:SyncTimerInput()
-end
-
-function UI:SetTimerSeconds(seconds)
-  TriviaClassic:SetTimer(seconds)
-  self:SyncTimerInput()
-end
-
-function UI:SyncTimerInput()
-  if self.timerInput then
-    self.timerInput:SetText(tostring(self:GetTimerSeconds()))
-  end
-  if self.stealTimerInput then
-    self.stealTimerInput:SetText(tostring(self:GetStealTimerSeconds()))
-  end
-end
-
-function UI:ApplyTimerInput()
-  if not self.timerInput then
-    return
-  end
-  local value = tonumber(self.timerInput:GetText() or "")
-  local minTimer, maxTimer = TriviaClassic:GetTimerBounds()
-  if not value then
-    value = self:GetTimerSeconds()
-  end
-  if value < minTimer then value = minTimer end
-  if value > maxTimer then value = maxTimer end
-  self:SetTimerSeconds(value)
-end
-
-function UI:ResetTimerDisplay(seconds)
-  local secs = tonumber(seconds) or self:GetTimerSeconds()
-  self.timerRemaining = secs
-  self.timerRunning = false
-  if self.timerBar then
-    self.timerBar:SetMinMaxValues(0, secs)
-    self.timerBar:SetValue(secs)
-    self.timerBar:SetStatusBarColor(0.2, 0.8, 0.2)
-  end
-  if self.timerText then
-    self.timerText:SetText(string.format("Time: %ds", secs))
-  end
-end
 
 function UI:BuildUI()
+  self:InitOptionsData()
+  local channelLabels = self.channelLabels or {}
   if self.frame then
     local cfg = TriviaClassic:GetGameAxisConfig()
     self.participationKey = cfg.participation
@@ -263,7 +36,7 @@ function UI:BuildUI()
   self.selectedMembers = {}
 
   local frame = TriviaClassic_UI_BuildLayout(self)
-  self:SetChannel(self.channelKey)
+    self:SetChannel(self.channelKey)
   self.presenter = TriviaClassic_UI_CreatePresenter(TriviaClassic)
 
   -- Subscribe to core events to keep UI in sync (no chat sends here)
@@ -309,7 +82,7 @@ function UI:BuildUI()
   UIDropDownMenu_SetSelectedValue(self.dropDown, self.channelKey)
   UIDropDownMenu_SetText(self.dropDown, channelLabels[self.channelKey] or self.channelKey)
   UIDropDownMenu_Initialize(self.dropDown, function(_, _, _)
-    for _, ch in ipairs(channels) do
+    for _, ch in ipairs(self.channels) do
       local info = UIDropDownMenu_CreateInfo()
       info.text = ch.label
       info.value = ch.key
@@ -324,7 +97,7 @@ function UI:BuildUI()
 
   self:ApplyAxisConstraints()
   UIDropDownMenu_Initialize(self.participationDropDown, function()
-    for _, entry in ipairs(participationTypes) do
+    for _, entry in ipairs(self.participationTypes) do
       local info = UIDropDownMenu_CreateInfo()
       info.text = entry.label
       info.value = entry.key
@@ -338,7 +111,7 @@ function UI:BuildUI()
   end)
 
   UIDropDownMenu_Initialize(self.flowDropDown, function()
-    for _, entry in ipairs(flowOptions) do
+    for _, entry in ipairs(self.flowOptions) do
       local info = UIDropDownMenu_CreateInfo()
       info.text = entry.label
       info.value = entry.key
@@ -352,7 +125,7 @@ function UI:BuildUI()
   end)
 
   UIDropDownMenu_Initialize(self.scoringDropDown, function()
-    for _, entry in ipairs(scoringTypes) do
+    for _, entry in ipairs(self.scoringTypes) do
       if self.flowKey ~= "TURN_BASED" or entry.key == "FASTEST" then
         local info = UIDropDownMenu_CreateInfo()
         info.text = entry.label
@@ -368,7 +141,7 @@ function UI:BuildUI()
   end)
 
   UIDropDownMenu_Initialize(self.attemptDropDown, function()
-    for _, entry in ipairs(attemptTypes) do
+    for _, entry in ipairs(self.attemptTypes) do
       local info = UIDropDownMenu_CreateInfo()
       info.text = entry.label
       info.value = entry.key

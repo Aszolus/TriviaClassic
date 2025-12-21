@@ -90,6 +90,111 @@ function Presenter:AnnounceQuestion()
   return result
 end
 
+function Presenter:MarkTimeout()
+  if not self.trivia or not self.trivia.MarkTimeout then
+    return
+  end
+  return self.trivia:MarkTimeout()
+end
+
+function Presenter:SetChannel(key, customName)
+  if not self.trivia or not self.trivia.SetChannel then
+    return
+  end
+  self.trivia:SetChannel(key, customName)
+end
+
+function Presenter:SetGameAxisConfig(config)
+  if not self.trivia or not self.trivia.SetGameAxisConfig then
+    return
+  end
+  self.trivia:SetGameAxisConfig(config)
+end
+
+function Presenter:SetTimer(seconds)
+  if not self.trivia or not self.trivia.SetTimer then
+    return
+  end
+  self.trivia:SetTimer(seconds)
+end
+
+function Presenter:SetStealTimer(seconds)
+  if not self.trivia or not self.trivia.SetStealTimer then
+    return
+  end
+  self.trivia:SetStealTimer(seconds)
+end
+
+function Presenter:GetTimer()
+  if not self.trivia or not self.trivia.GetTimer then
+    return 20
+  end
+  return self.trivia:GetTimer()
+end
+
+function Presenter:GetStealTimer()
+  if not self.trivia or not self.trivia.GetStealTimer then
+    return 20
+  end
+  return self.trivia:GetStealTimer()
+end
+
+function Presenter:GetTeams()
+  if not self.trivia or not self.trivia.GetTeams then
+    return {}
+  end
+  return self.trivia:GetTeams()
+end
+
+function Presenter:GetWaitingPlayers()
+  if not self.trivia or not self.trivia.GetWaitingPlayers then
+    return {}
+  end
+  return self.trivia:GetWaitingPlayers()
+end
+
+function Presenter:AddTeam(name)
+  if not self.trivia or not self.trivia.AddTeam then
+    return false
+  end
+  return self.trivia:AddTeam(name)
+end
+
+function Presenter:RemoveTeam(name)
+  if not self.trivia or not self.trivia.RemoveTeam then
+    return false
+  end
+  return self.trivia:RemoveTeam(name)
+end
+
+function Presenter:AddPlayerToTeam(playerName, teamName)
+  if not self.trivia or not self.trivia.AddPlayerToTeam then
+    return false
+  end
+  return self.trivia:AddPlayerToTeam(playerName, teamName)
+end
+
+function Presenter:RemovePlayerFromTeam(playerName)
+  if not self.trivia or not self.trivia.RemovePlayerFromTeam then
+    return false
+  end
+  return self.trivia:RemovePlayerFromTeam(playerName)
+end
+
+function Presenter:RegisterPlayer(name)
+  if not self.trivia or not self.trivia.RegisterPlayer then
+    return false
+  end
+  return self.trivia:RegisterPlayer(name)
+end
+
+function Presenter:UnregisterPlayer(name)
+  if not self.trivia or not self.trivia.UnregisterPlayer then
+    return false
+  end
+  return self.trivia:UnregisterPlayer(name)
+end
+
 function Presenter:GetQuestionTimerSeconds()
   local game = self.trivia and self.trivia.game
   if game and game.GetModeHandler then
