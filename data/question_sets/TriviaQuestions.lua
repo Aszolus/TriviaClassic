@@ -1676,30 +1676,6 @@ addQuestion({
 })
 
 addQuestion({
-  ['Question'] = "What is the name of the human capital city in Elwynn Forest?",
-  ['Answers'] = {"Stormwind City", "Stormwind"},
-  ['Category'] = 2,
-  ['Points'] = "1",
-  ['Hints'] = {},
-})
-
-addQuestion({
-  ['Question'] = "Which city is canonically higher (elevation): Thunderbluff or Darnassus?",
-  ['Answers'] = {"Darnassus"},
-  ['Category'] = 2,
-  ['Points'] = "1",
-  ['Hints'] = {},
-})
-
-addQuestion({
-  ['Question'] = "What is the name of the dwarven capital city carved into the mountains of Dun Morogh?",
-  ['Answers'] = {"Ironforge"},
-  ['Category'] = 2,
-  ['Points'] = "1",
-  ['Hints'] = {},
-})
-
-addQuestion({
   ['Question'] = "What is the name of the irradiated gnome city that becomes a dungeon in Vanilla WoW?",
   ['Answers'] = {"Gnomeregan"},
   ['Category'] = 2,
@@ -1718,14 +1694,6 @@ addQuestion({
 addQuestion({
   ['Question'] = "What is the night elf racial mount type called in Classic WoW?",
   ['Answers'] = {"Nightsaber", "Nightsabers"},
-  ['Category'] = 2,
-  ['Points'] = "1",
-  ['Hints'] = {},
-})
-
-addQuestion({
-  ['Question'] = "Which Alliance questing zone is home to the Defias Brotherhood and the Deadmines storyline?",
-  ['Answers'] = {"Westfall"},
   ['Category'] = 2,
   ['Points'] = "1",
   ['Hints'] = {},
@@ -1829,7 +1797,7 @@ addQuestion({
 
 addQuestion({
   ['Question'] = "Who is the emperor and final boss encounter of Blackrock Depths in Vanilla WoW?",
-  ['Answers'] = {"Emperor Dagran Thaurissan", "Dagran Thaurissan"},
+  ['Answers'] = {"Emperor Dagran Thaurissan", "Dagran Thaurissan", "Thaurissan"},
   ['Category'] = 1,
   ['Points'] = "1",
   ['Hints'] = {},

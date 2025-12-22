@@ -573,6 +573,9 @@ local function handleIncomingChat(event, msg, sender, languageName, channelNameF
   if not TriviaClassic.chat:AcceptsEvent(event, channelName) then
     return
   end
+  if TriviaClassic_ShouldIgnoreMessage and TriviaClassic_ShouldIgnoreMessage(msg) then
+    return
+  end
   -- Player self-registration: message "trivia register" or "trivia join"
   local lowered = tostring(msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
   if lowered == "trivia register" or lowered == "trivia join" then
