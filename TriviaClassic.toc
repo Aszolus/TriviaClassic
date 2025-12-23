@@ -9,6 +9,7 @@ core/Constants.lua
 core/Types.lua
 core/Util.lua
 core/Events.lua
+core/ChatFilter.lua
 core/WowClock.lua
 core/WowChat.lua
 core/WowEvents.lua

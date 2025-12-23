@@ -23,6 +23,7 @@ table.insert(TriviaBot_Questions[1]['Categories'], "Alliance Trivia")
 table.insert(TriviaBot_Questions[1]['Categories'], "Horde Trivia")
 table.insert(TriviaBot_Questions[1]['Categories'], "Deep Lore")
 table.insert(TriviaBot_Questions[1]['Categories'], "General Knowledge")
+table.insert(TriviaBot_Questions[1]['Categories'], "Professions")
 
 -- Questions
 local function addQuestion(entry)
@@ -1676,30 +1677,6 @@ addQuestion({
 })
 
 addQuestion({
-  ['Question'] = "What is the name of the human capital city in Elwynn Forest?",
-  ['Answers'] = {"Stormwind City", "Stormwind"},
-  ['Category'] = 2,
-  ['Points'] = "1",
-  ['Hints'] = {},
-})
-
-addQuestion({
-  ['Question'] = "Which city is canonically higher (elevation): Thunderbluff or Darnassus?",
-  ['Answers'] = {"Darnassus"},
-  ['Category'] = 2,
-  ['Points'] = "1",
-  ['Hints'] = {},
-})
-
-addQuestion({
-  ['Question'] = "What is the name of the dwarven capital city carved into the mountains of Dun Morogh?",
-  ['Answers'] = {"Ironforge"},
-  ['Category'] = 2,
-  ['Points'] = "1",
-  ['Hints'] = {},
-})
-
-addQuestion({
   ['Question'] = "What is the name of the irradiated gnome city that becomes a dungeon in Vanilla WoW?",
   ['Answers'] = {"Gnomeregan"},
   ['Category'] = 2,
@@ -1718,14 +1695,6 @@ addQuestion({
 addQuestion({
   ['Question'] = "What is the night elf racial mount type called in Classic WoW?",
   ['Answers'] = {"Nightsaber", "Nightsabers"},
-  ['Category'] = 2,
-  ['Points'] = "1",
-  ['Hints'] = {},
-})
-
-addQuestion({
-  ['Question'] = "Which Alliance questing zone is home to the Defias Brotherhood and the Deadmines storyline?",
-  ['Answers'] = {"Westfall"},
   ['Category'] = 2,
   ['Points'] = "1",
   ['Hints'] = {},
@@ -1829,7 +1798,7 @@ addQuestion({
 
 addQuestion({
   ['Question'] = "Who is the emperor and final boss encounter of Blackrock Depths in Vanilla WoW?",
-  ['Answers'] = {"Emperor Dagran Thaurissan", "Dagran Thaurissan"},
+  ['Answers'] = {"Emperor Dagran Thaurissan", "Dagran Thaurissan", "Thaurissan"},
   ['Category'] = 1,
   ['Points'] = "1",
   ['Hints'] = {},
@@ -2121,6 +2090,261 @@ addQuestion({
   ['Category'] = 5,
   ['Points'] = "1",
   ['Hints'] = {},
+})
+
+-- Gathering Professions (Classic Era)
+
+-- Herbalism
+
+addQuestion({
+  ['Question'] = "What Herbalism skill is required to gather Ghost Mushroom?",
+  ['Answers'] = {"245"},
+  ['Category'] = 6,
+  ['Points'] = "1",
+  ['Hints'] = {"It grows underground."},
+})
+
+addQuestion({
+  ['Question'] = "What Herbalism skill is required to gather Gromsblood?",
+  ['Answers'] = {"250"},
+  ['Category'] = 6,
+  ['Points'] = "1",
+  ['Hints'] = {"Big endgame consumable herb."},
+})
+
+addQuestion({
+  ['Question'] = "What Herbalism skill is required to gather Mountain Silversage?",
+  ['Answers'] = {"280"},
+  ['Category'] = 6,
+  ['Points'] = "1",
+  ['Hints'] = {"High-level mountain herb."},
+})
+
+addQuestion({
+  ['Question'] = "What Herbalism skill is required to gather Plaguebloom?",
+  ['Answers'] = {"285"},
+  ['Category'] = 6,
+  ['Points'] = "1",
+  ['Hints'] = {"Plaguelands endgame herb."},
+})
+
+addQuestion({
+  ['Question'] = "What Herbalism skill is required to gather Icecap?",
+  ['Answers'] = {"290"},
+  ['Category'] = 6,
+  ['Points'] = "1",
+  ['Hints'] = {"Winterspring herb."},
+})
+
+addQuestion({
+  ['Question'] = "What Herbalism skill is required to gather Black Lotus?",
+  ['Answers'] = {"300"},
+  ['Category'] = 6,
+  ['Points'] = "1",
+  ['Hints'] = {"The famous flask herb."},
+})
+
+-- Mining nodes
+addQuestion({
+  ['Question'] = "What Mining skill is required to mine Mithril Deposits?",
+  ['Answers'] = {"175"},
+  ['Category'] = 6,
+  ['Points'] = "1",
+  ['Hints'] = {"Mid-high ore tier."},
+})
+
+addQuestion({
+  ['Question'] = "What Mining skill is required to mine Truesilver Deposits?",
+  ['Answers'] = {"230"},
+  ['Category'] = 6,
+  ['Points'] = "1",
+  ['Hints'] = {"Rare spawn near Mithril."},
+})
+
+addQuestion({
+  ['Question'] = "What Mining skill is required to mine a Small Thorium Vein?",
+  ['Answers'] = {"245"},
+  ['Category'] = 6,
+  ['Points'] = "1",
+  ['Hints'] = {"Endgame ore tier (smaller node)."},
+})
+
+addQuestion({
+  ['Question'] = "What Mining skill is required to mine a Rich Thorium Vein?",
+  ['Answers'] = {"275"},
+  ['Category'] = 6,
+  ['Points'] = "1",
+  ['Hints'] = {"Endgame ore tier (bigger node)."},
+})
+
+-- Smelting
+addQuestion({
+  ['Question'] = "What Mining skill is required to smelt Truesilver Bars?",
+  ['Answers'] = {"230"},
+  ['Category'] = 6,
+  ['Points'] = "1",
+  ['Hints'] = {"Smelting question (not mining the node)."},
+})
+
+addQuestion({
+  ['Question'] = "What Mining skill is required to smelt Thorium Bars?",
+  ['Answers'] = {"250"},
+  ['Category'] = 6,
+  ['Points'] = "1",
+  ['Hints'] = {"Smelting question (not mining the node)."},
+})
+
+addQuestion({
+  ['Question'] = "What Mining skill (minimum) is required before you can smelt Dark Iron Ore (after the unlock)?",
+  ['Answers'] = {"230"},
+  ['Category'] = 6,
+  ['Points'] = "1",
+  ['Hints'] = {"BRD-related smelting."},
+})
+
+addQuestion({
+  ['Question'] = "What special forge is required to smelt Dark Iron Ore?",
+  ['Answers'] = {"black forge"},
+  ['Category'] = 6,
+  ['Points'] = "1",
+  ['Hints'] = {"It's inside Blackrock Depths."},
+})
+
+-- Fishing / debris pools
+addQuestion({
+  ['Question'] = "What Fishing skill is required to use 'Expert Fishing - The Bass and You'?",
+  ['Answers'] = {"125"},
+  ['Category'] = 6,
+  ['Points'] = "1",
+  ['Hints'] = {"It raises your fishing cap to 225."},
+})
+
+addQuestion({
+  ['Question'] = "What character level is required to use 'Expert Fishing - The Bass and You'?",
+  ['Answers'] = {"20"},
+  ['Category'] = 6,
+  ['Points'] = "1",
+  ['Hints'] = {"Book requirement."},
+})
+
+addQuestion({
+  ['Question'] = "What Fishing skill is required to accept 'Nat Pagle, Angler Extreme'?",
+  ['Answers'] = {"225"},
+  ['Category'] = 6,
+  ['Points'] = "1",
+  ['Hints'] = {"This unlocks Artisan Fishing (300 cap)."},
+})
+
+addQuestion({
+  ['Question'] = "What character level is required to accept 'Nat Pagle, Angler Extreme'?",
+  ['Answers'] = {"35"},
+  ['Category'] = 6,
+  ['Points'] = "1",
+  ['Hints'] = {"Artisan Fishing questline requirement."},
+})
+
+addQuestion({
+  ['Question'] = "Which fishing pool primarily contains Tightly Sealed Trunks?",
+  ['Answers'] = {"floating debris"},
+  ['Category'] = 6,
+  ['Points'] = "1",
+  ['Hints'] = {"Low level pool."},
+})
+
+addQuestion({
+  ['Question'] = "Which fishing pool is most associated with catching Mithril Bound Trunks?",
+  ['Answers'] = {"floating wreckage"},
+  ['Category'] = 6,
+  ['Points'] = "1",
+  ['Hints'] = {"Think shipwrecks."},
+})
+
+addQuestion({
+  ['Question'] = "Which capital city in WoW Classic does not contain an anvil?",
+  ['Answers'] = {"Darnassus"},
+  ['Category'] = 6,
+  ['Points'] = "1",
+  ['Hints'] = {""},
+})
+
+addQuestion({
+  ['Question'] = "Which herb is associated with breathing underwater?",
+  ['Answers'] = {"Stranglekelp"},
+  ['Category'] = 6,
+  ['Points'] = "1",
+  ['Hints'] = {""},
+})
+
+addQuestion({
+  ['Question'] = "What Skinning skill is required to skin The Beast in Upper Blackrock Spire?",
+  ['Answers'] = {"310"},
+  ['Category'] = 6,
+  ['Points'] = "1",
+  ['Hints'] = {"You’ll need a little bonus skill."},
+})
+
+addQuestion({
+  ['Question'] = "What +10 Skinning dagger drops from The Beast in Upper Blackrock Spire?",
+  ['Answers'] = {"finkle's skinner"},
+  ['Category'] = 6,
+  ['Points'] = "1",
+  ['Hints'] = {"The mob that needs extra skill… drops the tool."},
+})
+
+addQuestion({
+  ['Question'] = "What item must be in your inventory for Bloodvine to show up while herbing in Zul'Gurub?",
+  ['Answers'] = {"blood scythe"},
+  ['Category'] = 6,
+  ['Points'] = "1",
+  ['Hints'] = {"You loot it from hoodoo piles."},
+})
+
+addQuestion({
+  ['Question'] = "In Classic, what Mining skill is required to mine the Ahn'Qiraj Obsidian chunks/shards?",
+  ['Answers'] = {"305"},
+  ['Category'] = 6,
+  ['Points'] = "1",
+  ['Hints'] = {"This is why +skill gear exists."},
+})
+
+addQuestion({
+  ['Question'] = "What item teaches 'Find Fish' (the ability that shows fishing pools on your minimap)?",
+  ['Answers'] = {"weather-beaten journal", "weather beaten journal"},
+  ['Category'] = 6,
+  ['Points'] = "1",
+  ['Hints'] = {"It’s a book, and it’s not from a trainer."},
+})
+
+addQuestion({
+  ['Question'] = "What is the name of the special forge that is required to smelt Dark Iron Ore into bars?",
+  ['Answers'] = {"black forge", "the black forge"},
+  ['Category'] = 6,
+  ['Points'] = "1",
+  ['Hints'] = {""},
+})
+
+addQuestion({
+  ['Question'] = "How many Dark Iron Ore are required to smelt ONE Dark Iron Bar in Classic?",
+  ['Answers'] = {"8", "eight"},
+  ['Category'] = 6,
+  ['Points'] = "1",
+  ['Hints'] = {"It’s way more than other bars."},
+})
+
+addQuestion({
+  ['Question'] = "What type of bars created from smelting tin bars and copper bars together?",
+  ['Answers'] = {"bronze", "bronze bars", "bronze bar"},
+  ['Category'] = 6,
+  ['Points'] = "1",
+  ['Hints'] = {""},
+})
+
+addQuestion({
+  ['Question'] = "How long does the Stranglethorn Fishing Extravaganza run for once it starts?",
+  ['Answers'] = {"2 hours", "two hours", "120 minutes"},
+  ['Category'] = 6,
+  ['Points'] = "1",
+  ['Hints'] = {"2pm to 4pm realm time."},
 })
 
 -- Ensure the global table exists and register with TriviaClassic if present

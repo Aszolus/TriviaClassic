@@ -1,4 +1,5 @@
 -- Shared utility helpers for TriviaClassic.
+-- Centralizes normalization/clamping so behavior is consistent across modules.
 
 --- Trims leading and trailing whitespace.
 ---@param text any
@@ -37,6 +38,7 @@ end
 function TriviaClassic_ClampNumber(value, min, max, default)
   local n = tonumber(value)
   if not n then return default end
+  -- Constrain to bounds before rounding to integer to keep UI stable.
   if n < min then n = min elseif n > max then n = max end
   return math.floor(n + 0.5)
 end
