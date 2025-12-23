@@ -1,4 +1,5 @@
---- Chat helper for broadcasting and filtering trivia messages.
+-- Chat helper for broadcasting and filtering trivia messages.
+-- Used by core init to check incoming chat, and by UI/game to send announcements.
 ---@class Chat
 ---@field channelKey string Current target channel key (e.g. "GUILD", "PARTY", "CUSTOM")
 ---@field customName string|nil Name of the custom channel, if any
@@ -9,7 +10,10 @@ local Chat = {}
 Chat.__index = Chat
 
 local channelMap = TriviaClassic_GetChannelMap()
+-- Hard clamp any message to avoid exceeding chat length limits.
+local MAX_CHAT_LEN = 220
 
+-- Normalize channel name to a lowercase label (e.g., "1. Custom" -> "custom").
 local function baseChannelName(raw)
   if not raw then
     return nil
@@ -21,6 +25,7 @@ local function baseChannelName(raw)
   return (clean or raw):lower()
 end
 
+-- Decide whether an incoming chat event matches the current channel config.
 local function shouldAccept(event, key, channelName, customTarget)
   local entry = channelMap[key]
   if not entry then
@@ -43,6 +48,7 @@ function Chat:new(transport)
   local runtime = TriviaClassic_GetRuntime()
   local resolved = transport or (runtime and runtime.chatTransport)
   local o = {
+    -- Defaults are safe for first login (guild if available).
     channelKey = TriviaClassic_GetDefaultChannel(),
     customName = nil,
     customNameLower = nil,
@@ -75,6 +81,7 @@ function Chat:SetCustomChannel(name)
   self.customName = name
   self.customNameLower = name:lower()
   self.transport.joinChannel(name)
+  -- Cache channel id for faster send; can be refreshed later.
   self.customId = self.transport.getChannelId(name)
 end
 
@@ -102,8 +109,6 @@ end
 --- Sends a raw message to the configured channel.
 ---@param msg string
 function Chat:Send(msg)
-  -- Hard clamp any message to avoid exceeding chat length limits.
-  local MAX_CHAT_LEN = 220
   msg = tostring(msg or "")
   if #msg > MAX_CHAT_LEN then
     msg = msg:sub(1, MAX_CHAT_LEN - 3) .. "..."
@@ -114,6 +119,7 @@ function Chat:Send(msg)
     self.transport.system("|cffff5050[Trivia]|r Invalid channel configured.")
     return
   end
+  -- Validate channel state before sending (raid/party/custom).
   if self.channelKey == "RAID" and not self.transport.isInRaid() then
     self.transport.system("|cffff5050[Trivia]|r You are not in a raid.")
     return
@@ -136,6 +142,7 @@ end
 --- Announces the start of a game.
 ---@param meta table Game metadata (e.g., total, setNames, mode/modeLabel)
 function Chat:SendStart(meta)
+  -- Format-only; all sending goes through Send().
   local F = TriviaClassic_MessageFormatter
   self:Send(F.formatStart(meta))
 end
@@ -146,6 +153,7 @@ end
 ---@param question table Question object (fields: question, category, points, ...)
 ---@param activeTeamName string|nil Optional active team label
 function Chat:SendQuestion(index, total, question, activeTeamName)
+  -- Called from host flow when a new question is announced.
   local F = TriviaClassic_MessageFormatter
   self:Send(F.formatQuestion(index, total, question, activeTeamName))
 end

@@ -1,4 +1,5 @@
--- Shared type hints for better IDE assistance (EmmyLua)
+-- Shared type hints for better IDE assistance (EmmyLua).
+-- These are editor-only annotations; they do not affect runtime behavior.
 
 ---@class TC_Question
 ---@field qid string Unique id (setId::sourceIndex)

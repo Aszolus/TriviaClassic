@@ -1,3 +1,6 @@
+-- Runtime factory and cache.
+-- Built on first access, then shared for the addon lifetime.
+-- This keeps a single set of WoW API adapters and avoids duplicate handlers.
 local function buildRuntime()
   local runtime = {}
   if TriviaClassic_CreateWowClock then
@@ -18,10 +21,13 @@ local function buildRuntime()
   if runtime.clock and runtime.clock.date then
     runtime.date = runtime.clock.date
   end
+  -- Answer matcher lives in global scope so UI/tests can replace it.
   runtime.answer = _G.TriviaClassic_Answer
   return runtime
 end
 
+--- Returns the shared runtime, creating it once on demand.
+--- First call happens during addon init; subsequent calls reuse the same objects.
 function TriviaClassic_GetRuntime()
   if not _G.TriviaClassic_Runtime then
     _G.TriviaClassic_Runtime = buildRuntime()
@@ -29,10 +35,13 @@ function TriviaClassic_GetRuntime()
   return _G.TriviaClassic_Runtime
 end
 
+--- Overrides the shared runtime (used by tests or custom wiring).
 function TriviaClassic_SetRuntime(runtime)
   _G.TriviaClassic_Runtime = runtime
 end
 
+--- Ensures the saved-variable DB is available and mirrored to the global.
+--- The UI reads the global DB directly, so we keep it in sync with storage.
 function TriviaClassic_EnsureDB()
   local runtime = TriviaClassic_GetRuntime()
   if runtime and runtime.storage and runtime.storage.get then
@@ -44,6 +53,8 @@ function TriviaClassic_EnsureDB()
   return _G.TriviaClassicCharacterDB
 end
 
+--- Returns the logger from the runtime (if any).
+--- When present, this points at the chat transport's log function.
 function TriviaClassic_GetLogger()
   local runtime = TriviaClassic_GetRuntime()
   return runtime and runtime.logger

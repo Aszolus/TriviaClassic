@@ -1,3 +1,9 @@
+-- Core addon bootstrap and public API surface.
+-- Flow overview:
+-- 1) ADDON_LOADED -> init saved variables -> build game -> register question sets.
+-- 2) PLAYER_LOGIN -> UI builds after saved variables exist.
+-- 3) Chat events -> filter -> answer handling -> event bus notifications.
+-- This file is the glue between UI, persistence, and the game engine.
 local addonName, addonPrivate = ...
 addonPrivate = addonPrivate or {}
 
@@ -11,16 +17,21 @@ addonPrivate = addonPrivate or {}
 local TriviaClassic = {}
 _G.TriviaClassic = TriviaClassic
 
+-- Saved-variable schema versioning (used for future migrations).
 local SCHEMA_VERSION = 1
+-- Cached mode map for validation and labels to avoid repeated global lookups.
 local MODE_MAP = TriviaClassic_GetModeMap()
+-- Timer defaults and bounds for question and steal timers.
 local DEFAULT_TIMER = 20
 local MIN_TIMER = 5
 local MAX_TIMER = 120
 local DEFAULT_STEAL_TIMER = 20
 local MIN_STEAL_TIMER = 5
 local MAX_STEAL_TIMER = 120
+-- Debug flag toggled via UI or slash commands.
 local DEBUG_ENABLED = false
 
+-- Normalize display names: trimmed string or nil.
 local function normalizeName(text)
   if not text then return nil end
   local trimmed = tostring(text):gsub("^%s+", ""):gsub("%s+$", "")
@@ -28,13 +39,18 @@ local function normalizeName(text)
   return trimmed
 end
 
+-- Normalize keys: display name trimmed and lowercased for map keys.
 local function normalizeKey(text)
   local name = normalizeName(text)
   return name and name:lower() or nil
 end
 
+-- Cache runtime when available; tests may override it for deterministic behavior.
+-- Runtime is constructed once, then shared by all modules (clock/chat/events/storage).
 local runtime = TriviaClassic_GetRuntime and TriviaClassic_GetRuntime() or nil
 
+-- Fetch saved variables, creating defaults if absent.
+-- Prefer runtime storage so tests can substitute storage backends.
 local function getDB()
   local storage = runtime and runtime.storage
   local db = storage and storage.get and storage.get() or nil
@@ -49,6 +65,8 @@ local function getDB()
   return db
 end
 
+-- Clamp user-provided timers to safe bounds.
+-- Returns a rounded integer to keep chat/UI consistent.
 local function clampTimerValue(seconds)
   local n = tonumber(seconds)
   if not n then
@@ -62,6 +80,8 @@ local function clampTimerValue(seconds)
   return math.floor(n + 0.5)
 end
 
+-- Ensure the team data store exists and return the db.
+-- Keeps nested tables stable for UI references.
 local function ensureTeamStore()
   local db = getDB()
   db.teams = db.teams or { teams = {}, playerTeam = {}, waiting = {} }
@@ -76,6 +96,8 @@ TriviaClassic.repo = TriviaClassic_CreateRepo()
 TriviaClassic.chat = TriviaClassic_CreateChat(runtime and runtime.chatTransport)
 TriviaClassic.game = nil
 
+-- Initialize all saved-variable defaults and migrate schema.
+-- Called during ADDON_LOADED before UI or game reads settings.
 local function initDatabase()
   local db = getDB()
   db.schema = db.schema or SCHEMA_VERSION
@@ -96,6 +118,9 @@ local function initDatabase()
   ensureTeamStore()
 end
 
+-- Construct the game instance with runtime dependencies.
+-- Called after DB init; the game reads settings and mode from the DB.
+-- Dependencies are injected for testability and to avoid hard globals.
 local function initGame()
   local deps = {
     clock = runtime and runtime.clock,
@@ -140,6 +165,7 @@ end
 
 --- Sets the game mode key.
 ---@param modeKey string
+--- Invalid keys fall back to the default mode and update saved settings.
 function TriviaClassic:SetGameMode(modeKey)
   local modeMap = MODE_MAP or TriviaClassic_GetModeMap()
   if not modeMap[modeKey] then
@@ -154,6 +180,7 @@ end
 
 --- Gets the current valid game mode key.
 ---@return string
+--- Ensures the saved mode is still valid against the current mode map.
 function TriviaClassic:GetGameMode()
   local db = getDB()
   local modeKey = db.mode or TriviaClassic_GetDefaultMode()
@@ -170,7 +197,8 @@ function TriviaClassic:GetGameModeLabel()
   return TriviaClassic_GetModeLabel(self:GetGameMode())
 end
 
--- Team data helpers
+-- Team data helpers.
+-- Team keys are normalized to lowercase for stable lookups.
 --- Adds a team or ensures it exists.
 ---@param teamName string
 ---@return boolean ok
@@ -319,6 +347,7 @@ end
 
 --- Sets the per-question timer (seconds, clamped).
 ---@param seconds number
+--- Stored in saved variables and used for future games.
 function TriviaClassic:SetTimer(seconds)
   local clamped = clampTimerValue(seconds)
   local db = getDB()
@@ -327,6 +356,7 @@ end
 
 --- Gets the configured per-question timer (seconds).
 ---@return integer
+--- Falls back to defaults if not yet configured.
 function TriviaClassic:GetTimer()
   local db = getDB()
   local value = db.timer
@@ -357,6 +387,7 @@ end
 
 --- Sets the steal timer (seconds).
 ---@param seconds number
+--- Used by team steal mode when a steal window is active.
 function TriviaClassic:SetStealTimer(seconds)
   local db = ensureTeamStore()
   db.teams.config = db.teams.config or {}
@@ -365,6 +396,7 @@ end
 
 --- Gets the configured steal timer (seconds).
 ---@return integer
+--- Falls back to defaults if not yet configured.
 function TriviaClassic:GetStealTimer()
   local db = ensureTeamStore()
   db.teams.config = db.teams.config or {}
@@ -398,6 +430,7 @@ end
 ---@param desiredCount integer|nil Optional number of questions to draw
 ---@param allowedCategories table|nil Global or per-set category allow map
 ---@return table|nil meta Returns game metadata or nil if no questions
+--- Uses current mode and team assignments at start time.
 function TriviaClassic:StartGame(selectedIds, desiredCount, allowedCategories)
   if self.game and self.game.SetMode then
     self.game:SetMode(self:GetGameMode())
@@ -410,16 +443,19 @@ end
 
 --- Advances to the next question.
 ---@return table|nil question, integer|nil index, integer|nil total
+--- Returns nil when the game has no more questions.
 function TriviaClassic:NextQuestion()
   return self.game:NextQuestion()
 end
 
 --- Marks the current question as timed out.
+--- This triggers timeout scoring behavior for the active mode.
 function TriviaClassic:MarkTimeout()
   return self.game:MarkTimeout()
 end
 
 --- Skips the current question (keeping total constant).
+--- Used for manual moderation without ending the game.
 function TriviaClassic:SkipCurrentQuestion()
   return self.game:SkipCurrent()
 end
@@ -567,6 +603,9 @@ end
 
 TriviaClassic.DEFAULT_TIMER = DEFAULT_TIMER
 
+-- Incoming chat event handler for answers and self-registration.
+-- Runs for every configured channel event; ignores addon output and
+-- emits game-related events for the UI to react to.
 local function handleIncomingChat(event, msg, sender, languageName, channelNameFull, _, _, _, _, channelBase)
   -- channelNameFull example: "1. Custom"; channelBase example: "Custom"
   local channelName = channelBase or channelNameFull
@@ -595,6 +634,7 @@ local function handleIncomingChat(event, msg, sender, languageName, channelNameF
   end
 end
 
+-- Events that can carry answers, per channel selection.
 local channelEvents = {
   "CHAT_MSG_SAY",
   "CHAT_MSG_YELL",
@@ -607,10 +647,12 @@ local channelEvents = {
   "CHAT_MSG_CHANNEL",
 }
 
+-- Wire runtime events to addon flow (load, login, chat).
 local events = runtime and runtime.events
 if events and events.on then
   events:on("ADDON_LOADED", function(_, name)
     if name == addonName then
+      -- Load saved variables and build the game when the addon is ready.
       initDatabase()
       initGame()
       if addonPrivate and addonPrivate[1] then

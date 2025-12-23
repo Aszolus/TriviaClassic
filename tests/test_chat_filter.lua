@@ -1,0 +1,10 @@
+TC_TEST("Chat filter ignores addon messages", function()
+  TC_ASSERT_TRUE(TriviaClassic_ShouldIgnoreMessage("[Trivia] Q1/10: What is X?"), "plain addon tag")
+  TC_ASSERT_TRUE(TriviaClassic_ShouldIgnoreMessage("   [Trivia] Something"), "leading whitespace")
+  TC_ASSERT_TRUE(TriviaClassic_ShouldIgnoreMessage("|cffff5050[Trivia]|r Colored"), "colored addon tag")
+end)
+
+TC_TEST("Chat filter allows player commands", function()
+  TC_ASSERT_FALSE(TriviaClassic_ShouldIgnoreMessage("trivia register"), "register command")
+  TC_ASSERT_FALSE(TriviaClassic_ShouldIgnoreMessage("hello world"), "normal chat")
+end)

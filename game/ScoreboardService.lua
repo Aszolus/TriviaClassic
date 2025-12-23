@@ -1,7 +1,11 @@
 -- Scoreboard helpers for UI text and chat summaries.
+-- Used after a game ends or when the host requests scores.
 
 local S = {}
+-- UI panel is intentionally short to keep the widget compact.
+local UI_MAX_ROWS = 12
 
+-- Stable ordering so UI/chat outputs are deterministic.
 local function sortRowsByPoints(rows)
   local list = {}
   for i, entry in ipairs(rows or {}) do
@@ -34,13 +38,14 @@ end
 ---@param fastestTime number|nil
 ---@return string
 function S.formatUIPanel(rows, fastestName, fastestTime)
+  -- UI panel is compact and capped to avoid overflow.
   if not rows or #rows == 0 then
     return "No answers yet."
   end
   rows = sortRowsByPoints(rows)
   local lines = {}
   for i, entry in ipairs(rows) do
-    if i > 12 then break end
+    if i > UI_MAX_ROWS then break end
     local best = entry.bestTime and string.format(" (best %.1fs)", entry.bestTime) or ""
     table.insert(lines, string.format("%d) %s - %d pts (%d correct)%s", i, entry.name, entry.points or 0, entry.correct or 0, best))
   end
@@ -57,6 +62,7 @@ end
 ---@param fastestTime number|nil
 ---@return string[] lines
 function S.sessionChatLines(rows, fastestName, fastestTime)
+  -- Session rows include per-game best time when available.
   local lines = {}
   if not rows or #rows == 0 then
     table.insert(lines, "No answers yet.")
@@ -78,6 +84,7 @@ end
 ---@param fastestTime number|nil
 ---@return string[] lines
 function S.allTimeChatLines(rows, fastestName, fastestTime)
+  -- All-time lines omit best-time details for brevity.
   local lines = {}
   if not rows or #rows == 0 then
     table.insert(lines, "No scores recorded.")

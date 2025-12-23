@@ -1,8 +1,10 @@
--- Shared answer normalization and matching utilities
+-- Shared answer normalization and matching utilities.
+-- Used by Game:HandleChatAnswer to decide if a chat message is correct.
 
 local Answer = {}
 local MIN_SUBSTRING_LEN = 4
 
+-- Strip a leading "the" to avoid penalizing articles in answers.
 local function stripLeadingThe(value)
   if value and value:find("^the") then
     return value:sub(4)
@@ -18,6 +20,7 @@ function Answer.normalize(text)
   local s = tostring(text or ""):lower()
   s = s:gsub("%s+", "") -- Remove all spaces (tabs, newlines, etc. too)
   local marker = string.char(1)
+  -- Preserve apostrophes inside words while stripping other punctuation.
   s = s:gsub("(%w)'(%w)", "%1" .. marker .. "%2")
   s = s:gsub("%p+", "") -- Remove all punctuation/symbols
   s = s:gsub(marker, "'")
@@ -50,6 +53,8 @@ end
 ---@param question table
 ---@return boolean
 function Answer.match(candidate, question)
+  -- Normalized substring matching allows partial answers while avoiding
+  -- false positives from very short strings.
   local norm = Answer.normalize(candidate)
   for _, ans in ipairs((question and question.answers) or {}) do
     local target = Answer.normalize(ans)
