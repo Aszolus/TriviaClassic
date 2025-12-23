@@ -4,10 +4,10 @@
 -- -------------------------------------------------- --
 
 local _, TriviaBot_Questions = ...
+TriviaBot_Questions = TriviaBot_Questions or {}
 
--- Store everything in TriviaBot_Questions[1]
-
-TriviaBot_Questions[1] = {
+local setIndex = #TriviaBot_Questions + 1
+TriviaBot_Questions[setIndex] = {
   ['Categories'] = {},
   ['Questions'] = {},
 }
