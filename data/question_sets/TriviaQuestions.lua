@@ -1589,14 +1589,6 @@ addQuestion({
 })
 
 addQuestion({
-  ['Question'] = "What is the name of the rare mount that can drop from Baron Rivendare in Stratholme?",
-  ['Answers'] = {"Deathcharger's Reins"},
-  ['Category'] = 1,
-  ['Points'] = "1",
-  ['Hints'] = {},
-})
-
-addQuestion({
   ['Question'] = "Which elite black drake is notorious for wiping travelers as it patrols near the Blasted Lands and Swamp of Sorrows routes?",
   ['Answers'] = {"Teremus the Devourer", "Teremus"},
   ['Category'] = 1,
@@ -2113,30 +2105,6 @@ addQuestion({
 })
 
 addQuestion({
-  ['Question'] = "What Herbalism skill is required to gather Mountain Silversage?",
-  ['Answers'] = {"280"},
-  ['Category'] = 6,
-  ['Points'] = "1",
-  ['Hints'] = {"High-level mountain herb."},
-})
-
-addQuestion({
-  ['Question'] = "What Herbalism skill is required to gather Plaguebloom?",
-  ['Answers'] = {"285"},
-  ['Category'] = 6,
-  ['Points'] = "1",
-  ['Hints'] = {"Plaguelands endgame herb."},
-})
-
-addQuestion({
-  ['Question'] = "What Herbalism skill is required to gather Icecap?",
-  ['Answers'] = {"290"},
-  ['Category'] = 6,
-  ['Points'] = "1",
-  ['Hints'] = {"Winterspring herb."},
-})
-
-addQuestion({
   ['Question'] = "What Herbalism skill is required to gather Black Lotus?",
   ['Answers'] = {"300"},
   ['Category'] = 6,
@@ -2146,60 +2114,11 @@ addQuestion({
 
 -- Mining nodes
 addQuestion({
-  ['Question'] = "What Mining skill is required to mine Mithril Deposits?",
-  ['Answers'] = {"175"},
-  ['Category'] = 6,
-  ['Points'] = "1",
-  ['Hints'] = {"Mid-high ore tier."},
-})
-
-addQuestion({
-  ['Question'] = "What Mining skill is required to mine Truesilver Deposits?",
-  ['Answers'] = {"230"},
-  ['Category'] = 6,
-  ['Points'] = "1",
-  ['Hints'] = {"Rare spawn near Mithril."},
-})
-
-addQuestion({
-  ['Question'] = "What Mining skill is required to mine a Small Thorium Vein?",
-  ['Answers'] = {"245"},
-  ['Category'] = 6,
-  ['Points'] = "1",
-  ['Hints'] = {"Endgame ore tier (smaller node)."},
-})
-
-addQuestion({
   ['Question'] = "What Mining skill is required to mine a Rich Thorium Vein?",
   ['Answers'] = {"275"},
   ['Category'] = 6,
   ['Points'] = "1",
   ['Hints'] = {"Endgame ore tier (bigger node)."},
-})
-
--- Smelting
-addQuestion({
-  ['Question'] = "What Mining skill is required to smelt Truesilver Bars?",
-  ['Answers'] = {"230"},
-  ['Category'] = 6,
-  ['Points'] = "1",
-  ['Hints'] = {"Smelting question (not mining the node)."},
-})
-
-addQuestion({
-  ['Question'] = "What Mining skill is required to smelt Thorium Bars?",
-  ['Answers'] = {"250"},
-  ['Category'] = 6,
-  ['Points'] = "1",
-  ['Hints'] = {"Smelting question (not mining the node)."},
-})
-
-addQuestion({
-  ['Question'] = "What Mining skill (minimum) is required before you can smelt Dark Iron Ore (after the unlock)?",
-  ['Answers'] = {"230"},
-  ['Category'] = 6,
-  ['Points'] = "1",
-  ['Hints'] = {"BRD-related smelting."},
 })
 
 addQuestion({
@@ -2300,14 +2219,6 @@ addQuestion({
 })
 
 addQuestion({
-  ['Question'] = "In Classic, what Mining skill is required to mine the Ahn'Qiraj Obsidian chunks/shards?",
-  ['Answers'] = {"305"},
-  ['Category'] = 6,
-  ['Points'] = "1",
-  ['Hints'] = {"This is why +skill gear exists."},
-})
-
-addQuestion({
   ['Question'] = "What item teaches 'Find Fish' (the ability that shows fishing pools on your minimap)?",
   ['Answers'] = {"weather-beaten journal", "weather beaten journal"},
   ['Category'] = 6,
@@ -2332,7 +2243,7 @@ addQuestion({
 })
 
 addQuestion({
-  ['Question'] = "What type of bars created from smelting tin bars and copper bars together?",
+  ['Question'] = "What type of bars are created from smelting tin bars and copper bars together?",
   ['Answers'] = {"bronze", "bronze bars", "bronze bar"},
   ['Category'] = 6,
   ['Points'] = "1",

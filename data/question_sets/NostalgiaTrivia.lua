@@ -37,7 +37,7 @@ addQuestion({
 })
 
 addQuestion({
-  ['Question'] = "What Nickelodeon show featured a baby genius named Stewie?",
+  ['Question'] = "What Nickelodeon show featured a baby genius named Tommy Pickles?",
   ['Answers'] = {"rugrats"},
   ['Category'] = 1,
   ['Points'] = "1",
@@ -333,7 +333,7 @@ addQuestion({
 -- Slightly harder deep cuts
 addQuestion({
   ['Question'] = "What 90s cartoon featured a wallaby named Rocko?",
-  ['Answers'] = {"rocko's modern life", "rockos modern life", "rocko"},
+  ['Answers'] = {"rocko's modern life"},
   ['Category'] = 1,
   ['Points'] = "1",
   ['Hints'] = {"Oh-Town."},
@@ -400,7 +400,7 @@ addQuestion({
 })
 
 addQuestion({
-  ['Question'] = "What show featured Adam and Jamie testing myths with explosions?",
+  ['Question'] = "What show featured Adam and Jamie testing myths?",
   ['Answers'] = {"mythbusters", "myth busters"},
   ['Category'] = 2,
   ['Points'] = "1",
@@ -425,7 +425,7 @@ addQuestion({
 })
 
 addQuestion({
-  ['Question'] = "What wizarding movie franchise starts with 'The Sorcerer's Stone'?",
+  ['Question'] = "What wizarding movie franchise features 'He who must not be named?'",
   ['Answers'] = {"harry potter"},
   ['Category'] = 2,
   ['Points'] = "1",
@@ -465,7 +465,7 @@ addQuestion({
 })
 
 addQuestion({
-  ['Question'] = "What 2008 superhero movie launched the MCU with Tony Stark building a suit?",
+  ['Question'] = "What 2008 superhero movie launched the Marvel Cinematic Universe?",
   ['Answers'] = {"iron man"},
   ['Category'] = 2,
   ['Points'] = "1",
@@ -498,7 +498,7 @@ addQuestion({
 })
 
 addQuestion({
-  ['Question'] = "What duo/group sang the 2003 hit 'Hey Ya!'?",
+  ['Question'] = "What group sang the 2003 hit 'Hey Ya!'?",
   ['Answers'] = {"outkast", "outkast!"},
   ['Category'] = 2,
   ['Points'] = "1",
@@ -547,7 +547,7 @@ addQuestion({
 })
 
 addQuestion({
-  ['Question'] = "What Nintendo motion-control console came with Wii Sports?",
+  ['Question'] = "What Nintendo motion-control console became associated with broken tvs and injuries?",
   ['Answers'] = {"wii", "nintendo wii"},
   ['Category'] = 2,
   ['Points'] = "1",
