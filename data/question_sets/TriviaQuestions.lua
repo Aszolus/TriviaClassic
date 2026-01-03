@@ -144,7 +144,7 @@ addQuestion({
 
 addQuestion({
   ['Question'] = "What is the most common way to die in HC WoW?",
-  ['Answers'] = {"Falling", "fall damage"},
+  ['Answers'] = {"Falling", "fall damage", "fall"},
   ['Category'] = 1,
   ['Points'] = "1",
   ['Hints'] = {"There's no achievement for it Classic."},
@@ -328,7 +328,7 @@ addQuestion({
 
 addQuestion({
   ['Question'] = "What is the most common way to die in Thunder Bluff? *Based on HC Kill count.",
-  ['Answers'] = {"Falling", "Fall damage"},
+  ['Answers'] = {"Falling", "Fall damage", "fall"},
   ['Category'] = 1,
   ['Points'] = "1",
   ['Hints'] = {},

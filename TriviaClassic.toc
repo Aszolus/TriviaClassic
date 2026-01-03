@@ -46,3 +46,4 @@ ui/UI.lua
 data/question_sets/TriviaQuestions.lua
 data/question_sets/LoreWalkersOfSilvermoon.lua
 data/question_sets/NostalgiaTrivia.lua
+data/question_sets/ChristmasQuestions.lua

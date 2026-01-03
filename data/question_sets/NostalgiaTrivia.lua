@@ -240,11 +240,11 @@ addQuestion({
 })
 
 addQuestion({
-  ['Question'] = "What 90s desk toy was a blob of goo in a tube you’d flip endlessly?",
-  ['Answers'] = {"newton's cradle", "newtons cradle", "newton cradle"},
+  ['Question'] = "What is the name of the 90s toy that was a squishy, water filled tube that was difficult to hold in your hand?",
+  ['Answers'] = {"water snake"},
   ['Category'] = 1,
   ['Points'] = "1",
-  ['Hints'] = {"Click-clack metal balls."},
+  ['Hints'] = {"Kinda resembles a sex toy..."},
 })
 
 -- Games / Consoles
