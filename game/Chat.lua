@@ -11,7 +11,7 @@ Chat.__index = Chat
 
 local channelMap = TriviaClassic_GetChannelMap()
 -- Hard clamp any message to avoid exceeding chat length limits.
-local MAX_CHAT_LEN = 220
+local MAX_CHAT_LEN = 245
 
 -- Normalize channel name to a lowercase label (e.g., "1. Custom" -> "custom").
 local function baseChannelName(raw)
