@@ -296,14 +296,6 @@ addQuestion({
 })
 
 addQuestion({
-  ['Question'] = "What is the deadliest mob in The Barrens? *Based on HC Kill count.",
-  ['Answers'] = {"Kolkar Invader"},
-  ['Category'] = CAT_HC,
-  ['Points'] = "1",
-  ['Hints'] = {},
-})
-
-addQuestion({
   ['Question'] = "What is the first wand an enchanter can make?",
   ['Answers'] = {"Lesser Magic Wand"},
   ['Category'] = CAT_LORE,
@@ -322,14 +314,6 @@ addQuestion({
 addQuestion({
   ['Question'] = "What is the most common way to die in Orgrimmar? *Based on HC Kill count.",
   ['Answers'] = {"Gamon"},
-  ['Category'] = CAT_HC,
-  ['Points'] = "1",
-  ['Hints'] = {},
-})
-
-addQuestion({
-  ['Question'] = "What is the deadliest enemy in Mulgore? *Based on HC Kill count.",
-  ['Answers'] = {"Snagglespear"},
   ['Category'] = CAT_HC,
   ['Points'] = "1",
   ['Hints'] = {},
@@ -363,6 +347,8 @@ addQuestion({
   ['Question'] = "Located in Northshire, this NPC is described as \"a cutthroat who's plagued our farmers and merchants for weeks.\" Who is it?",
   ['Answers'] = {"Garrick Padfoot"},
   ['Category'] = CAT_ALLY,
+  ['Points'] = "1",
+  ['Hints'] = {""},
 })
 
 addQuestion({
@@ -403,14 +389,6 @@ addQuestion({
   ['Category'] = CAT_ALLY,
   ['Points'] = "1",
   ['Hints'] = {"He's a Stonefield"},
-})
-
-addQuestion({
-  ['Question'] = "William Pestle creates an invisibility potion to unite two lovers from rival farmsteads.  What item does he have you collect in order to make it?",
-  ['Answers'] = {"Crystal Kelp Frond", "Crystal Kelp"},
-  ['Category'] = CAT_ALLY,
-  ['Points'] = "1",
-  ['Hints'] = {"______ ____ Frond"},
 })
 
 addQuestion({
@@ -555,14 +533,6 @@ addQuestion({
   ['Category'] = CAT_ALLY,
   ['Points'] = "1",
   ['Hints'] = {},
-})
-
-addQuestion({
-  ['Question'] = "What NPC disguised themself as Marshall Dughan by wearing a Stormwind tabard and tricked Marshall Haggard into giving him his old Stormwind Marshall's badge?",
-  ['Answers'] = {"Dead-Tooth Jack", "Deadtooth Jack", "dead tooth jack"},
-  ['Category'] = CAT_ALLY,
-  ['Points'] = "1",
-  ['Hints'] = {"He can be found southeast of Eastvale Logging Camp."},
 })
 
 addQuestion({
@@ -1978,7 +1948,7 @@ addQuestion({
   ['Answers'] = {"Mark of the Wild", "Gift of the Wild"},
   ['Category'] = CAT_GENERAL,
   ['Points'] = "1",
-  ['Hints'] = {"Druid", "Stats"},
+  ['Hints'] = {},
 })
 
 addQuestion({
@@ -1986,7 +1956,7 @@ addQuestion({
   ['Answers'] = {"Arcane Intellect", "Arcane Brilliance"},
   ['Category'] = CAT_GENERAL,
   ['Points'] = "1",
-  ['Hints'] = {"Mage", "Intellect"},
+  ['Hints'] = {},
 })
 
 addQuestion({
@@ -1994,7 +1964,7 @@ addQuestion({
   ['Answers'] = {"Nine", "9"},
   ['Category'] = CAT_GENERAL,
   ['Points'] = "1",
-  ['Hints'] = {},
+  ['Hints'] = {"You're probably forgetting the ones with long cooldowns..."},
 })
 
 addQuestion({
@@ -2022,7 +1992,7 @@ addQuestion({
 })
 
 addQuestion({
-  ['Question'] = "What is the name of the flask that increases maximum health in Classic WoW?",
+  ['Question'] = "What is the name of the flask that increases maximum health in Classic WoW? (Exact item name)",
   ['Answers'] = {"Flask of the Titans"},
   ['Category'] = CAT_GENERAL,
   ['Points'] = "1",
@@ -2030,7 +2000,7 @@ addQuestion({
 })
 
 addQuestion({
-  ['Question'] = "What is the name of the flask that increases maximum mana in Classic WoW?",
+  ['Question'] = "What is the name of the flask that increases maximum mana in Classic WoW? (Exact item name)",
   ['Answers'] = {"Flask of Distilled Wisdom"},
   ['Category'] = CAT_GENERAL,
   ['Points'] = "1",
@@ -2038,7 +2008,7 @@ addQuestion({
 })
 
 addQuestion({
-  ['Question'] = "What is the name of the flask that increases spell power in Classic WoW?",
+  ['Question'] = "What is the name of the flask that increases spell power in Classic WoW? (Exact item name)",
   ['Answers'] = {"Flask of Supreme Power"},
   ['Category'] = CAT_GENERAL,
   ['Points'] = "1",
@@ -2046,7 +2016,7 @@ addQuestion({
 })
 
 addQuestion({
-  ['Question'] = "What is the name of the elixir that increases agility and critical strike chance for melee classes?",
+  ['Question'] = "What is the name of the elixir that increases agility and critical strike chance for melee classes? (Exact item name)",
   ['Answers'] = {"Elixir of the Mongoose"},
   ['Category'] = CAT_GENERAL,
   ['Points'] = "1",
@@ -2062,15 +2032,7 @@ addQuestion({
 })
 
 addQuestion({
-  ['Question'] = "What is the name of the deadly boss that resides in Undercity, killing thousands of players in hardcore wow?",
-  ['Answers'] = {"Elevator Boss", "UC Elevator", "Elevator"},
-  ['Category'] = CAT_HC,
-  ['Points'] = "1",
-  ['Hints'] = {},
-})
-
-addQuestion({
-  ['Question'] = "What was the original name for the Duel to the Death feature in hardcore WoW? (Exact official name)",
+  ['Question'] = "What was the original name for the Duel to the Death feature in hardcore WoW? (Exact name)",
   ['Answers'] = {"Mak'gora"},
   ['Category'] = CAT_HC,
   ['Points'] = "1",
@@ -2078,7 +2040,7 @@ addQuestion({
 })
 
 addQuestion({
-  ['Question'] = "What is the name of the buff which displays how many trophies you've gathered from victories while Dueling to the Death?",
+  ['Question'] = "What is the name of the buff which displays how many trophies you've gathered from victories while Dueling to the Death? (Exact Buff Name)",
   ['Answers'] = {"String of Ears"},
   ['Category'] = CAT_GENERAL,
   ['Points'] = "1",
@@ -2098,36 +2060,11 @@ addQuestion({
 -- Herbalism
 
 addQuestion({
-  ['Question'] = "What Herbalism skill is required to gather Ghost Mushroom?",
-  ['Answers'] = {"245"},
-  ['Category'] = CAT_PROF,
-  ['Points'] = "1",
-  ['Hints'] = {"It grows underground."},
-})
-
-addQuestion({
-  ['Question'] = "What Herbalism skill is required to gather Gromsblood?",
-  ['Answers'] = {"250"},
-  ['Category'] = CAT_PROF,
-  ['Points'] = "1",
-  ['Hints'] = {"Big endgame consumable herb."},
-})
-
-addQuestion({
   ['Question'] = "What Herbalism skill is required to gather Black Lotus?",
   ['Answers'] = {"300"},
   ['Category'] = CAT_PROF,
   ['Points'] = "1",
   ['Hints'] = {"The famous flask herb."},
-})
-
--- Mining nodes
-addQuestion({
-  ['Question'] = "What Mining skill is required to mine a Rich Thorium Vein?",
-  ['Answers'] = {"275"},
-  ['Category'] = CAT_PROF,
-  ['Points'] = "1",
-  ['Hints'] = {"Endgame ore tier (bigger node)."},
 })
 
 addQuestion({
@@ -2394,6 +2331,70 @@ addQuestion({
   ['Category'] = CAT_LORE,
   ['Points'] = "1",
   ['Hints'] = {"She can resurrect her ally in the fight."},
+})
+
+addQuestion({
+  ['Question'] = "What is the name of the NPC who, when attacked by ooze creatures in the wetlands, threw her bag at them to escape?",
+  ['Answers'] = {"Sida"},
+  ['Category'] = CAT_ALLY,
+  ['Points'] = "1",
+  ['Hints'] = {"The player gets a quest to retrieve her bag from the oozes."},
+})
+
+addQuestion({
+  ['Question'] = "What is name of the little girl whose ghosts gives the player a quest to find a doll in the ruins of Darrowshire? (First and Last name)",
+  ['Answers'] = {"Pamela Redpath"},
+  ['Category'] = CAT_ALLY,
+  ['Points'] = "1",
+  ['Hints'] = {"Her relatives are: 	Joseph (father), Jessica (older sister), Carlin (uncle), and Marlene (aunt)"},
+})
+
+addQuestion({
+  ['Question'] = "Barnil Stonepot was entrusted to proofread the manuscript of Hemet Nesingwary's yet-to-be-released novel.  What is the name of the Novel?",
+  ['Answers'] = {"Green Hills of Stranglethorn"},
+  ['Category'] = CAT_LORE,
+  ['Points'] = "1",
+  ['Hints'] = {"The pages are found all over Stranglethorn Vale."},
+})
+
+addQuestion({
+  ['Question'] = "The Prophecy of Mosh'aru speaks of a relic that has the power to hold the essence of Hakkar.  What type of item is the relic?",
+  ['Answers'] = {"egg", "ancient egg"},
+  ['Category'] = CAT_LORE,
+  ['Points'] = "1",
+  ['Hints'] = {"You use the relic's power to stir dead god in The Sunken Temple."},
+})
+
+addQuestion({
+  ['Question'] = "What is the name of the item that the Priest Staff 'Benediction' can transform into?",
+  ['Answers'] = {"Anathema"},
+  ['Category'] = CAT_GENERAL,
+  ['Points'] = "1",
+  ['Hints'] = {},
+})
+
+addQuestion({
+  ['Question'] = "What is the name of the item that the Priest Staff 'Benediction' can transform into?",
+  ['Answers'] = {"Anathema"},
+  ['Category'] = CAT_GENERAL,
+  ['Points'] = "1",
+  ['Hints'] = {},
+})
+
+addQuestion({
+  ['Question'] = "After consulting the cards and seeing “Death” stare back, what name comes to Madam Eva as the key clue to Alyssa’s danger?",
+  ['Answers'] = {"Stalvan"},
+  ['Category'] = CAT_ALLY,
+  ['Points'] = "1",
+  ['Hints'] = {},
+})
+
+addQuestion({
+  ['Question'] = "What is the name of the NPC rescued from a prison cell in Blackrock Depths during the quest 'Jail Break!'? (Exact NPC Name)",
+  ['Answers'] = {"Marshall Windsor"},
+  ['Category'] = CAT_ALLY,
+  ['Points'] = "1",
+  ['Hints'] = {},
 })
 
 
