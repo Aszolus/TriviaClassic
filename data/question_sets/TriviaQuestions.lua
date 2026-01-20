@@ -2397,6 +2397,77 @@ addQuestion({
   ['Hints'] = {},
 })
 
+addQuestion({
+  ['Question'] = "What flavor is Tigule's Ice Cream?",
+  ['Answers'] = {"Strawberry"},
+  ['Category'] = CAT_GENERAL,
+  ['Points'] = "1",
+  ['Hints'] = {"Orphan's love it during Children's Week!"},
+})
+
+addQuestion({
+  ['Question'] = "What is the name of the trinket obtained from the quest 'Gahz'rilla' which increases mounted speed by 3%?",
+  ['Answers'] = {"Carrot on a Stick"},
+  ['Category'] = CAT_GENERAL,
+  ['Points'] = "1",
+  ['Hints'] = {},
+})
+
+addQuestion({
+  ['Question'] = "The first player on a server to ring the 'Scarab Gong' in southern Silithus is granted which title?",
+  ['Answers'] = {"Scarab Lord"},
+  ['Category'] = CAT_LORE,
+  ['Points'] = "1",
+  ['Hints'] = {},
+})
+
+addQuestion({
+  ['Question'] = "In southern Westfall, a repeatable quest to turn in 5 hops rewards a keg of what type of lager?",
+  ['Answers'] = {"Thunderbrew", "Keg of Thunderbrew"},
+  ['Category'] = CAT_LORE,
+  ['Points'] = "1",
+  ['Hints'] = {"The NPC questgiver is Grimbooze Thunderbrew."},
+})
+
+addQuestion({
+  ['Question'] = "How many spells do mages have that can deal frost damage?",
+  ['Answers'] = {"4", "Four"},
+  ['Category'] = CAT_GENERAL,
+  ['Points'] = "1",
+  ['Hints'] = {},
+})
+
+addQuestion({
+  ['Question'] = "Paladins and Shamans are two classes in Classic WoW that can remove poisons.  What is the third class?",
+  ['Answers'] = {"druid", "druids"},
+  ['Category'] = CAT_GENERAL,
+  ['Points'] = "1",
+  ['Hints'] = {},
+})
+
+addQuestion({
+  ['Question'] = "Which race has the ability to 'sense' nearby treasure?",
+  ['Answers'] = {"dwarf", "dwarves"},
+  ['Category'] = CAT_GENERAL,
+  ['Points'] = "1",
+  ['Hints'] = {},
+})
+
+addQuestion({
+  ['Question'] = "In hardcore WoW, what is the most heroic spell a player can cast?",
+  ['Answers'] = {"Divine Intervention"},
+  ['Category'] = CAT_GENERAL,
+  ['Points'] = "1",
+  ['Hints'] = {"Greater love hath no man than this, that a man lay down his life for his friends"},
+})
+
+addQuestion({
+  ['Question'] = "Which Druid crowd-control spell can’t be cast indoors because it’s “Only usable outdoors”?",
+  ['Answers'] = {"Entangling Roots"},
+  ['Category'] = CAT_GENERAL,
+  ['Points'] = "1",
+  ['Hints'] = {"Nature's Grasp is technically a buff..."},
+})
 
 -- Ensure the global table exists and register with TriviaClassic if present
 _G.TriviaBot_Questions = TriviaBot_Questions
