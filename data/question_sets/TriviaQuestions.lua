@@ -312,7 +312,7 @@ addQuestion({
 })
 
 addQuestion({
-  ['Question'] = "What is the most common way to die in Orgrimmar? *Based on HC Kill count.",
+  ['Question'] = "Who is the most deadly NPC in Orgrimmar? *Based on HC Kill count.",
   ['Answers'] = {"Gamon"},
   ['Category'] = CAT_HC,
   ['Points'] = "1",
@@ -448,8 +448,8 @@ addQuestion({
 })
 
 addQuestion({
-  ['Question'] = "What is the name of the NPC who holds the title <Mage of Tower Azora>?",
-  ['Answers'] = {"Theocritus"},
+  ['Question'] = "Theocritus is the mage of what tower?",
+  ['Answers'] = {"Azora", "Tower of Azora"},
   ['Category'] = CAT_ALLY,
   ['Points'] = "1",
   ['Hints'] = {},
@@ -2467,6 +2467,234 @@ addQuestion({
   ['Category'] = CAT_GENERAL,
   ['Points'] = "1",
   ['Hints'] = {"Nature's Grasp is technically a buff..."},
+})
+
+addQuestion({
+  ['Question'] = "Where in the Barrens is the entrance to Wailing Caverns?",
+  ['Answers'] = {"Lushwater Oasis", "Lushwater Oasis in the Barrens", "Lushwater"},
+  ['Category'] = CAT_GEO,
+  ['Points'] = "1",
+  ['Hints'] = {"\"...entrance at the _________ Oasis... in the Barrens.\""},
+})
+
+addQuestion({
+  ['Question'] = "which druid discovered the caverns that became Wailing Caverns?",
+  ['Answers'] = {"Naralex"},
+  ['Category'] = CAT_LORE,
+  ['Points'] = "1",
+  ['Hints'] = {"\"...a night elf druid named...\""},
+})
+
+addQuestion({
+  ['Question'] = "Naralex began siphoning energies of what fabled place?",
+  ['Answers'] = {"The Emerald Dream", "Emerald Dream"},
+  ['Category'] = CAT_LORE,
+  ['Points'] = "1",
+  ['Hints'] = {"\"...began siphoning the energies of the fabled...\""},
+})
+
+addQuestion({
+  ['Question'] = "Blackfathom Deeps was once a temple dedicated to which god or goddess?",
+  ['Answers'] = {"Elune"},
+  ['Category'] = CAT_LORE,
+  ['Points'] = "1",
+  ['Hints'] = {"\"...a glorious temple dedicated to...\""},
+})
+
+addQuestion({
+  ['Question'] = "who ordered the emergency venting of Gnomeregan’s radioactive waste tanks?",
+  ['Answers'] = {"High Tinker Mekkatorque", "Mekkatorque"},
+  ['Category'] = CAT_LORE,
+  ['Points'] = "1",
+  ['Hints'] = {"\"...High Tinker... ordered the emergency venting...\""},
+})
+
+
+addQuestion({
+  ['Question'] = "The blood of which demigod boar is said to have spawned thorn-ridden vines at Razorfen Kraul?",
+  ['Answers'] = {"Agamaggan"},
+  ['Category'] = CAT_GENERAL,
+  ['Points'] = "1",
+  ['Hints'] = {},
+})
+
+addQuestion({
+  ['Question'] = "Scholomance is located to be on the ruined island of what place?",
+  ['Answers'] = {"Caer Darrow"},
+  ['Category'] = CAT_GEO,
+  ['Points'] = "1",
+  ['Hints'] = {},
+})
+
+addQuestion({
+  ['Question'] = "which dragon Aspect smashed the Sunken Temple beneath the marshes?",
+  ['Answers'] = {"Ysera"},
+  ['Category'] = CAT_LORE,
+  ['Points'] = "1",
+  ['Hints'] = {},
+})
+
+addQuestion({
+  ['Question'] = "Ragefire Chasm lies beneath which city?",
+  ['Answers'] = {"Orgrimmar"},
+  ['Category'] = CAT_GEO,
+  ['Points'] = "1",
+  ['Hints'] = {},
+})
+
+
+addQuestion({
+  ['Question'] = "What cult has taken up residence in Ragefire Chasm's fiery depths?",
+  ['Answers'] = {"Burning Blade", "The Burning Blade"},
+  ['Category'] = CAT_LORE,
+  ['Points'] = "1",
+  ['Hints'] = {},
+})
+
+addQuestion({
+  ['Question'] = "The Burning Blade is loyal to which demonic council?",
+  ['Answers'] = {"Shadow Council", "The Shadow Council"},
+  ['Category'] = CAT_LORE,
+  ['Points'] = "1",
+  ['Hints'] = {"\"...a cult loyal to the demonic ______ _______.\""},
+})
+
+addQuestion({
+  ['Question'] = "Scarlet Monastery was once a bastion of which kingdom's priesthood?",
+  ['Answers'] = {"Lordaeron"},
+  ['Category'] = CAT_LORE,
+  ['Points'] = "1",
+  ['Hints'] = {"Arthas may have trained there..."},
+})
+
+addQuestion({
+  ['Question'] = "During which war did Scarlet Monastery get converted into a Scarlet Crusade stronghold?",
+  ['Answers'] = {"Third War", "The Third War", "Third"},
+  ['Category'] = CAT_LORE,
+  ['Points'] = "1",
+  ['Hints'] = {"\"...during the _____ War... converted...\""},
+})
+
+
+addQuestion({
+  ['Question'] = "Which faction believes that all outsiders are potential carriers of the undead plague?",
+  ['Answers'] = {"The Scarlet Crusade"},
+  ['Category'] = CAT_LORE,
+  ['Points'] = "1",
+  ['Hints'] = {"The Scarlet..."},
+})
+
+addQuestion({
+  ['Question'] = "Uldaman is an ancient vault created by whom?",
+  ['Answers'] = {"The Titans", "Titans"},
+  ['Category'] = CAT_LORE,
+  ['Points'] = "1",
+  ['Hints'] = {"\"Uldaman is an ancient Titan vault...\""},
+})
+
+addQuestion({
+  ['Question'] = "Innkeeper rumor: The Dark Iron dwarves want the Discs of Norgannon for which master?",
+  ['Answers'] = {"Ragnaros", "Ragnaros the Firelord"},
+  ['Category'] = CAT_LORE,
+  ['Points'] = "1",
+  ['Hints'] = {"\"...for their fiery master ...\""},
+})
+
+addQuestion({
+  ['Question'] = "Innkeeper rumor: Who guards the Discs of Norgannon as a massive Stonekeeper?",
+  ['Answers'] = {"Archaedas"},
+  ['Category'] = CAT_LORE,
+  ['Points'] = "1",
+  ['Hints'] = {},
+})
+
+addQuestion({
+  ['Question'] = "Razorfen Downs is described as the traditional capital city of which race?",
+  ['Answers'] = {"Quilboar", "The quilboar"},
+  ['Category'] = CAT_LORE,
+  ['Points'] = "1",
+  ['Hints'] = {},
+})
+
+
+addQuestion({
+  ['Question'] = "Innkeeper rumor: Which tribe's high priests are said to dwell in Razorfen Downs?",
+  ['Answers'] = {"Death's Head", "The Death's Head", "Death's Head tribe"},
+  ['Category'] = CAT_LORE,
+  ['Points'] = "1",
+  ['Hints'] = {"\"...their high priests - the Death's Head tribe.\""},
+})
+
+addQuestion({
+  ['Question'] = "Innkeeper rumor: Which lich is named as leading the Scourge in Razorfen Downs?",
+  ['Answers'] = {"Amnennar the Coldbringer", "Amnennar"},
+  ['Category'] = CAT_LORE,
+  ['Points'] = "1",
+  ['Hints'] = {"\"...led by the lich, _______ the Coldbringer...\""},
+})
+
+addQuestion({
+  ['Question'] = "Innkeeper rumor: What is the name of the powerful sword tied to Zul'Farrak legends?",
+  ['Answers'] = {"Sul'thraze the Lasher", "Sul’thraze the Lasher", "Sul'thraze"},
+  ['Category'] = CAT_GENERAL,
+  ['Points'] = "1",
+  ['Hints'] = {"\"...a powerful sword called ___'_____ the Lasher...\""},
+})
+
+addQuestion({
+  ['Question'] = "Innkeeper rumor: Warden Thelwater presides over which dungeon?",
+  ['Answers'] = {"The Stockade", "Stockade"},
+  ['Category'] = CAT_LORE,
+  ['Points'] = "1",
+  ['Hints'] = {"\"Presided over by Warden Thelwater...\""},
+})
+
+addQuestion({
+  ['Question'] = "Innkeeper rumor: The uprising's mastermind in the Stockade is which felon?",
+  ['Answers'] = {"Bazil Thredd"},
+  ['Category'] = CAT_LORE,
+  ['Points'] = "1",
+  ['Hints'] = {},
+})
+
+addQuestion({
+  ['Question'] = "Innkeeper rumor: Ragnaros uncovered the secret to creating life from what?",
+  ['Answers'] = {"Stone"},
+  ['Category'] = CAT_GENERAL,
+  ['Points'] = "1",
+  ['Hints'] = {"\"...secret to creating life from _____...\""},
+})
+
+addQuestion({
+  ['Question'] = "Innkeeper rumor: Ragnaros plans to build an army of unstoppable what?",
+  ['Answers'] = {"Golems"},
+  ['Category'] = CAT_GENERAL,
+  ['Points'] = "1",
+  ['Hints'] = {"\"...build an army of unstoppable golems...\""},
+})
+
+addQuestion({
+  ['Question'] = "Innkeeper rumor: After their civil war, the Atal'ai were exiled to which zone?",
+  ['Answers'] = {"Swamp of Sorrows"},
+  ['Category'] = CAT_LORE,
+  ['Points'] = "1",
+  ['Hints'] = {"\"...exiled to the _____ __ _______.\""},
+})
+
+addQuestion({
+  ['Question'] = "Innkeeper rumor: The ruins of Dire Maul were built to protect whose most prized arcane secrets?",
+  ['Answers'] = {"Queen Azshara", "Azshara"},
+  ['Category'] = CAT_GENERAL,
+  ['Points'] = "1",
+  ['Hints'] = {"\"...to protect Queen ______'s most prized arcane secrets.\""},
+})
+
+addQuestion({
+  ['Question'] = "Innkeeper rumor: Dire Maul was ravaged by which world-shattering event?",
+  ['Answers'] = {"The Great Sundering", "Great Sundering"},
+  ['Category'] = CAT_GENERAL,
+  ['Points'] = "1",
+  ['Hints'] = {"\"Though it was ravaged by the _____ _________...\""},
 })
 
 -- Ensure the global table exists and register with TriviaClassic if present
