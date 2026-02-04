@@ -18,10 +18,12 @@ core/Runtime.lua
 
 game/MessageFormatter.lua
 game/AnswerService.lua
+game/ConnectionsAnswerService.lua
 game/TimerService.lua
 game/ScoreboardService.lua
 
 repo/TriviaBotImporter.lua
+repo/ConnectionsImporter.lua
 repo/QuestionRepository.lua
 repo/QuestionLoader.lua
 
@@ -31,6 +33,7 @@ modes/AllCorrect.lua
 modes/Team.lua
 modes/TeamSteal.lua
 modes/HeadToHead.lua
+modes/Connections.lua
 
 game/Game.lua
 game/Chat.lua
@@ -47,3 +50,5 @@ data/question_sets/TriviaQuestions.lua
 data/question_sets/LoreWalkersOfSilvermoon.lua
 data/question_sets/NostalgiaTrivia.lua
 data/question_sets/ChristmasQuestions.lua
+
+data/connections_puzzles/ConnectionsPuzzles.lua

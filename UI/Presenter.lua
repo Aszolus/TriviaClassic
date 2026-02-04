@@ -321,6 +321,62 @@ function Presenter:ShowAllTimeScores()
   end
 end
 
+-- Connections mode specific methods
+
+--- Announces a Connections puzzle with the word grid.
+---@param index number Current puzzle index
+---@param total number Total puzzles
+---@param words string[] Array of 16 words
+---@param groupsFound number|nil Number of groups already found
+function Presenter:AnnounceConnectionsPuzzle(index, total, words, groupsFound)
+  local F = getFormatter(self.trivia and self.trivia.game)
+  local messages = F.formatConnectionsPuzzle(index, total, words, groupsFound or 0)
+  for _, msg in ipairs(messages or {}) do
+    self.trivia.chat:Send(msg)
+  end
+end
+
+--- Shows remaining words for a Connections puzzle.
+---@param words string[] Remaining words
+---@param groupsFound number Groups already solved
+---@param noNewAnswers boolean Whether there were no new correct answers
+function Presenter:ShowConnectionsRemainingWords(words, groupsFound, noNewAnswers)
+  local F = getFormatter(self.trivia and self.trivia.game)
+  local messages = F.formatConnectionsRemaining(words, groupsFound, noNewAnswers)
+  for _, msg in ipairs(messages or {}) do
+    self.trivia.chat:Send(msg)
+  end
+end
+
+--- Announces solved groups in Connections mode.
+---@param solves table[] Array of { solver, theme, words, points }
+function Presenter:AnnounceConnectionsSolves(solves)
+  local F = getFormatter(self.trivia and self.trivia.game)
+  for _, solve in ipairs(solves or {}) do
+    local msg = F.formatGroupSolved(solve.solver or solve.name, solve.theme, solve.words, solve.points)
+    self.trivia.chat:Send(msg)
+  end
+end
+
+--- Announces puzzle completion in Connections mode.
+---@param solvers table[] Array of { name, totalPoints }
+function Presenter:AnnounceConnectionsComplete(solvers)
+  local F = getFormatter(self.trivia and self.trivia.game)
+  local msg = F.formatConnectionsComplete(solvers)
+  self.trivia.chat:Send(msg)
+end
+
+--- Handles the show_words command for Connections mode.
+---@param result table Result from mode's onAdvance
+function Presenter:HandleConnectionsShowWords(result)
+  if not result then return end
+  self:ShowConnectionsRemainingWords(
+    result.remainingWords,
+    result.groupsFound,
+    result.noNewAnswers
+  )
+end
+
 function TriviaClassic_UI_CreatePresenter(trivia)
   return Presenter:new(trivia or TriviaClassic)
 end

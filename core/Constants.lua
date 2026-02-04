@@ -20,6 +20,7 @@ local GAME_MODES = {
   { key = "TEAM", label = "Team competition (teams score on correct answers)" },
   { key = "TEAM_STEAL", label = "Team steal (active team, steal with final answer)" },
   { key = "HEAD_TO_HEAD", label = "Head-to-head: one per team, fastest wins" },
+  { key = "CONNECTIONS", label = "Connections: find 4 groups of 4 words" },
 }
 
 -- Default mode key if a saved selection is missing/invalid.

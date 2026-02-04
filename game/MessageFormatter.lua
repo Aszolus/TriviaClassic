@@ -194,4 +194,113 @@ function F.formatThanks()
   return "[Trivia] Thanks for playing!"
 end
 
+-- Connections mode formatters
+
+--- Format a Connections puzzle announcement with word grid.
+---@param index number Current puzzle index
+---@param total number Total puzzles
+---@param words string[] Array of 16 (or fewer) words to display
+---@param groupsFound number Number of groups already found
+---@return string[] messages Array of chat messages
+function F.formatConnectionsPuzzle(index, total, words, groupsFound)
+  local messages = {}
+
+  -- Header line
+  if groupsFound and groupsFound > 0 then
+    local remaining = 4 - groupsFound
+    table.insert(messages, string.format("[Trivia] %d groups found! %d remaining.", groupsFound, remaining))
+  else
+    table.insert(messages, string.format("[Trivia] Connections Puzzle %d/%d: Find 4 groups of 4!", index, total))
+  end
+
+  -- Display words in rows of 4
+  if words and #words > 0 then
+    local row = {}
+    for i, word in ipairs(words) do
+      table.insert(row, word)
+      if #row == 4 then
+        table.insert(messages, "[Trivia] | " .. table.concat(row, " | ") .. " |")
+        row = {}
+      end
+    end
+    -- Handle remaining words if not a multiple of 4
+    if #row > 0 then
+      table.insert(messages, "[Trivia] | " .. table.concat(row, " | ") .. " |")
+    end
+  end
+
+  return messages
+end
+
+--- Format a solved group announcement.
+---@param solver string Player who solved the group
+---@param theme string The theme of the group
+---@param words string[] The 4 words in the group
+---@param points number Points awarded
+---@return string
+function F.formatGroupSolved(solver, theme, words, points)
+  local wordsStr = table.concat(words or {}, ", ")
+  return string.format("[Trivia] %s found '%s': %s (+%d pts)",
+    solver or "Someone",
+    theme or "Group",
+    wordsStr,
+    points or 100)
+end
+
+--- Format remaining words display with status.
+---@param words string[] Remaining words
+---@param groupsFound number Groups already solved
+---@param noNewAnswers boolean Whether there were no new correct answers
+---@return string[] messages
+function F.formatConnectionsRemaining(words, groupsFound, noNewAnswers)
+  local messages = {}
+
+  if noNewAnswers then
+    if groupsFound and groupsFound > 0 then
+      local remaining = 4 - groupsFound
+      table.insert(messages, string.format("[Trivia] %d groups found! %d remaining. (No new correct answers)", groupsFound, remaining))
+    else
+      table.insert(messages, "[Trivia] No correct answers yet. Find 4 groups of 4!")
+    end
+  else
+    if groupsFound and groupsFound > 0 then
+      local remaining = 4 - groupsFound
+      table.insert(messages, string.format("[Trivia] %d groups found! %d remaining.", groupsFound, remaining))
+    end
+  end
+
+  -- Display remaining words in rows of 4
+  if words and #words > 0 then
+    local row = {}
+    for i, word in ipairs(words) do
+      table.insert(row, word)
+      if #row == 4 then
+        table.insert(messages, "[Trivia] | " .. table.concat(row, " | ") .. " |")
+        row = {}
+      end
+    end
+    if #row > 0 then
+      table.insert(messages, "[Trivia] | " .. table.concat(row, " | ") .. " |")
+    end
+  end
+
+  return messages
+end
+
+--- Format puzzle complete announcement.
+---@param solvers table[] Array of { name, totalPoints } for each player who contributed
+---@return string
+function F.formatConnectionsComplete(solvers)
+  if not solvers or #solvers == 0 then
+    return "[Trivia] Puzzle complete! No groups were solved."
+  end
+
+  local parts = {}
+  for _, s in ipairs(solvers) do
+    table.insert(parts, string.format("%s (%d pts)", s.name or "?", s.totalPoints or 0))
+  end
+
+  return string.format("[Trivia] Puzzle complete! Solvers: %s", table.concat(parts, ", "))
+end
+
 TriviaClassic_MessageFormatter = F
