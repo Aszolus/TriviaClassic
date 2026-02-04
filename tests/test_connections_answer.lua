@@ -146,3 +146,117 @@ TC_TEST("ConnectionsAnswer: normalize word", function()
   TC_ASSERT_EQ(CA.normalize("Hello!"), "hello", "remove punctuation")
   TC_ASSERT_EQ(CA.normalize("It's"), "its", "remove apostrophe")
 end)
+
+-- Multi-word support tests
+
+local function contains(tbl, value)
+  for _, v in ipairs(tbl) do
+    if v:lower() == value:lower() then
+      return true
+    end
+  end
+  return false
+end
+
+TC_TEST("ConnectionsAnswer: parse multi-word entries with commas", function()
+  local remaining = {"Head of Onyxia", "Blood of Heroes", "Cenarion Beacon", "Damp Note", "Ragnaros"}
+  local words = CA.parseGuessWithContext("Head of Onyxia, Blood of Heroes, Cenarion Beacon, Damp Note", remaining)
+  TC_ASSERT_TRUE(words ~= nil, "should parse 4 items")
+  TC_ASSERT_EQ(#words, 4, "should have 4 items")
+  TC_ASSERT_EQ(words[1], "Head of Onyxia", "first item")
+  TC_ASSERT_EQ(words[2], "Blood of Heroes", "second item")
+  TC_ASSERT_EQ(words[3], "Cenarion Beacon", "third item")
+  TC_ASSERT_EQ(words[4], "Damp Note", "fourth item")
+end)
+
+TC_TEST("ConnectionsAnswer: parse multi-word entries with quotes", function()
+  local remaining = {"Head of Onyxia", "Blood of Heroes", "Cenarion Beacon", "Damp Note", "Ragnaros"}
+  local words = CA.parseGuessWithContext('"Head of Onyxia" "Blood of Heroes" "Cenarion Beacon" "Damp Note"', remaining)
+  TC_ASSERT_TRUE(words ~= nil, "should parse 4 quoted items")
+  TC_ASSERT_EQ(#words, 4, "should have 4 quoted items")
+  TC_ASSERT_EQ(words[1], "Head of Onyxia", "first quoted item")
+  TC_ASSERT_EQ(words[2], "Blood of Heroes", "second quoted item")
+end)
+
+TC_TEST("ConnectionsAnswer: parse multi-word entries with spaces (smart match)", function()
+  local remaining = {"Head of Onyxia", "Blood of Heroes", "Cenarion Beacon", "Damp Note", "Ragnaros"}
+  local words = CA.parseGuessWithContext("head of onyxia damp note blood of heroes cenarion beacon", remaining)
+  TC_ASSERT_TRUE(words ~= nil, "should smart-match 4 items")
+  TC_ASSERT_EQ(#words, 4, "should have 4 items")
+  TC_ASSERT_TRUE(contains(words, "Head of Onyxia"), "found Head of Onyxia")
+  TC_ASSERT_TRUE(contains(words, "Blood of Heroes"), "found Blood of Heroes")
+  TC_ASSERT_TRUE(contains(words, "Cenarion Beacon"), "found Cenarion Beacon")
+  TC_ASSERT_TRUE(contains(words, "Damp Note"), "found Damp Note")
+end)
+
+TC_TEST("ConnectionsAnswer: smart match prefers longer words first", function()
+  -- Ensure "Blood of Heroes" is matched as one item, not "Blood" separately
+  local remaining = {"Blood of Heroes", "Blood", "Heroes", "Test", "Ragnaros", "Onyxia", "Nefarian", "Hakkar"}
+  local words = CA.parseGuessWithContext("blood of heroes ragnaros onyxia nefarian", remaining)
+  TC_ASSERT_TRUE(words ~= nil, "should parse")
+  TC_ASSERT_EQ(#words, 4, "should have 4 items")
+  TC_ASSERT_TRUE(contains(words, "Blood of Heroes"), "found Blood of Heroes as single item")
+end)
+
+TC_TEST("ConnectionsAnswer: smart match returns nil if less than 4 matched", function()
+  local remaining = {"Head of Onyxia", "Blood of Heroes", "Ragnaros"}
+  local words = CA.parseGuessWithContext("head of onyxia blood of heroes unknown item", remaining)
+  TC_ASSERT_EQ(words, nil, "should return nil when not 4 matches")
+end)
+
+TC_TEST("ConnectionsAnswer: parseGuessWithContext falls back to simple parsing", function()
+  -- When no remaining words provided, should fall back to simple space-separated
+  local words = CA.parseGuessWithContext("apple banana cherry date", {})
+  TC_ASSERT_TRUE(words ~= nil, "should parse with fallback")
+  TC_ASSERT_EQ(#words, 4, "should have 4 words")
+end)
+
+TC_TEST("ConnectionsAnswer: validate multi-word group", function()
+  local puzzle = {
+    Groups = {
+      { Words = {"Head of Onyxia", "Blood of Heroes", "Cenarion Beacon", "Damp Note"}, Theme = "Quest Items", Difficulty = 2 },
+      { Words = {"Ragnaros", "Onyxia", "Nefarian", "Hakkar"}, Theme = "Bosses", Difficulty = 1 },
+    }
+  }
+  local groupIndex = CA.validateGuess(puzzle, {"Head of Onyxia", "Blood of Heroes", "Cenarion Beacon", "Damp Note"}, {})
+  TC_ASSERT_EQ(groupIndex, 1, "should match quest items group")
+end)
+
+TC_TEST("ConnectionsAnswer: quotes take priority over commas", function()
+  -- If message has both quotes and commas, quotes should be parsed
+  local remaining = {"A, B", "C, D", "E, F", "G, H"}
+  local words = CA.parseGuessWithContext('"A, B" "C, D" "E, F" "G, H"', remaining)
+  TC_ASSERT_TRUE(words ~= nil, "should parse quoted items with commas inside")
+  TC_ASSERT_EQ(#words, 4, "should have 4 items")
+  TC_ASSERT_EQ(words[1], "A, B", "first item preserved comma")
+end)
+
+TC_TEST("ConnectionsAnswer: empty/nil input returns nil", function()
+  TC_ASSERT_EQ(CA.parseGuessWithContext("", {}), nil, "empty string")
+  TC_ASSERT_EQ(CA.parseGuessWithContext(nil, {}), nil, "nil message")
+end)
+
+TC_TEST("ConnectionsAnswer: smart match ignores punctuation differences", function()
+  -- Puzzle has apostrophes, player omits them
+  local remaining = {"Kel'Thuzad", "C'Thun", "N'Zoth", "Y'Shaarj"}
+  local words = CA.parseGuessWithContext("kelthuzad cthun nzoth yshaarj", remaining)
+  TC_ASSERT_TRUE(words ~= nil, "should match without apostrophes")
+  TC_ASSERT_EQ(#words, 4, "should have 4 items")
+  TC_ASSERT_TRUE(contains(words, "Kel'Thuzad"), "found Kel'Thuzad")
+  TC_ASSERT_TRUE(contains(words, "C'Thun"), "found C'Thun")
+end)
+
+TC_TEST("ConnectionsAnswer: smart match handles extra spaces", function()
+  local remaining = {"Ragnaros", "Onyxia", "Nefarian", "Hakkar"}
+  local words = CA.parseGuessWithContext("ragnaros   onyxia  nefarian    hakkar", remaining)
+  TC_ASSERT_TRUE(words ~= nil, "should handle extra spaces")
+  TC_ASSERT_EQ(#words, 4, "should have 4 items")
+end)
+
+TC_TEST("ConnectionsAnswer: smart match handles punctuation in input", function()
+  -- Player adds punctuation that puzzle doesn't have
+  local remaining = {"Ragnaros", "Onyxia", "Nefarian", "Hakkar"}
+  local words = CA.parseGuessWithContext("ragnaros! onyxia, nefarian... hakkar?", remaining)
+  TC_ASSERT_TRUE(words ~= nil, "should ignore input punctuation")
+  TC_ASSERT_EQ(#words, 4, "should have 4 items")
+end)

@@ -202,4 +202,143 @@ function ConnectionsAnswer.normalize(word)
   return normalizeWord(word)
 end
 
+--- Parse quoted strings from a message.
+--- Returns array of quoted items if exactly 4 found, nil otherwise.
+---@param msg string
+---@return string[]|nil
+local function parseQuoted(msg)
+  local words = {}
+  for quoted in msg:gmatch('"([^"]+)"') do
+    local trimmed = quoted:gsub("^%s+", ""):gsub("%s+$", "")
+    if trimmed ~= "" then
+      table.insert(words, trimmed)
+    end
+  end
+  if #words == 4 then
+    return words
+  end
+  return nil
+end
+
+--- Parse comma-separated items from a message.
+--- Returns array of items if exactly 4 found, nil otherwise.
+---@param msg string
+---@return string[]|nil
+local function parseCommaSeparated(msg)
+  local words = {}
+  for word in msg:gmatch("([^,]+)") do
+    local trimmed = word:gsub("^%s+", ""):gsub("%s+$", "")
+    if trimmed ~= "" then
+      table.insert(words, trimmed)
+    end
+  end
+  if #words == 4 then
+    return words
+  end
+  return nil
+end
+
+--- Sort remaining words by length (longest first) for greedy matching.
+---@param remainingWords string[]
+---@return string[]
+local function sortByLengthDesc(remainingWords)
+  local sorted = {}
+  for _, word in ipairs(remainingWords) do
+    table.insert(sorted, word)
+  end
+  table.sort(sorted, function(a, b)
+    return #a > #b
+  end)
+  return sorted
+end
+
+--- Escape pattern special characters in a string.
+---@param str string
+---@return string
+local function escapePattern(str)
+  return str:gsub("([%-%.%+%[%]%(%)%$%^%%%?%*])", "%%%1")
+end
+
+--- Smart match words from input against known remaining words.
+--- Uses greedy longest-first matching to handle multi-word items.
+--- Normalizes both input and remaining words (removes punctuation, lowercases) for lenient matching.
+---@param msg string The input message
+---@param remainingWords string[] Known remaining words in the puzzle
+---@return string[]|nil Array of 4 matched words or nil
+local function smartMatchWords(msg, remainingWords)
+  if not msg or not remainingWords or #remainingWords == 0 then
+    return nil
+  end
+
+  -- Normalize input: lowercase, remove punctuation, collapse multiple spaces
+  local normalized = msg:lower():gsub("%p+", ""):gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
+  local matched = {}
+  local usedIndices = {}
+
+  -- Sort remaining words by normalized length (longest first) for greedy matching
+  -- We sort by normalized length since that's what we'll match against
+  local sortedWords = {}
+  for i, word in ipairs(remainingWords) do
+    local normWord = word:lower():gsub("%p+", ""):gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
+    table.insert(sortedWords, { original = word, normalized = normWord, index = i })
+  end
+  table.sort(sortedWords, function(a, b)
+    return #a.normalized > #b.normalized
+  end)
+
+  for _, wordData in ipairs(sortedWords) do
+    local pattern = escapePattern(wordData.normalized)
+
+    -- Check if this word appears in the remaining input
+    local startPos, endPos = normalized:find(pattern)
+    if startPos then
+      -- Verify we haven't already matched this word
+      if not usedIndices[wordData.index] then
+        table.insert(matched, wordData.original)
+        usedIndices[wordData.index] = true
+        -- Remove matched portion from input to prevent double-matching
+        normalized = normalized:sub(1, startPos - 1) .. string.rep(" ", endPos - startPos + 1) .. normalized:sub(endPos + 1)
+      end
+    end
+  end
+
+  if #matched == 4 then
+    return matched
+  end
+  return nil
+end
+
+--- Parse a guess with context of remaining words.
+--- Supports multiple input formats:
+--- 1. Quote-delimited: "Head of Onyxia" "Blood of Heroes" "Cenarion Beacon" "Damp Note"
+--- 2. Comma-separated: Head of Onyxia, Blood of Heroes, Cenarion Beacon, Damp Note
+--- 3. Space-separated with smart matching against known remaining words
+---@param msg string The chat message
+---@param remainingWords string[] The remaining words in the puzzle
+---@return string[]|nil Array of 4 words or nil
+function ConnectionsAnswer.parseGuessWithContext(msg, remainingWords)
+  if not msg or msg == "" then
+    return nil
+  end
+
+  -- Priority 1: Check for quoted strings
+  local quoted = parseQuoted(msg)
+  if quoted then
+    return quoted
+  end
+
+  -- Priority 2: Check for commas
+  if msg:find(",") then
+    return parseCommaSeparated(msg)
+  end
+
+  -- Priority 3: Smart match against known remaining words
+  if remainingWords and #remainingWords > 0 then
+    return smartMatchWords(msg, remainingWords)
+  end
+
+  -- Fallback: simple space-separated (original behavior)
+  return ConnectionsAnswer.parseGuess(msg)
+end
+
 TriviaClassic_ConnectionsAnswer = ConnectionsAnswer

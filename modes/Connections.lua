@@ -127,8 +127,9 @@ local handler = {
 
   evaluateAnswer = function(game, ctx, sender, rawMsg)
     -- Parse 4 words from chat and check if they form a valid group.
+    -- Uses context-aware parsing to support multi-word items.
     local ca = getCA()
-    local words = ca.parseGuess(rawMsg)
+    local words = ca.parseGuessWithContext(rawMsg, ctx.data.remainingWords)
     if not words then
       return nil -- Not a 4-word message
     end
@@ -333,7 +334,13 @@ local handler = {
   format = {
     formatStart = function(meta)
       local total = meta.total or 1
-      return string.format("[Trivia] Connections game starting! Puzzles: %d. Find 4 groups of 4 words that share a theme!", total)
+      local lines = {
+        "[Trivia] === CONNECTIONS ===",
+        "[Trivia] You'll see 16 words. Find 4 groups of 4 that share something in common!",
+        "[Trivia] To guess: type 4 words in chat (e.g., 'apple banana cherry date' or 'apple, banana, cherry, date')",
+        string.format("[Trivia] Puzzles: %d | Harder groups = more points | No timer - guess anytime!", total),
+      }
+      return table.concat(lines, "\n")
     end,
 
     formatQuestion = function(index, total, question, activeTeamName)

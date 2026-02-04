@@ -349,3 +349,133 @@ TC_TEST("Connections mode: words not in remaining rejected", function()
   local result = game:HandleChatAnswer("ragnaros gromsblood dreamfoil plaguebloom", "Bob")
   TC_ASSERT_EQ(result, nil, "should reject words not in remaining")
 end)
+
+-- Multi-word support integration tests
+
+local function makeMultiWordPuzzle()
+  return {
+    qid = "test-multiword-puzzle-1",
+    Groups = {
+      { Theme = "Quest Items", Difficulty = 2, Words = {"Head of Onyxia", "Blood of Heroes", "Cenarion Beacon", "Damp Note"} },
+      { Theme = "Classic Raid Bosses", Difficulty = 1, Words = {"Ragnaros", "Onyxia", "Nefarian", "Hakkar"} },
+      { Theme = "Warlock Demons", Difficulty = 3, Words = {"Imp", "Voidwalker", "Succubus", "Felhunter"} },
+      { Theme = "Alliance Cities", Difficulty = 4, Words = {"Stormwind", "Ironforge", "Darnassus", "Gnomeregan"} },
+    }
+  }
+end
+
+local function makeMultiWordConnectionsRepo()
+  local puzzle = makeMultiWordPuzzle()
+  return {
+    BuildPool = function(_, _, _)
+      return { puzzle }, { "Test Set" }
+    end,
+  }
+end
+
+local function createMultiWordConnectionsTestGame()
+  local repo = makeMultiWordConnectionsRepo()
+  local store = { leaderboard = {}, teams = { teams = {} } }
+  local runtime = TriviaClassic_GetRuntime()
+  local deps = {
+    clock = runtime.clock,
+    date = runtime.date,
+    answer = runtime.answer,
+  }
+  local game = TriviaClassic_CreateGame(repo, store, deps)
+  return game, store
+end
+
+TC_TEST("Connections mode: space-separated multi-word guess", function()
+  local game = createMultiWordConnectionsTestGame()
+  game:Start({ "set" }, 1, nil, "CONNECTIONS")
+
+  local q = game:NextQuestion()
+  TriviaClassic_Connections_SetPuzzle(game, q)
+
+  local ctx = game.state.modeState
+  ctx.handler.beginQuestion(ctx, game)
+
+  -- Try to solve the multi-word group using space-separated input
+  local result = game:HandleChatAnswer("head of onyxia blood of heroes cenarion beacon damp note", "Alice")
+  TC_ASSERT_TRUE(result ~= nil, "multi-word space-separated guess works")
+  TC_ASSERT_EQ(result.groupIndex, 1, "quest items group solved")
+  TC_ASSERT_EQ(result.solver, "Alice", "solver recorded")
+  TC_ASSERT_EQ(result.theme, "Quest Items", "theme is Quest Items")
+end)
+
+TC_TEST("Connections mode: comma-separated multi-word guess", function()
+  local game = createMultiWordConnectionsTestGame()
+  game:Start({ "set" }, 1, nil, "CONNECTIONS")
+
+  local q = game:NextQuestion()
+  TriviaClassic_Connections_SetPuzzle(game, q)
+
+  local ctx = game.state.modeState
+  ctx.handler.beginQuestion(ctx, game)
+
+  -- Try to solve the multi-word group using comma-separated input
+  local result = game:HandleChatAnswer("Head of Onyxia, Blood of Heroes, Cenarion Beacon, Damp Note", "Bob")
+  TC_ASSERT_TRUE(result ~= nil, "multi-word comma-separated guess works")
+  TC_ASSERT_EQ(result.groupIndex, 1, "quest items group solved")
+  TC_ASSERT_EQ(result.solver, "Bob", "solver recorded")
+end)
+
+TC_TEST("Connections mode: quote-delimited multi-word guess", function()
+  local game = createMultiWordConnectionsTestGame()
+  game:Start({ "set" }, 1, nil, "CONNECTIONS")
+
+  local q = game:NextQuestion()
+  TriviaClassic_Connections_SetPuzzle(game, q)
+
+  local ctx = game.state.modeState
+  ctx.handler.beginQuestion(ctx, game)
+
+  -- Try to solve the multi-word group using quote-delimited input
+  local result = game:HandleChatAnswer('"Head of Onyxia" "Blood of Heroes" "Cenarion Beacon" "Damp Note"', "Carol")
+  TC_ASSERT_TRUE(result ~= nil, "multi-word quote-delimited guess works")
+  TC_ASSERT_EQ(result.groupIndex, 1, "quest items group solved")
+  TC_ASSERT_EQ(result.solver, "Carol", "solver recorded")
+end)
+
+TC_TEST("Connections mode: mixed single and multi-word in same puzzle", function()
+  local game = createMultiWordConnectionsTestGame()
+  game:Start({ "set" }, 1, nil, "CONNECTIONS")
+
+  local q = game:NextQuestion()
+  TriviaClassic_Connections_SetPuzzle(game, q)
+
+  local ctx = game.state.modeState
+  ctx.handler.beginQuestion(ctx, game)
+
+  -- Solve the single-word group first
+  local r1 = game:HandleChatAnswer("ragnaros onyxia nefarian hakkar", "Alice")
+  TC_ASSERT_TRUE(r1 ~= nil, "single-word group solved")
+  TC_ASSERT_EQ(r1.groupIndex, 2, "raid bosses group")
+
+  -- Then solve the multi-word group
+  local r2 = game:HandleChatAnswer("head of onyxia blood of heroes cenarion beacon damp note", "Bob")
+  TC_ASSERT_TRUE(r2 ~= nil, "multi-word group solved after single-word")
+  TC_ASSERT_EQ(r2.groupIndex, 1, "quest items group")
+end)
+
+TC_TEST("Connections mode: multi-word remaining words update correctly", function()
+  local game = createMultiWordConnectionsTestGame()
+  game:Start({ "set" }, 1, nil, "CONNECTIONS")
+
+  local q = game:NextQuestion()
+  TriviaClassic_Connections_SetPuzzle(game, q)
+
+  local ctx = game.state.modeState
+  ctx.handler.beginQuestion(ctx, game)
+
+  local dataBefore = TriviaClassic_Connections_GetPuzzleData(game)
+  TC_ASSERT_EQ(#dataBefore.remainingWords, 16, "16 words initially")
+
+  -- Solve and announce the multi-word group
+  game:HandleChatAnswer("Head of Onyxia, Blood of Heroes, Cenarion Beacon, Damp Note", "Alice")
+  ctx:ResetProgress()
+
+  local dataAfter = TriviaClassic_Connections_GetPuzzleData(game)
+  TC_ASSERT_EQ(#dataAfter.remainingWords, 12, "12 words after solving multi-word group")
+end)
