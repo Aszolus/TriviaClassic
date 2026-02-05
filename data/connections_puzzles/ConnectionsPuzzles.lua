@@ -101,39 +101,19 @@ packs
         Group("Classic meme/name magnets", 4, { "Mankrik", "Jenkins", "Thunderfury", "Anal" })
     )
     :addPuzzleFromGroups(
-        Group("DM vibe words (but still accurate)", 4, { "Satyrs", "Ogres", "Demons", "Books" }),
-        Group("Things associated with Ony attunement chain steps", 2, { "BRD", "UBRS", "Drakkisath", "Windsor" }),
-        Group("Words that mean “this run is about to go sideways”", 3, { "Overpull", "Resist", "Respawn", "Roach" }),
-        Group("“Items that start something”", 4, { "Head of Onyxia", "Blood of Heroes", "Cenarion Beacon", "Damp Note" })
-    )
-    :addPuzzleFromGroups(
-        Group("Blackrock Mountain instances (not all raids)", 1, { "BRD", "LBRS", "UBRS", "MC" }),
-        Group("Scourge-related zones in Classic", 2, { "WPL", "EPL", "Stratholme", "Scholomance" }),
-        Group("Common raid-calling shorthand", 3, { "LoS", "MT", "OT", "AGGRO" }),
-        Group("Names tied to “don’t click that / don’t open that” moments", 4,
-            { "Baron", "Garr", "Suppression", "Whelp" })
-    )
-    :addPuzzleFromGroups(
-        Group("“You’re flagged now” places/things", 1, { "Gurubashi", "SS/TM", "Blackrock", "Yojamba" }),
+        Group("DM vibe words", 4, { "Satyrs", "Ogres", "Demons", "Books" }),
         Group("Infamous quest items people forget (then regret)", 2,
-            { "Hinterlands Mallet", "Carrot on a Stick", "Gnomeregan Card", "Mithril Casing" }),
+            { "Mallet", "Egg", "Punchcard", "Casing" }),
         Group("Classic consumables you notice when they’re missing", 3,
-            { "Sharpening Stone", "Wizard Oil", "Free Action", "Restorative" }),
+            { "Stone", "Oil", "Elixir", "Potion" }),
         Group("NPCs that feel like they have a “reputation” outside the game", 4,
-            { "Stitches", "Hogger", "Kazzak", "Mor'zul" })
-    )
-    :addPuzzleFromGroups(
-        Group("BWL bosses (not the obvious first/last)", 1, { "Vaelastrasz", "Broodlord", "Chromaggus", "Razorgore" }),
-        Group("AQ40 “words that instantly place you there”", 2, { "Huhuran", "Twin Emps", "Bug Trio", "Skeram" }),
-        Group("Things you “dispel or die” in Classic", 3, { "Curse", "Magic", "Poison", "Disease" }),
-        Group("Items/phrases linked to Classic’s biggest flex moments", 4,
-            { "Scarab Lord", "Hand of Ragnaros", "Atiesh", "Lok'delar" })
+            { "Stitches", "Hogger", "Kazzak", "Arthas" })
     )
 
 packs
     :addPack(
-        "WoW Classic Connections — Lore & Quests (Cryptic)",
-        "More lore/quest/NPC-driven groupings with intentional overlap bait.",
+        "WoW Classic Connections — Lore & Quests",
+        "More lore/quest/NPC-driven groupings",
         "TriviaClassic"
     )
     :addPuzzleFromGroups(
@@ -162,7 +142,7 @@ packs
 packs
     :addPack(
         "WoW Classic Quest Connections — NYT Style",
-        "16 words, 4 groups. Each group ties to a quest/chain, but the words are clues (not just quest titles).",
+        "16 words, 4 groups. Each group ties together in some way.",
         "TriviaClassic"
     )
     :addPuzzleFromGroups(

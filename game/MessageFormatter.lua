@@ -15,6 +15,13 @@ local function join(arr, sep)
   return table.concat(arr or {}, sep or ", ")
 end
 
+local function normalizeConnectionsWord(word)
+  -- Connections board output should be visually uniform in chat.
+  local text = tostring(word or "")
+  text = text:gsub("^%s+", ""):gsub("%s+$", "")
+  return text:upper()
+end
+
 -- Clamp a question chat line to avoid hitting chat length limits.
 local function clampQuestionMessage(prefix, questionText, suffix)
   local body = tostring(questionText or "")
@@ -217,7 +224,7 @@ function F.formatConnectionsPuzzle(index, total, words, groupsFound)
   if words and #words > 0 then
     local row = {}
     for i, word in ipairs(words) do
-      table.insert(row, word)
+      table.insert(row, normalizeConnectionsWord(word))
       if #row == 4 then
         table.insert(messages, "[Trivia] | " .. table.concat(row, " | ") .. " |")
         row = {}
@@ -239,7 +246,11 @@ end
 ---@param points number Points awarded
 ---@return string
 function F.formatGroupSolved(solver, theme, words, points)
-  local wordsStr = table.concat(words or {}, ", ")
+  local displayWords = {}
+  for _, w in ipairs(words or {}) do
+    table.insert(displayWords, normalizeConnectionsWord(w))
+  end
+  local wordsStr = table.concat(displayWords, ", ")
   return string.format("[Trivia] %s found '%s': %s (+%d pts)",
     solver or "Someone",
     theme or "Group",
@@ -273,7 +284,7 @@ function F.formatConnectionsRemaining(words, groupsFound, noNewAnswers)
   if words and #words > 0 then
     local row = {}
     for i, word in ipairs(words) do
-      table.insert(row, word)
+      table.insert(row, normalizeConnectionsWord(word))
       if #row == 4 then
         table.insert(messages, "[Trivia] | " .. table.concat(row, " | ") .. " |")
         row = {}

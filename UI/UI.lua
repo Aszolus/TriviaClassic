@@ -24,6 +24,14 @@ local function normalizeName(text)
   return trim(text or ""):gsub("%s+", " ")
 end
 
+function UI:GetSelectableSets()
+  local mode = self.gameModeKey or TriviaClassic:GetGameMode()
+  if TriviaClassic.GetSetsForMode then
+    return TriviaClassic:GetSetsForMode(mode) or {}
+  end
+  return TriviaClassic:GetAllSets() or {}
+end
+
 function UI:RefreshPrimaryButton()
   if not self.nextButton then
     return
@@ -96,6 +104,7 @@ function UI:SetGameMode(key)
     UIDropDownMenu_SetText(self.modeDropDown, modeLabels[modeKey] or modeKey)
   end
   TriviaClassic:SetGameMode(modeKey)
+  self:RefreshSetList()
 end
 
 function UI:GetTimerSeconds()
@@ -460,23 +469,30 @@ function UI:RefreshSetList()
   self.setItems = {}
   -- Initialize per-set selection storage if missing
   self.selectedBySet = self.selectedBySet or {}
-  local sets = TriviaClassic:GetAllSets()
+  self.selectedSetIds = self.selectedSetIds or {}
+  local sets = self:GetSelectableSets()
   local yOffset = 0
 
   for _, set in ipairs(sets) do
-    local title = self.setContainer:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    title:SetPoint("TOPLEFT", 0, -yOffset)
-    title:SetText(set.title or "Set")
-    title:SetJustifyH("LEFT")
-    table.insert(self.setItems, title)
-    yOffset = yOffset + 18
+    local setId = set.id
+    local setTitle = set.title or "Set"
+    if self.selectedSetIds[setId] == nil then
+      self.selectedSetIds[setId] = true
+    end
+    local setCheck = TriviaClassic_UI_CreateCheckbox(self.setContainer, setTitle, -yOffset, function(checked)
+      self.selectedSetIds[setId] = checked and true or false
+      self:UpdateQuestionCount()
+    end)
+    setCheck:SetChecked(self.selectedSetIds[setId] and true or false)
+    table.insert(self.setItems, setCheck)
+    yOffset = yOffset + 22
 
     if set.categories then
       -- Ensure a bucket exists for this set
-      local bucket = self.selectedBySet[set.id]
+      local bucket = self.selectedBySet[setId]
       if not bucket then
         bucket = { keys = {}, names = {} }
-        self.selectedBySet[set.id] = bucket
+        self.selectedBySet[setId] = bucket
       end
       for _, cat in ipairs(set.categories) do
         -- Important: capture the category value per-iteration to avoid Lua closure rebinding issues
@@ -523,18 +539,30 @@ function UI:CategorySelected(category, setId)
 end
 
 function UI:UpdateQuestionCount()
+  local mode = self.gameModeKey or TriviaClassic:GetGameMode()
   local total = 0
-  for _, set in ipairs(TriviaClassic:GetAllSets()) do
-    if set.questions then
-      for _, q in ipairs(set.questions) do
-        if self:CategorySelected(q.categoryKey or q.category, set.id) then
-          total = total + 1
+  for _, set in ipairs(self:GetSelectableSets()) do
+    local selected = self.selectedSetIds == nil or self.selectedSetIds[set.id] ~= false
+    if selected then
+      if mode == "CONNECTIONS" then
+        if set.puzzles then
+          total = total + #set.puzzles
+        end
+      elseif set.questions then
+        for _, q in ipairs(set.questions) do
+          if self:CategorySelected(q.categoryKey or q.category, set.id) then
+            total = total + 1
+          end
         end
       end
     end
   end
   if self.setCountLabel then
-    self.setCountLabel:SetText(string.format("Questions selected: %d", total))
+    if mode == "CONNECTIONS" then
+      self.setCountLabel:SetText(string.format("Puzzles selected: %d", total))
+    else
+      self.setCountLabel:SetText(string.format("Questions selected: %d", total))
+    end
   end
 end
 
@@ -542,19 +570,25 @@ function UI:StartGame()
   local desiredCount = tonumber(self.questionCountInput and self.questionCountInput:GetText() or "")
   self:ApplyTimerInput()
   -- Persist selected mode before starting
-  self:SetGameMode(self.gameModeKey or TriviaClassic:GetGameMode())
+  local modeToStart = self.gameModeKey or TriviaClassic:GetGameMode()
+  self:SetGameMode(modeToStart)
   -- Build per-set categories map for all sets (default-deny when empty)
   local categoriesBySet = {}
-  for _, set in ipairs(TriviaClassic:GetAllSets()) do
-    categoriesBySet[set.id] = {}
-    local bucket = self.selectedBySet and self.selectedBySet[set.id]
-    if bucket and bucket.keys then
-      for key, checked in pairs(bucket.keys) do
-        if checked then categoriesBySet[set.id][key] = true end
+  local selectedIds = {}
+  for _, set in ipairs(self:GetSelectableSets()) do
+    local selected = self.selectedSetIds == nil or self.selectedSetIds[set.id] ~= false
+    if selected then
+      table.insert(selectedIds, set.id)
+      categoriesBySet[set.id] = {}
+      local bucket = self.selectedBySet and self.selectedBySet[set.id]
+      if bucket and bucket.keys then
+        for key, checked in pairs(bucket.keys) do
+          if checked then categoriesBySet[set.id][key] = true end
+        end
       end
     end
   end
-  local meta = self.presenter and self.presenter:StartGame(desiredCount, categoriesBySet) or TriviaClassic:StartGame({}, desiredCount, categoriesBySet)
+  local meta = self.presenter and self.presenter:StartGame(desiredCount, categoriesBySet, selectedIds, modeToStart) or TriviaClassic:StartGame(selectedIds, desiredCount, categoriesBySet, modeToStart)
   if not meta then
     print("|cffff5050TriviaClassic: No questions available.|r")
     return
@@ -585,9 +619,33 @@ function UI:AnnounceQuestion()
   local q = result and result.question
   local index = result and result.index
   local total = result and result.total
+  local mode = TriviaClassic:GetGameMode()
   local activeTeamName = select(1, TriviaClassic:GetActiveTeam())
   if not q then
     self.frame.statusText:SetText("No more questions. End the game.")
+    self:RefreshPrimaryButton()
+    return
+  end
+
+  if mode == "CONNECTIONS" then
+    self.questionNumber = index
+    self.currentQuestion = q
+    self.questionLabel:SetText(string.format("Puzzle %d/%d: Connections", index, total))
+    self.categoryLabel:SetText("Find 4 groups of 4 words. Click Show Words anytime.")
+    self.frame.statusText:SetText("Puzzle announced. Listening for group guesses...")
+    self.timerRunning = false
+    self.timerService = nil
+    self.timerBar:SetMinMaxValues(0, 1)
+    self.timerBar:SetValue(1)
+    self.timerBar:SetStatusBarColor(0.2, 0.8, 0.2)
+    self.timerText:SetText("Time: No timer")
+    self.warningButton:Disable()
+    if self.hintButton then
+      self.hintButton:Disable()
+    end
+    if self.skipButton then
+      self.skipButton:Enable()
+    end
     self:RefreshPrimaryButton()
     return
   end
@@ -776,38 +834,59 @@ function UI:OnNextPressed()
   end
   if self.presenter and self.presenter.OnPrimaryPressed then
     local res = self.presenter:OnPrimaryPressed()
-    if res and res.question then
+    if res and res.command == "show_words" then
+      self.frame.statusText:SetText("Remaining words shown in chat.")
+    elseif res and res.question then
       local q = res.question
       local index = res.index or 0
       local total = res.total or 0
+      local mode = TriviaClassic:GetGameMode()
       self.questionNumber = index
       self.currentQuestion = q
-      self.questionLabel:SetText(string.format("Q%d/%d: %s", index, total, q.question))
-      self.categoryLabel:SetText(string.format("Category: %s  |  Points: %s", q.category or "General", tostring(q.points or 1)))
-      local modeLabel = TriviaClassic:GetGameModeLabel()
-      local activeTeamName = res.activeTeamName
-      if self.presenter and self.presenter.StatusQuestionAnnounced then
-        self.frame.statusText:SetText(self.presenter:StatusQuestionAnnounced(activeTeamName, modeLabel, res.timerSeconds or self:GetTimerSeconds()))
+
+      if mode == "CONNECTIONS" then
+        self.questionLabel:SetText(string.format("Puzzle %d/%d: Connections", index, total))
+        self.categoryLabel:SetText("Find 4 groups of 4 words. Click Show Words anytime.")
+        self.frame.statusText:SetText("Puzzle announced. Listening for group guesses...")
+        self.timerRunning = false
+        self.timerService = nil
+        self.timerBar:SetMinMaxValues(0, 1)
+        self.timerBar:SetValue(1)
+        self.timerBar:SetStatusBarColor(0.2, 0.8, 0.2)
+        self.timerText:SetText("Time: No timer")
+        self.warningButton:Disable()
+        if self.hintButton then
+          self.hintButton:Disable()
+        end
       else
-        if activeTeamName then
-          self.frame.statusText:SetText(string.format("Question announced. Active team: %s. Listening for answers... (%s)", activeTeamName, modeLabel))
-          self.timerText:SetText(string.format("Time: %ds (Team: %s)", res.timerSeconds or self:GetTimerSeconds(), activeTeamName))
+        self.questionLabel:SetText(string.format("Q%d/%d: %s", index, total, q.question))
+        self.categoryLabel:SetText(string.format("Category: %s  |  Points: %s", q.category or "General", tostring(q.points or 1)))
+        local modeLabel = TriviaClassic:GetGameModeLabel()
+        local activeTeamName = res.activeTeamName
+        if self.presenter and self.presenter.StatusQuestionAnnounced then
+          self.frame.statusText:SetText(self.presenter:StatusQuestionAnnounced(activeTeamName, modeLabel, res.timerSeconds or self:GetTimerSeconds()))
         else
-          self.frame.statusText:SetText(string.format("Question announced. Listening for answers... (%s)", modeLabel))
+          if activeTeamName then
+            self.frame.statusText:SetText(string.format("Question announced. Active team: %s. Listening for answers... (%s)", activeTeamName, modeLabel))
+            self.timerText:SetText(string.format("Time: %ds (Team: %s)", res.timerSeconds or self:GetTimerSeconds(), activeTeamName))
+          else
+            self.frame.statusText:SetText(string.format("Question announced. Listening for answers... (%s)", modeLabel))
+          end
+        end
+        local timerSeconds = res.timerSeconds or self:GetTimerSeconds()
+        self.timerService = TriviaClassic_CreateTimer(timerSeconds)
+        self.timerRunning = true
+        self.timerBar:SetMinMaxValues(0, timerSeconds)
+        self.timerBar:SetValue(timerSeconds)
+        self.timerBar:SetStatusBarColor(0.2, 0.8, 0.2)
+        self.timerText:SetText(string.format("Time: %ds", timerSeconds))
+        self.warningButton:Enable()
+        if self.hintButton then
+          local hint = q.hint or (q.hints and q.hints[1])
+          if hint and hint ~= "" then self.hintButton:Enable() else self.hintButton:Disable() end
         end
       end
-      local timerSeconds = res.timerSeconds or self:GetTimerSeconds()
-      self.timerService = TriviaClassic_CreateTimer(timerSeconds)
-      self.timerRunning = true
-      self.timerBar:SetMinMaxValues(0, timerSeconds)
-      self.timerBar:SetValue(timerSeconds)
-      self.timerBar:SetStatusBarColor(0.2, 0.8, 0.2)
-      self.timerText:SetText(string.format("Time: %ds", timerSeconds))
-      self.warningButton:Enable()
-      if self.hintButton then
-        local hint = q.hint or (q.hints and q.hints[1])
-        if hint and hint ~= "" then self.hintButton:Enable() else self.hintButton:Disable() end
-      end
+
       if self.skipButton then self.skipButton:Enable() end
     end
   else

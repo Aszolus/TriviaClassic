@@ -2,6 +2,7 @@
 
 local Presenter = {}
 Presenter.__index = Presenter
+local MODE_CONNECTIONS = "CONNECTIONS"
 
 function Presenter:new(trivia)
   local o = { trivia = trivia }
@@ -25,16 +26,46 @@ local function getFormatter(game)
   return defaultF
 end
 
+local function collectConnectionsWords(game, puzzle)
+  if TriviaClassic_Connections_GetPuzzleData then
+    local data = TriviaClassic_Connections_GetPuzzleData(game)
+    local shuffled = data and data.shuffledWords or nil
+    if shuffled and #shuffled > 0 then
+      return shuffled
+    end
+  end
+
+  local words = {}
+  for _, group in ipairs((puzzle and puzzle.Groups) or {}) do
+    for _, word in ipairs(group.Words or {}) do
+      table.insert(words, word)
+    end
+  end
+  return words
+end
+
 --- Starts a game and broadcasts to chat.
 ---@param desiredCount integer|nil
 ---@param categoriesBySet table|nil Per-set map of allowed category keys
+---@param selectedIds string[]|nil Explicit selected set ids
+---@param modeKey string|nil Explicit mode override for start
 ---@return table|nil meta
-function Presenter:StartGame(desiredCount, categoriesBySet)
-  local selectedIds = {}
-  for _, set in ipairs(self.trivia:GetAllSets()) do
-    table.insert(selectedIds, set.id)
+function Presenter:StartGame(desiredCount, categoriesBySet, selectedIds, modeKey)
+  local ids = selectedIds
+  if not ids or #ids == 0 then
+    local mode = modeKey or (self.trivia and self.trivia.GetGameMode and self.trivia:GetGameMode() or nil)
+    local sourceSets = nil
+    if self.trivia and self.trivia.GetSetsForMode then
+      sourceSets = self.trivia:GetSetsForMode(mode)
+    else
+      sourceSets = self.trivia:GetAllSets()
+    end
+    ids = {}
+    for _, set in ipairs(sourceSets or {}) do
+      table.insert(ids, set.id)
+    end
   end
-  local meta = self.trivia:StartGame(selectedIds, desiredCount, categoriesBySet)
+  local meta = self.trivia:StartGame(ids, desiredCount, categoriesBySet, modeKey)
   if meta then
     local F = getFormatter(self.trivia and self.trivia.game)
     self.trivia.chat:Send(F.formatStart(meta))
@@ -76,9 +107,17 @@ function Presenter:AnnounceQuestion()
   local index = result and result.index
   local total = result and result.total
   if q and index and total then
-    local activeTeamName = select(1, self.trivia:GetActiveTeam())
-    local F = getFormatter(self.trivia and self.trivia.game)
-    self.trivia.chat:Send(F.formatQuestion(index, total, q, activeTeamName))
+    if self.trivia:GetGameMode() == MODE_CONNECTIONS then
+      if TriviaClassic_Connections_SetPuzzle then
+        TriviaClassic_Connections_SetPuzzle(self.trivia and self.trivia.game, q)
+      end
+      local words = collectConnectionsWords(self.trivia and self.trivia.game, q)
+      self:AnnounceConnectionsPuzzle(index, total, words, 0)
+    else
+      local activeTeamName = select(1, self.trivia:GetActiveTeam())
+      local F = getFormatter(self.trivia and self.trivia.game)
+      self.trivia.chat:Send(F.formatQuestion(index, total, q, activeTeamName))
+    end
   end
   return result
 end
@@ -111,7 +150,7 @@ function Presenter:OnPrimaryPressed()
   else
     -- Generic advance: delegate to mode via Game; handle window reopen or next question
     if self.trivia and self.trivia.game and self.trivia.game.PerformPrimaryAction then
-      local res = self.trivia:PerformPrimaryAction(a.command == "announce_incorrect" and "announce_incorrect" or "advance")
+      local res = self.trivia:PerformPrimaryAction(a.command)
       if res and res.participants then
         local F = getFormatter(self.trivia and self.trivia.game)
         self.trivia.chat:Send(F.formatParticipants(res.participants))
@@ -130,13 +169,27 @@ function Presenter:OnPrimaryPressed()
           return res
         end
       end
+      if res and res.command == "show_words" then
+        self:HandleConnectionsShowWords(res)
+        return res
+      end
       if res and (res.command == "announce_question" or res.question) then
         local q = res.question or (self.trivia and self.trivia:GetCurrentQuestion())
         local idx = res.index or (self.trivia and select(1, self.trivia:GetCurrentQuestionIndex()))
         local total = res.total or (self.trivia and select(2, self.trivia:GetCurrentQuestionIndex()))
-        local activeTeamName = select(1, self.trivia:GetActiveTeam())
-        local F = getFormatter(self.trivia and self.trivia.game)
-        self.trivia.chat:Send(F.formatQuestion(idx or 0, total or 0, q, activeTeamName))
+        local mode = self.trivia:GetGameMode()
+        local activeTeamName = nil
+        if mode == MODE_CONNECTIONS then
+          if TriviaClassic_Connections_SetPuzzle then
+            TriviaClassic_Connections_SetPuzzle(self.trivia and self.trivia.game, q)
+          end
+          local words = collectConnectionsWords(self.trivia and self.trivia.game, q)
+          self:AnnounceConnectionsPuzzle(idx or 0, total or 0, words, 0)
+        else
+          activeTeamName = select(1, self.trivia:GetActiveTeam())
+          local F = getFormatter(self.trivia and self.trivia.game)
+          self.trivia.chat:Send(F.formatQuestion(idx or 0, total or 0, q, activeTeamName))
+        end
         local seconds = self:GetQuestionTimerSeconds()
         return { question = q, index = idx, total = total, timerSeconds = seconds, activeTeamName = activeTeamName }
       end

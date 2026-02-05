@@ -106,8 +106,12 @@ local handler = {
 
   beginQuestion = function(ctx, game)
     -- Called when a new puzzle opens.
-    -- The puzzle data is already set in ctx.data.currentPuzzle by the game flow.
+    -- Default to the current game question if puzzle wasn't explicitly pre-set.
     local puzzle = ctx.data.currentPuzzle
+    if not puzzle and game and game.GetCurrentQuestion then
+      puzzle = game:GetCurrentQuestion()
+      ctx.data.currentPuzzle = puzzle
+    end
     if puzzle then
       local words = collectAllWords(puzzle)
       shuffle(words)
@@ -162,6 +166,9 @@ local handler = {
     local elapsed = game:Now() - (ctx.data.puzzleStartTime or game:Now())
     local group = puzzle.Groups[groupIndex]
     local points = ca.getDifficultyPoints(group.Difficulty or 1)
+
+    -- Score immediately when a valid group is found.
+    game:_recordCorrectAnswer(sender, elapsed, points)
 
     table.insert(ctx.data.pendingSolves, {
       groupIndex = groupIndex,
@@ -250,6 +257,14 @@ local handler = {
       return { command = "waiting", label = "Start", enabled = false }
     end
 
+    -- Before the first puzzle is announced (or between puzzles), advance flow.
+    if not game:IsQuestionOpen() then
+      if game:HasMoreQuestions() then
+        return { command = "announce_question", label = "Next Puzzle", enabled = true }
+      end
+      return { command = "end_game", label = "End Game", enabled = true }
+    end
+
     local data = ctx.data
     local announced = countAnnouncedGroups(data)
     local pending = countPendingSolves(data)
@@ -274,6 +289,9 @@ local handler = {
   -- Custom action handler for show_words command
   onAdvance = function(game, ctx, cmd)
     if cmd == "show_words" then
+      if not game:IsQuestionOpen() then
+        return nil
+      end
       -- Return info for the presenter to display remaining words
       local data = ctx.data
       local announced = countAnnouncedGroups(data)
@@ -299,6 +317,13 @@ local handler = {
 
       local announced = countAnnouncedGroups(ctx.data)
       local pending = countPendingSolves(ctx.data)
+
+      if not game:IsQuestionOpen() then
+        if game:HasMoreQuestions() then
+          return { label = "Next Puzzle", enabled = true, command = "announce_question" }
+        end
+        return { label = "End Game", enabled = true, command = "end_game" }
+      end
 
       if pending > 0 then
         local label = pending == 1 and "Announce Result" or ("Announce " .. pending .. " Results")

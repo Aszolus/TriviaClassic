@@ -139,6 +139,17 @@ function TriviaClassic:GetAllSets()
   return self.repo:GetAllSets()
 end
 
+--- Returns sets applicable to a given mode.
+---@param modeKey string|nil
+---@return table sets
+function TriviaClassic:GetSetsForMode(modeKey)
+  local key = modeKey or self:GetGameMode()
+  if key == "CONNECTIONS" and self.repo and self.repo.GetConnectionsSets then
+    return self.repo:GetConnectionsSets()
+  end
+  return self:GetAllSets()
+end
+
 --- Registers a TriviaBot-format set into the repository.
 ---@param label string|nil
 ---@param triviaTable table
@@ -429,16 +440,18 @@ end
 ---@param selectedIds string[] Set ids selected by the user
 ---@param desiredCount integer|nil Optional number of questions to draw
 ---@param allowedCategories table|nil Global or per-set category allow map
+---@param modeKey string|nil Optional mode override for this start action
 ---@return table|nil meta Returns game metadata or nil if no questions
 --- Uses current mode and team assignments at start time.
-function TriviaClassic:StartGame(selectedIds, desiredCount, allowedCategories)
+function TriviaClassic:StartGame(selectedIds, desiredCount, allowedCategories, modeKey)
+  local resolvedMode = modeKey or self:GetGameMode()
   if self.game and self.game.SetMode then
-    self.game:SetMode(self:GetGameMode())
+    self.game:SetMode(resolvedMode)
   end
   if self.game and self.game.SetTeams then
     self.game:SetTeams(self:GetTeamMap())
   end
-  return self.game:Start(selectedIds, desiredCount, allowedCategories, self:GetGameMode())
+  return self.game:Start(selectedIds, desiredCount, allowedCategories, resolvedMode)
 end
 
 --- Advances to the next question.

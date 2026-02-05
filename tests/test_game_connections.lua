@@ -48,6 +48,43 @@ TC_TEST("Connections mode: game starts", function()
   TC_ASSERT_EQ(started.mode, "CONNECTIONS", "mode set")
 end)
 
+TC_TEST("Connections mode: primary action before first puzzle is announce_question", function()
+  local game = createConnectionsTestGame()
+  game:Start({ "set" }, 1, nil, "CONNECTIONS")
+
+  local action = game:GetPrimaryAction()
+  TC_ASSERT_EQ(action.command, "announce_question", "should announce first puzzle")
+  TC_ASSERT_EQ(action.label, "Next Puzzle", "label is Next Puzzle")
+end)
+
+TC_TEST("Connections mode: start uses BuildConnectionsPool", function()
+  local puzzle = makePuzzle()
+  local calls = { buildPool = 0, buildConnectionsPool = 0 }
+  local repo = {
+    BuildPool = function(_, _, _)
+      calls.buildPool = calls.buildPool + 1
+      return {}, {}
+    end,
+    BuildConnectionsPool = function(_, _)
+      calls.buildConnectionsPool = calls.buildConnectionsPool + 1
+      return { puzzle }, { "Connections Set" }
+    end,
+  }
+  local store = { leaderboard = {}, teams = { teams = {} } }
+  local runtime = TriviaClassic_GetRuntime()
+  local deps = {
+    clock = runtime.clock,
+    date = runtime.date,
+    answer = runtime.answer,
+  }
+  local game = TriviaClassic_CreateGame(repo, store, deps)
+  local started = game:Start({ "set" }, 1, nil, "CONNECTIONS")
+
+  TC_ASSERT_TRUE(started ~= nil, "game started")
+  TC_ASSERT_EQ(calls.buildConnectionsPool, 1, "connections pool builder called")
+  TC_ASSERT_EQ(calls.buildPool, 0, "standard pool builder not called")
+end)
+
 TC_TEST("Connections mode: next question returns puzzle", function()
   local game = createConnectionsTestGame()
   game:Start({ "set" }, 1, nil, "CONNECTIONS")
@@ -57,6 +94,19 @@ TC_TEST("Connections mode: next question returns puzzle", function()
   TC_ASSERT_EQ(idx, 1, "puzzle index")
   TC_ASSERT_EQ(total, 1, "total puzzles")
   TC_ASSERT_TRUE(q.Groups ~= nil, "puzzle has groups")
+end)
+
+TC_TEST("Connections mode: beginQuestion auto-loads current puzzle", function()
+  local game = createConnectionsTestGame()
+  game:Start({ "set" }, 1, nil, "CONNECTIONS")
+
+  local q = game:NextQuestion()
+  TC_ASSERT_TRUE(q ~= nil, "puzzle returned")
+
+  local data = TriviaClassic_Connections_GetPuzzleData(game)
+  TC_ASSERT_TRUE(data ~= nil, "puzzle data available")
+  TC_ASSERT_TRUE(data.puzzle ~= nil, "puzzle auto-set from current question")
+  TC_ASSERT_EQ(#data.remainingWords, 16, "remaining words initialized")
 end)
 
 TC_TEST("Connections mode: set puzzle and beginQuestion", function()
@@ -198,6 +248,25 @@ TC_TEST("Connections mode: primary action shows show_words when no pending", fun
   TC_ASSERT_EQ(action.label, "Show Words", "label is Show Words")
 end)
 
+TC_TEST("Connections mode: custom show_words command is dispatched", function()
+  local game = createConnectionsTestGame()
+  game:Start({ "set" }, 1, nil, "CONNECTIONS")
+  game:NextQuestion()
+
+  local result = game:PerformPrimaryAction("show_words")
+  TC_ASSERT_TRUE(result ~= nil, "show_words handled")
+  TC_ASSERT_EQ(result.command, "show_words", "show_words result returned")
+  TC_ASSERT_EQ(#(result.remainingWords or {}), 16, "remaining words included")
+end)
+
+TC_TEST("Connections mode: show_words ignored before puzzle announced", function()
+  local game = createConnectionsTestGame()
+  game:Start({ "set" }, 1, nil, "CONNECTIONS")
+
+  local result = game:PerformPrimaryAction("show_words")
+  TC_ASSERT_EQ(result, nil, "show_words is ignored before a puzzle is open")
+end)
+
 TC_TEST("Connections mode: reset moves pending to announced", function()
   local game = createConnectionsTestGame()
   game:Start({ "set" }, 1, nil, "CONNECTIONS")
@@ -255,6 +324,25 @@ TC_TEST("Connections mode: pendingWinners returns solve info", function()
   TC_ASSERT_EQ(#winners, 1, "1 winner")
   TC_ASSERT_EQ(winners[1].name, "Alice", "Alice is winner")
   TC_ASSERT_EQ(winners[1].theme, "Classic Raid Bosses", "theme included")
+end)
+
+TC_TEST("Connections mode: score is recorded for solved groups", function()
+  local game = createConnectionsTestGame()
+  game:Start({ "set" }, 1, nil, "CONNECTIONS")
+
+  local q = game:NextQuestion()
+  TriviaClassic_Connections_SetPuzzle(game, q)
+
+  local ctx = game.state.modeState
+  ctx.handler.beginQuestion(ctx, game)
+
+  game:HandleChatAnswer("ragnaros onyxia nefarian hakkar", "Alice")
+
+  local rows = game:GetSessionScoreboard()
+  TC_ASSERT_TRUE(rows ~= nil and #rows > 0, "scoreboard has entries")
+  TC_ASSERT_EQ(rows[1].name, "Alice", "Alice scored")
+  TC_ASSERT_EQ(rows[1].points, 100, "difficulty points awarded")
+  TC_ASSERT_EQ(rows[1].correct, 1, "correct count incremented")
 end)
 
 TC_TEST("Connections mode: difficulty points", function()

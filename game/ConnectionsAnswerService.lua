@@ -329,7 +329,11 @@ function ConnectionsAnswer.parseGuessWithContext(msg, remainingWords)
 
   -- Priority 2: Check for commas
   if msg:find(",") then
-    return parseCommaSeparated(msg)
+    local parsed = parseCommaSeparated(msg)
+    if parsed then
+      return parsed
+    end
+    -- Fall through to smart matching if comma parsing doesn't yield 4 items
   end
 
   -- Priority 3: Smart match against known remaining words
