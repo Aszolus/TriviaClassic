@@ -142,7 +142,7 @@ TC_TEST("Connections mode: solve one group", function()
   TC_ASSERT_TRUE(result ~= nil, "correct group detected")
   TC_ASSERT_EQ(result.groupIndex, 1, "group 1 solved")
   TC_ASSERT_EQ(result.solver, "Alice", "solver recorded")
-  TC_ASSERT_EQ(result.points, 100, "difficulty 1 = 100 points")
+  TC_ASSERT_EQ(result.points, 400, "first group = 400 points")
 end)
 
 TC_TEST("Connections mode: wrong guess returns nil", function()
@@ -341,11 +341,11 @@ TC_TEST("Connections mode: score is recorded for solved groups", function()
   local rows = game:GetSessionScoreboard()
   TC_ASSERT_TRUE(rows ~= nil and #rows > 0, "scoreboard has entries")
   TC_ASSERT_EQ(rows[1].name, "Alice", "Alice scored")
-  TC_ASSERT_EQ(rows[1].points, 100, "difficulty points awarded")
+  TC_ASSERT_EQ(rows[1].points, 400, "first group = 400 points")
   TC_ASSERT_EQ(rows[1].correct, 1, "correct count incremented")
 end)
 
-TC_TEST("Connections mode: difficulty points", function()
+TC_TEST("Connections mode: solve order points", function()
   local game = createConnectionsTestGame()
   game:Start({ "set" }, 1, nil, "CONNECTIONS")
 
@@ -355,13 +355,13 @@ TC_TEST("Connections mode: difficulty points", function()
   local ctx = game.state.modeState
   ctx.handler.beginQuestion(ctx, game)
 
-  -- Group 1 is difficulty 1 = 100 pts
+  -- First group solved = 400 pts
   local r1 = game:HandleChatAnswer("ragnaros onyxia nefarian hakkar", "Alice")
-  TC_ASSERT_EQ(r1.points, 100, "difficulty 1 = 100 pts")
+  TC_ASSERT_EQ(r1.points, 400, "1st group = 400 pts")
 
-  -- Group 3 is difficulty 3 = 300 pts
-  local r3 = game:HandleChatAnswer("imp voidwalker succubus felhunter", "Bob")
-  TC_ASSERT_EQ(r3.points, 300, "difficulty 3 = 300 pts")
+  -- Second group solved = 300 pts
+  local r2 = game:HandleChatAnswer("imp voidwalker succubus felhunter", "Bob")
+  TC_ASSERT_EQ(r2.points, 300, "2nd group = 300 pts")
 end)
 
 TC_TEST("Connections mode: case insensitive guesses", function()
@@ -406,17 +406,45 @@ TC_TEST("Connections mode: puzzle complete check", function()
 
   TC_ASSERT_FALSE(TriviaClassic_Connections_IsPuzzleComplete(game), "not complete initially")
 
-  -- Solve and announce all 4 groups
+  -- Solve and announce 3 groups (4th will auto-reveal)
   game:HandleChatAnswer("ragnaros onyxia nefarian hakkar", "Alice")
   ctx:ResetProgress()
   game:HandleChatAnswer("gromsblood dreamfoil plaguebloom arthas", "Bob")
   ctx:ResetProgress()
   game:HandleChatAnswer("imp voidwalker succubus felhunter", "Carol")
-  ctx:ResetProgress()
-  game:HandleChatAnswer("stormwind ironforge darnassus gnomeregan", "Dave")
+  ctx:ResetProgress() -- This triggers auto-reveal of 4th group
+
+  -- 4th group is now pending (auto-revealed), announce it
   ctx:ResetProgress()
 
   TC_ASSERT_TRUE(TriviaClassic_Connections_IsPuzzleComplete(game), "complete after all 4")
+end)
+
+TC_TEST("Connections mode: auto-reveal last group after 3 solved", function()
+  local game = createConnectionsTestGame()
+  game:Start({ "set" }, 1, nil, "CONNECTIONS")
+
+  local q = game:NextQuestion()
+  TriviaClassic_Connections_SetPuzzle(game, q)
+
+  local ctx = game.state.modeState
+  ctx.handler.beginQuestion(ctx, game)
+
+  -- Solve and announce 3 groups
+  game:HandleChatAnswer("ragnaros onyxia nefarian hakkar", "Alice")
+  ctx:ResetProgress()
+  game:HandleChatAnswer("gromsblood dreamfoil plaguebloom arthas", "Bob")
+  ctx:ResetProgress()
+  game:HandleChatAnswer("imp voidwalker succubus felhunter", "Carol")
+  ctx:ResetProgress() -- This should trigger auto-reveal
+
+  -- Check that 4th group is auto-queued
+  local data = TriviaClassic_Connections_GetPuzzleData(game)
+  TC_ASSERT_EQ(#data.pendingSolves, 1, "last group auto-queued")
+  TC_ASSERT_TRUE(data.pendingSolves[1].autoRevealed, "marked as auto-revealed")
+  TC_ASSERT_EQ(data.pendingSolves[1].solver, nil, "no solver for auto-revealed")
+  TC_ASSERT_EQ(data.pendingSolves[1].points, 0, "0 points for auto-revealed")
+  TC_ASSERT_EQ(data.pendingSolves[1].theme, "Alliance Capital Cities", "correct theme")
 end)
 
 TC_TEST("Connections mode: words not in remaining rejected", function()

@@ -10,6 +10,16 @@
 local MODE_CONNECTIONS = "CONNECTIONS"
 local BONUS_ALL_SOLVED = 500
 
+-- Points based on solve order (first group found = most points)
+local SOLVE_ORDER_POINTS = { 400, 300, 200, 100 }
+
+--- Get points based on which solve this is (1st, 2nd, 3rd, 4th).
+---@param solveNumber number 1-4
+---@return number points
+local function getSolveOrderPoints(solveNumber)
+  return SOLVE_ORDER_POINTS[solveNumber] or 100
+end
+
 local CA = nil -- Will be set to TriviaClassic_ConnectionsAnswer
 
 local function getCA()
@@ -91,6 +101,44 @@ local function allGroupsResolved(data)
   return (announced + pending) >= 4
 end
 
+--- Find the single unsolved group (when 3 are already solved).
+--- Returns groupIndex, group or nil if not exactly one remaining.
+---@param puzzle table
+---@param announcedGroups table<number, boolean>
+---@param pendingSolves table[]
+---@return number|nil, table|nil
+local function findLastUnsolvedGroup(puzzle, announcedGroups, pendingSolves)
+  if not puzzle or not puzzle.Groups then
+    return nil, nil
+  end
+
+  -- Build set of solved group indices
+  local solved = {}
+  for idx in pairs(announcedGroups or {}) do
+    solved[idx] = true
+  end
+  for _, pending in ipairs(pendingSolves or {}) do
+    solved[pending.groupIndex] = true
+  end
+
+  -- Find the unsolved group
+  local unsolvedIdx, unsolvedGroup = nil, nil
+  local unsolvedCount = 0
+  for idx, group in ipairs(puzzle.Groups) do
+    if not solved[idx] then
+      unsolvedIdx = idx
+      unsolvedGroup = group
+      unsolvedCount = unsolvedCount + 1
+    end
+  end
+
+  -- Only return if exactly one unsolved
+  if unsolvedCount == 1 then
+    return unsolvedIdx, unsolvedGroup
+  end
+  return nil, nil
+end
+
 local handler = {
   createState = function()
     return {
@@ -165,7 +213,10 @@ local handler = {
     -- Valid group found - queue the solve
     local elapsed = game:Now() - (ctx.data.puzzleStartTime or game:Now())
     local group = puzzle.Groups[groupIndex]
-    local points = ca.getDifficultyPoints(group.Difficulty or 1)
+
+    -- Points based on solve order (1st group found = 400, 2nd = 300, etc.)
+    local solveNumber = countAnnouncedGroups(ctx.data) + countPendingSolves(ctx.data) + 1
+    local points = getSolveOrderPoints(solveNumber)
 
     -- Score immediately when a valid group is found.
     game:_recordCorrectAnswer(sender, elapsed, points)
@@ -229,6 +280,7 @@ local handler = {
         groupIndex = solve.groupIndex,
         theme = solve.theme,
         words = solve.words,
+        autoRevealed = solve.autoRevealed,
       })
     end
     return winners
@@ -248,6 +300,28 @@ local handler = {
       end
     end
     ctx.data.pendingSolves = {}
+
+    -- Auto-complete: if exactly 3 groups announced, auto-reveal the last one
+    local announced = countAnnouncedGroups(ctx.data)
+    if announced == 3 then
+      local lastIdx, lastGroup = findLastUnsolvedGroup(ctx.data.currentPuzzle, ctx.data.announcedGroups, {})
+      if lastIdx and lastGroup then
+        -- Queue the final group for announcement (no points, auto-revealed)
+        table.insert(ctx.data.pendingSolves, {
+          groupIndex = lastIdx,
+          solver = nil, -- No solver for auto-revealed
+          elapsed = 0,
+          points = 0,
+          theme = lastGroup.Theme,
+          words = lastGroup.Words,
+          autoRevealed = true,
+        })
+        ctx.pendingWinner = true
+        ctx.pendingNoWinner = false
+        return -- Exit early, pending winner is set
+      end
+    end
+
     ctx.pendingWinner = false
     ctx.pendingNoWinner = false
   end,
@@ -343,6 +417,12 @@ local handler = {
     onWinnerFound = function(game, ctx, result)
       if not result then return "" end
       local pending = countPendingSolves(ctx.data)
+
+      -- Check if this is an auto-revealed final group
+      if result.autoRevealed then
+        return "Final group ready to reveal! Click 'Announce Result'."
+      end
+
       if pending == 1 then
         return string.format("%s found a group! Click 'Announce Result' to reveal.", result.solver or "Someone")
       end
@@ -363,7 +443,7 @@ local handler = {
         "[Trivia] === CONNECTIONS ===",
         "[Trivia] You'll see 16 words. Find 4 groups of 4 that share something in common!",
         "[Trivia] To guess: type 4 words in chat (e.g., 'apple banana cherry date' or 'apple, banana, cherry, date')",
-        string.format("[Trivia] Puzzles: %d | Harder groups = more points | No timer - guess anytime!", total),
+        string.format("[Trivia] Puzzles: %d | First group = 400pts, then 300, 200, 100 | Last group auto-reveals!", total),
       }
       return table.concat(lines, "\n")
     end,
@@ -383,11 +463,19 @@ local handler = {
       local messages = {}
       for _, w in ipairs(winners) do
         local wordsStr = table.concat(w.words or {}, ", ")
-        local msg = string.format("[Trivia] %s found '%s': %s (+%d pts)",
-          w.name or "Someone",
-          w.theme or "Group",
-          wordsStr,
-          w.points or 100)
+        local msg
+        if w.autoRevealed then
+          -- Auto-revealed final group (no solver)
+          msg = string.format("[Trivia] Final group was '%s': %s",
+            w.theme or "Group",
+            wordsStr)
+        else
+          msg = string.format("[Trivia] %s found '%s': %s (+%d pts)",
+            w.name or "Someone",
+            w.theme or "Group",
+            wordsStr,
+            w.points or 100)
+        end
         table.insert(messages, msg)
       end
 

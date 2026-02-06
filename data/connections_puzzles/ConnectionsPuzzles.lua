@@ -98,7 +98,7 @@ packs
         Group("World buffs people coordinate around", 1, { "Rend", "Onyxia", "Nefarian", "Zandalar" }),
         Group("Escort quests", 2, { "Chicken", "A-me", "Kaya", "Tooga" }),
         Group("“Feels like a trap” pull-ruiners", 3, { "Patrol", "Runner", "Fear", "Linked" }),
-        Group("Classic meme/name magnets", 4, { "Mankrik", "Jenkins", "Thunderfury", "Anal" })
+        Group("Classic meme/frequently appear in barrens chat", 4, { "Mankrik", "Jenkins", "Thunderfury", "Anal" })
     )
     :addPuzzleFromGroups(
         Group("DM vibe words", 4, { "Satyrs", "Ogres", "Demons", "Books" }),
