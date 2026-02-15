@@ -42,9 +42,11 @@ core/Init.lua
 ui/Constants.lua
 ui/Helpers.lua
 ui/components/SelectableList.lua
+ui/TimerUI.lua
 ui/Layout.lua
 ui/Presenter.lua
 ui/UI.lua
+ui/TeamUI.lua
 
 data/question_sets/TriviaQuestions.lua
 data/question_sets/LoreWalkersOfSilvermoon.lua

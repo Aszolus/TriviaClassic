@@ -152,7 +152,7 @@ packs
         Group("Words that follow 'Thunder'", 4, { "BLUFF", "CLAP", "BREW", "FURY" })
     )
     :addPuzzleFromGroups(
-        Group("Iconic low-level elite quest targets", 1, { "Hogger", "Stitches", "Mor'Ladim", "Stalvan" }),
+        Group("Iconic low-level elite quest targets", 1, { "Hogger", "Stitches", "Mor'Ladim", "Morbent Fel" }),
         Group("Animal body parts collected for quests", 2, { "Gizzard", "Snout", "Hoof", "Liver" }),
         Group("Quest rewards with unique utility", 3, { "Carrot", "Glue", "Boomerang", "Stopwatch" }),
         Group("Words following “Silver-”", 4, { "Pine", "Wing", "Hand", "Rod" })

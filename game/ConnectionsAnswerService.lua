@@ -83,10 +83,12 @@ function ConnectionsAnswer.validateGuess(puzzle, guessWords, solvedGroups)
     if not solvedGroups[groupIndex] then
       local groupSet = buildWordSet(group.Words)
       local matchCount = 0
+      local seen = {}
 
       for _, normWord in ipairs(normalizedGuess) do
-        if groupSet[normWord] then
+        if groupSet[normWord] and not seen[normWord] then
           matchCount = matchCount + 1
+          seen[normWord] = true
         end
       end
 

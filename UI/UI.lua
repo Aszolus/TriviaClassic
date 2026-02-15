@@ -19,11 +19,6 @@ local function normalizeCategoryName(name)
   return trim(name or ""):lower()
 end
 
--- Scoreboard UI formatting moved to ScoreboardService.lua
-local function normalizeName(text)
-  return trim(text or ""):gsub("%s+", " ")
-end
-
 function UI:GetSelectableSets()
   local mode = self.gameModeKey or TriviaClassic:GetGameMode()
   if TriviaClassic.GetSetsForMode then
@@ -137,259 +132,6 @@ function UI:SetTimerSeconds(seconds)
   self:SyncTimerInput()
 end
 
-function UI:SetSelectedTeam(teamKey)
-  self.selectedTeamKey = teamKey
-  self.selectedMembers = {}
-  if self.teamTargetDropDown then
-    UIDropDownMenu_SetSelectedValue(self.teamTargetDropDown, teamKey)
-    UIDropDownMenu_SetText(self.teamTargetDropDown, self.teamNameByKey and self.teamNameByKey[teamKey] or (teamKey or "Select team"))
-  end
-  self:RefreshTeamMembers()
-end
-
-function UI:RefreshTeamDropdown()
-  local teams = TriviaClassic:GetTeams() or {}
-  self.teamNameByKey = {}
-  self.teamDataByKey = {}
-  for _, t in ipairs(teams) do
-    self.teamNameByKey[t.key] = t.name
-    self.teamDataByKey[t.key] = t
-  end
-  local current = self.selectedTeamKey
-  if not current and teams[1] then
-    current = teams[1].key
-  end
-  UIDropDownMenu_Initialize(self.teamTargetDropDown, function()
-    for _, t in ipairs(teams) do
-      local info = UIDropDownMenu_CreateInfo()
-      info.text = t.name
-      info.value = t.key
-      info.func = function()
-        self:SetSelectedTeam(t.key)
-      end
-      info.checked = (self.selectedTeamKey == t.key)
-      UIDropDownMenu_AddButton(info)
-    end
-  end)
-  self:SetSelectedTeam(current)
-end
-
-function UI:SetRerollTeam(name)
-  self.rerollTeamName = name
-  if self.rerollTeamDropDown then
-    UIDropDownMenu_SetSelectedValue(self.rerollTeamDropDown, name)
-    UIDropDownMenu_SetText(self.rerollTeamDropDown, name or "Select team")
-  end
-end
-
-function UI:RefreshRerollTeamDropdown()
-  if not self.rerollTeamDropDown then
-    return
-  end
-  local teams = (TriviaClassic.game and TriviaClassic.game.GetTeamList and TriviaClassic.game:GetTeamList()) or {}
-  local current = self.rerollTeamName
-  if not current and teams[1] then
-    current = teams[1]
-  end
-  UIDropDownMenu_Initialize(self.rerollTeamDropDown, function()
-    for _, name in ipairs(teams) do
-      local info = UIDropDownMenu_CreateInfo()
-      info.text = name
-      info.value = name
-      info.func = function()
-        self:SetRerollTeam(name)
-      end
-      info.checked = (self.rerollTeamName == name)
-      UIDropDownMenu_AddButton(info)
-    end
-  end)
-  self:SetRerollTeam(current)
-end
-
-function UI:UpdateRerollControls()
-  if not (self.rerollTeamButton and self.rerollTeamDropDown and self.rerollLabel) then
-    return
-  end
-  local mode = TriviaClassic:GetGameMode()
-  if mode ~= "HEAD_TO_HEAD" then
-    self.rerollLabel:Hide()
-    self.rerollTeamDropDown:Hide()
-    self.rerollTeamButton:Hide()
-    return
-  end
-  self.rerollLabel:Show()
-  self.rerollTeamDropDown:Show()
-  self.rerollTeamButton:Show()
-  self:RefreshRerollTeamDropdown()
-
-  local ready = false
-  local game = TriviaClassic.game
-  if game and game.state and game.state.modeState and game.state.modeState.data then
-    ready = game.state.modeState.data.pairAnnounced == true
-  end
-  if ready and self.rerollTeamName then
-    self.rerollTeamButton:Enable()
-  else
-    self.rerollTeamButton:Disable()
-  end
-end
-
-function UI:RefreshTeamList()
-  if not self.teamList then
-    return
-  end
-  local teams = TriviaClassic:GetTeams() or {}
-  local lines = {}
-  for _, team in ipairs(teams) do
-    local members = team.members or {}
-    table.sort(members, function(a, b) return a:lower() < b:lower() end)
-    local memberText = (#members > 0) and table.concat(members, ", ") or "No members yet"
-    table.insert(lines, string.format("|cffffff00%s|r: %s", team.name, memberText))
-  end
-  if #lines == 0 then
-    self.teamList:SetText("No teams yet. Add a team to get started.")
-  else
-    self.teamList:SetText(table.concat(lines, "\n"))
-  end
-end
-
-function UI:RefreshWaitingList()
-  if not self.waitingContent then
-    return
-  end
-  local waiting = TriviaClassic:GetWaitingPlayers() or {}
-  table.sort(waiting, function(a, b) return a:lower() < b:lower() end)
-  self.waitingNames = waiting
-  self.selectedWaiting = self.selectedWaiting or {}
-  self.waitingRows = TriviaClassic_UI_RenderSelectableList(self.waitingContent, waiting, self.waitingRows or {}, self.selectedWaiting)
-  if self.waitingStatus then
-    if #waiting == 0 then
-      self.waitingStatus:SetText("No registered players yet.")
-    else
-      self.waitingStatus:SetText("Select players to move to a team.")
-    end
-  end
-end
-
-function UI:RefreshTeamMembers()
-  if not self.memberContent then
-    return
-  end
-  local members = {}
-  local teams = self.teamDataByKey or {}
-  local team = self.selectedTeamKey and teams[self.selectedTeamKey] or nil
-  if team and team.members then
-    for _, m in ipairs(team.members) do
-      table.insert(members, m)
-    end
-  end
-  table.sort(members, function(a, b) return a:lower() < b:lower() end)
-  self.selectedMembers = self.selectedMembers or {}
-  self.memberRows = TriviaClassic_UI_RenderSelectableList(self.memberContent, members, self.memberRows or {}, self.selectedMembers)
-  if self.memberStatus then
-    if not self.selectedTeamKey then
-      self.memberStatus:SetText("Select a team to manage members.")
-    elseif #members == 0 then
-      self.memberStatus:SetText("No members in this team.")
-    else
-      self.memberStatus:SetText("Select members to remove or reassign.")
-    end
-  end
-end
-
-function UI:UpdateTeamUI()
-  if not self.teamTargetDropDown then
-    return
-  end
-  self:RefreshTeamDropdown()
-  self:RefreshTeamList()
-  self:RefreshWaitingList()
-  self:RefreshTeamMembers()
-end
-
-function UI:AddTeam()
-  local name = normalizeName(self.teamNameInput and self.teamNameInput:GetText() or "")
-  if name == "" then
-    if self.teamStatus then self.teamStatus:SetText("|cffff5050Enter a team name.|r") end
-    return
-  end
-  TriviaClassic:AddTeam(name)
-  if self.teamNameInput then self.teamNameInput:SetText("") end
-  if self.teamStatus then self.teamStatus:SetText("|cff20ff20Team added.|r") end
-  self:UpdateTeamUI()
-end
-
-function UI:RemoveTeam()
-  if not self.selectedTeamKey then
-    if self.teamStatus then self.teamStatus:SetText("|cffff5050Select a team to remove.|r") end
-    return
-  end
-  local teamName = self.teamNameByKey and self.teamNameByKey[self.selectedTeamKey] or self.selectedTeamKey
-  TriviaClassic:RemoveTeam(teamName)
-  self.selectedTeamKey = nil
-  if self.teamStatus then self.teamStatus:SetText("|cff20ff20Team removed.|r") end
-  self:UpdateTeamUI()
-end
-
-function UI:MoveWaitingToTeam()
-  local selections = self.selectedWaiting or {}
-  if not self.selectedTeamKey then
-    if self.teamStatus then self.teamStatus:SetText("|cffff5050Select a team first.|r") end
-    return
-  end
-  local hasSelection = false
-  for _ in pairs(selections) do hasSelection = true break end
-  if not hasSelection then
-    if self.teamStatus then self.teamStatus:SetText("|cffff5050Select at least one registered player.|r") end
-    return
-  end
-  local teamName = self.teamNameByKey and self.teamNameByKey[self.selectedTeamKey] or self.selectedTeamKey
-  for name in pairs(selections) do
-    TriviaClassic:AddPlayerToTeam(name, teamName)
-    TriviaClassic:UnregisterPlayer(name)
-  end
-  if self.teamStatus then self.teamStatus:SetText("|cff20ff20Moved selected players to team.|r") end
-  self.selectedWaiting = {}
-  self:UpdateTeamUI()
-end
-
-function UI:RemoveWaiting()
-  local selections = self.selectedWaiting or {}
-  local hasSelection = false
-  for _ in pairs(selections) do hasSelection = true break end
-  if not hasSelection then
-    if self.teamStatus then self.teamStatus:SetText("|cffff5050Select registered players to remove.|r") end
-    return
-  end
-  for name in pairs(selections) do
-    TriviaClassic:UnregisterPlayer(name)
-  end
-  if self.teamStatus then self.teamStatus:SetText("|cff20ff20Removed selected registrations.|r") end
-  self.selectedWaiting = {}
-  self:UpdateTeamUI()
-end
-
-function UI:RemoveMembersToWaiting()
-  local selections = self.selectedMembers or {}
-  if not self.selectedTeamKey then
-    if self.teamStatus then self.teamStatus:SetText("|cffff5050Select a team first.|r") end
-    return
-  end
-  local hasSelection = false
-  for _ in pairs(selections) do hasSelection = true break end
-  if not hasSelection then
-    if self.teamStatus then self.teamStatus:SetText("|cffff5050Select team members to move.|r") end
-    return
-  end
-  for name in pairs(selections) do
-    TriviaClassic:RemovePlayerFromTeam(name)
-    TriviaClassic:RegisterPlayer(name)
-  end
-  self.selectedMembers = {}
-  if self.teamStatus then self.teamStatus:SetText("|cff20ff20Moved selected members back to registered list.|r") end
-  self:UpdateTeamUI()
-end
-
 function UI:SyncTimerInput()
   if self.timerInput then
     self.timerInput:SetText(tostring(self:GetTimerSeconds()))
@@ -417,13 +159,8 @@ function UI:ResetTimerDisplay(seconds)
   local secs = tonumber(seconds) or self:GetTimerSeconds()
   self.timerRemaining = secs
   self.timerRunning = false
-  if self.timerBar then
-    self.timerBar:SetMinMaxValues(0, secs)
-    self.timerBar:SetValue(secs)
-    self.timerBar:SetStatusBarColor(0.2, 0.8, 0.2)
-  end
-  if self.timerText then
-    self.timerText:SetText(string.format("Time: %ds", secs))
+  if self.timerUI then
+    self.timerUI:Reset(secs)
   end
 end
 
@@ -566,6 +303,49 @@ function UI:UpdateQuestionCount()
   end
 end
 
+--- Sets up the UI for a connections-mode question.
+function UI:SetupConnectionsQuestion(index, total)
+  self.questionLabel:SetText(string.format("Puzzle %d/%d: Connections", index, total))
+  self.categoryLabel:SetText("Find 4 groups of 4 words. Click Show Words anytime.")
+  self.frame.statusText:SetText("Puzzle announced. Listening for group guesses...")
+  self.timerRunning = false
+  self.timerService = nil
+  self.timerUI:ResetNoTimer()
+  self.warningButton:Disable()
+  if self.hintButton then
+    self.hintButton:Disable()
+  end
+end
+
+--- Sets up the UI for a standard (non-connections) question with timer.
+function UI:SetupStandardQuestion(q, index, total, timerSeconds, activeTeamName)
+  self.questionLabel:SetText(string.format("Q%d/%d: %s", index, total, q.question))
+  self.categoryLabel:SetText(string.format("Category: %s  |  Points: %s", q.category or "General", tostring(q.points or 1)))
+  local modeLabel = TriviaClassic:GetGameModeLabel()
+  if self.presenter and self.presenter.StatusQuestionAnnounced then
+    self.frame.statusText:SetText(self.presenter:StatusQuestionAnnounced(activeTeamName, modeLabel, timerSeconds))
+  else
+    if activeTeamName then
+      self.frame.statusText:SetText(string.format("Question announced. Active team: %s. Listening for answers... (%s)", activeTeamName, modeLabel))
+      self.timerUI:SetText(string.format("Time: %ds (Team: %s)", timerSeconds, activeTeamName))
+    else
+      self.frame.statusText:SetText(string.format("Question announced. Listening for answers... (%s)", modeLabel))
+    end
+  end
+  self.timerService = TriviaClassic_CreateTimer(timerSeconds)
+  self.timerRunning = true
+  self.timerUI:Reset(timerSeconds)
+  self.warningButton:Enable()
+  if self.hintButton then
+    local hint = q.hint or (q.hints and q.hints[1])
+    if hint and hint ~= "" then
+      self.hintButton:Enable()
+    else
+      self.hintButton:Disable()
+    end
+  end
+end
+
 function UI:StartGame()
   local desiredCount = tonumber(self.questionCountInput and self.questionCountInput:GetText() or "")
   self:ApplyTimerInput()
@@ -590,7 +370,7 @@ function UI:StartGame()
   end
   local meta = self.presenter and self.presenter:StartGame(desiredCount, categoriesBySet, selectedIds, modeToStart) or TriviaClassic:StartGame(selectedIds, desiredCount, categoriesBySet, modeToStart)
   if not meta then
-    print("|cffff5050TriviaClassic: No questions available.|r")
+    print(CONST.colorError .. "TriviaClassic: No questions available." .. CONST.colorClose)
     return
   end
 
@@ -627,22 +407,11 @@ function UI:AnnounceQuestion()
     return
   end
 
+  self.questionNumber = index
+  self.currentQuestion = q
+
   if mode == "CONNECTIONS" then
-    self.questionNumber = index
-    self.currentQuestion = q
-    self.questionLabel:SetText(string.format("Puzzle %d/%d: Connections", index, total))
-    self.categoryLabel:SetText("Find 4 groups of 4 words. Click Show Words anytime.")
-    self.frame.statusText:SetText("Puzzle announced. Listening for group guesses...")
-    self.timerRunning = false
-    self.timerService = nil
-    self.timerBar:SetMinMaxValues(0, 1)
-    self.timerBar:SetValue(1)
-    self.timerBar:SetStatusBarColor(0.2, 0.8, 0.2)
-    self.timerText:SetText("Time: No timer")
-    self.warningButton:Disable()
-    if self.hintButton then
-      self.hintButton:Disable()
-    end
+    self:SetupConnectionsQuestion(index, total)
     if self.skipButton then
       self.skipButton:Enable()
     end
@@ -650,44 +419,10 @@ function UI:AnnounceQuestion()
     return
   end
 
-  self.questionNumber = index
-  self.currentQuestion = q
-  self.questionLabel:SetText(string.format("Q%d/%d: %s", index, total, q.question))
-  self.categoryLabel:SetText(string.format("Category: %s  |  Points: %s", q.category or "General", tostring(q.points or 1)))
-  local modeLabel = TriviaClassic:GetGameModeLabel()
-  if self.presenter and self.presenter.StatusQuestionAnnounced then
-    self.frame.statusText:SetText(self.presenter:StatusQuestionAnnounced(activeTeamName, modeLabel, self:GetTimerSeconds()))
-  else
-    if activeTeamName then
-      self.frame.statusText:SetText(string.format("Question announced. Active team: %s. Listening for answers... (%s)", activeTeamName, modeLabel))
-      self.timerText:SetText(string.format("Time: %ds (Team: %s)", self:GetTimerSeconds(), activeTeamName))
-    else
-      self.frame.statusText:SetText(string.format("Question announced. Listening for answers... (%s)", modeLabel))
-    end
-  end
-
-  local timerSeconds = self:GetTimerSeconds()
-  -- Initialize timer service (UI still controls side-effects on expiration)
-  self.timerService = TriviaClassic_CreateTimer(timerSeconds)
-  self.timerRunning = true
-  self.timerBar:SetMinMaxValues(0, timerSeconds)
-  self.timerBar:SetValue(timerSeconds)
-  self.timerBar:SetStatusBarColor(0.2, 0.8, 0.2)
-  self.timerText:SetText(string.format("Time: %ds", timerSeconds))
-  self.warningButton:Enable()
-  if self.hintButton then
-    -- Enable hint button only if this question actually has a hint
-    local hint = q.hint or (q.hints and q.hints[1])
-    if hint and hint ~= "" then
-      self.hintButton:Enable()
-    else
-      self.hintButton:Disable()
-    end
-  end
+  self:SetupStandardQuestion(q, index, total, self:GetTimerSeconds(), activeTeamName)
   if self.skipButton then
     self.skipButton:Enable()
   end
-
   -- Chat already sent by presenter
   self:RefreshPrimaryButton()
 end
@@ -711,10 +446,8 @@ function UI:StartSteal()
   local timerSeconds = (self.presenter and self.presenter:GetStealTimerSeconds()) or self:GetTimerSeconds()
   self.timerRemaining = timerSeconds
   self.timerRunning = true
-  self.timerBar:SetMinMaxValues(0, timerSeconds)
-  self.timerBar:SetValue(timerSeconds)
-  self.timerBar:SetStatusBarColor(0.2, 0.8, 0.2)
-  self.timerText:SetText(string.format("Time: %ds (Steal)", timerSeconds))
+  self.timerUI:Reset(timerSeconds)
+  self.timerUI:SetText(string.format("Time: %ds (Steal)", timerSeconds))
   self.warningButton:Enable()
   if self.hintButton then
     local hint = q.hint or (q.hints and q.hints[1])
@@ -845,46 +578,10 @@ function UI:OnNextPressed()
       self.currentQuestion = q
 
       if mode == "CONNECTIONS" then
-        self.questionLabel:SetText(string.format("Puzzle %d/%d: Connections", index, total))
-        self.categoryLabel:SetText("Find 4 groups of 4 words. Click Show Words anytime.")
-        self.frame.statusText:SetText("Puzzle announced. Listening for group guesses...")
-        self.timerRunning = false
-        self.timerService = nil
-        self.timerBar:SetMinMaxValues(0, 1)
-        self.timerBar:SetValue(1)
-        self.timerBar:SetStatusBarColor(0.2, 0.8, 0.2)
-        self.timerText:SetText("Time: No timer")
-        self.warningButton:Disable()
-        if self.hintButton then
-          self.hintButton:Disable()
-        end
+        self:SetupConnectionsQuestion(index, total)
       else
-        self.questionLabel:SetText(string.format("Q%d/%d: %s", index, total, q.question))
-        self.categoryLabel:SetText(string.format("Category: %s  |  Points: %s", q.category or "General", tostring(q.points or 1)))
-        local modeLabel = TriviaClassic:GetGameModeLabel()
-        local activeTeamName = res.activeTeamName
-        if self.presenter and self.presenter.StatusQuestionAnnounced then
-          self.frame.statusText:SetText(self.presenter:StatusQuestionAnnounced(activeTeamName, modeLabel, res.timerSeconds or self:GetTimerSeconds()))
-        else
-          if activeTeamName then
-            self.frame.statusText:SetText(string.format("Question announced. Active team: %s. Listening for answers... (%s)", activeTeamName, modeLabel))
-            self.timerText:SetText(string.format("Time: %ds (Team: %s)", res.timerSeconds or self:GetTimerSeconds(), activeTeamName))
-          else
-            self.frame.statusText:SetText(string.format("Question announced. Listening for answers... (%s)", modeLabel))
-          end
-        end
         local timerSeconds = res.timerSeconds or self:GetTimerSeconds()
-        self.timerService = TriviaClassic_CreateTimer(timerSeconds)
-        self.timerRunning = true
-        self.timerBar:SetMinMaxValues(0, timerSeconds)
-        self.timerBar:SetValue(timerSeconds)
-        self.timerBar:SetStatusBarColor(0.2, 0.8, 0.2)
-        self.timerText:SetText(string.format("Time: %ds", timerSeconds))
-        self.warningButton:Enable()
-        if self.hintButton then
-          local hint = q.hint or (q.hints and q.hints[1])
-          if hint and hint ~= "" then self.hintButton:Enable() else self.hintButton:Disable() end
-        end
+        self:SetupStandardQuestion(q, index, total, timerSeconds, res.activeTeamName)
       end
 
       if self.skipButton then self.skipButton:Enable() end
@@ -920,9 +617,7 @@ function UI:SkipQuestion()
       self.questionNumber = 0
     end
     self.timerRunning = false
-    self.timerBar:SetValue(0)
-    self.timerText:SetText("Time: skipped")
-    self.timerBar:SetStatusBarColor(0.95, 0.7, 0.2)
+    self.timerUI:SetSkipped()
     self.warningButton:Disable()
     if self.hintButton then
       self.hintButton:Disable()
@@ -984,9 +679,7 @@ function UI:UpdateTimer(elapsed)
   if snap.expired then
     self.timerRunning = false
     TriviaClassic:MarkTimeout()
-    self.timerBar:SetValue(0)
-    self.timerText:SetText("Time: 0s")
-    self.timerBar:SetStatusBarColor(0.7, 0.1, 0.1)
+    self.timerUI:SetExpired()
     self.warningButton:Disable()
     if self.hintButton then self.hintButton:Disable() end
     if self.skipButton then self.skipButton:Disable() end
@@ -1005,15 +698,7 @@ function UI:UpdateTimer(elapsed)
     self:RefreshPrimaryButton()
     return
   end
-  self.timerBar:SetValue(snap.remaining)
-  if snap.color == "red" then
-    self.timerBar:SetStatusBarColor(0.9, 0.2, 0.2)
-  elseif snap.color == "orange" then
-    self.timerBar:SetStatusBarColor(0.95, 0.7, 0.2)
-  else
-    self.timerBar:SetStatusBarColor(0.2, 0.8, 0.2)
-  end
-  self.timerText:SetText(string.format("Time: %ds", math.ceil(snap.remaining)))
+  self.timerUI:Update(snap)
 end
 
 function UI:BuildUI()
@@ -1038,6 +723,7 @@ function UI:BuildUI()
   self.selectedMembers = {}
 
   local frame = TriviaClassic_UI_BuildLayout(self)
+  self.timerUI = TriviaClassic_UI_CreateTimerUI(self.timerBar, self.timerText)
   self:SetChannel(self.channelKey)
   self.presenter = TriviaClassic_UI_CreatePresenter(TriviaClassic)
 
@@ -1127,7 +813,7 @@ function UI:BuildUI()
       if self.presenter and self.presenter.AnnounceTeams then
         self.presenter:AnnounceTeams()
         if self.teamStatus then
-          self.teamStatus:SetText("|cff20ff20Teams announced to chat.|r")
+          self.teamStatus:SetText(CONST.colorSuccess .. "Teams announced to chat." .. CONST.colorClose)
         end
       end
     end)
@@ -1217,7 +903,7 @@ function UI:BuildUI()
     local command = trim(msg)
     if command == "scores" then
       for _, entry in ipairs(TriviaClassic:GetLeaderboard(10)) do
-        DEFAULT_CHAT_FRAME:AddMessage(string.format("|cffffff00[Trivia]|r %s - %d pts (%d correct)", entry.name, entry.points or 0, entry.correct or 0))
+        DEFAULT_CHAT_FRAME:AddMessage(string.format(CONST.colorHighlight .. "[Trivia]" .. CONST.colorClose .. " %s - %d pts (%d correct)", entry.name, entry.points or 0, entry.correct or 0))
       end
       return
     end

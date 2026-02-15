@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(lua:*)",
+      "Bash(\"C:\\\\Program Files \\(x86\\)\\\\Lua\\\\5.1\\\\lua.exe\" tests/run_tests.lua)",
+      "Bash(where:*)",
+      "Bash(cd:*)"
+    ]
+  }
+}
