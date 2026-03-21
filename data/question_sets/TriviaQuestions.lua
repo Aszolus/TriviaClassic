@@ -2697,6 +2697,14 @@ addQuestion({
   ['Hints'] = {"\"Though it was ravaged by the _____ _________...\""},
 })
 
+addQuestion({
+  ['Question'] = "What is Mor'Ladim's real name (First and last)?",
+  ['Answers'] = {"Morgan Ladimore"},
+  ['Category'] = CAT_ALLY,
+  ['Points'] = "1",
+  ['Hints'] = {},
+})
+
 -- Ensure the global table exists and register with TriviaClassic if present
 _G.TriviaBot_Questions = TriviaBot_Questions
 if TriviaClassic and TriviaClassic.RegisterTriviaBotSet then

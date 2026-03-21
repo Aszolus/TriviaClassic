@@ -24,6 +24,7 @@ local DEFAULT_POINTS = 1
 -- Minimum elapsed time to avoid divide-by-zero or zero-time wins.
 local MIN_ELAPSED = 0.01
 local MODE_FASTEST = "FASTEST"
+local MODE_CONNECTIONS = "CONNECTIONS"
 
 local MODE_MAP = TriviaClassic_GetModeMap()
 local DEFAULT_MODE = TriviaClassic_GetDefaultMode()
@@ -255,7 +256,12 @@ function Game:Start(selectedIds, desiredCount, allowedCategories, modeKey)
   -- 3) Shuffle and choose count
   -- 4) Reset session state and mode progress
   self:SetMode(modeKey)
-  local pool, names = self.repo:BuildPool(selectedIds, allowedCategories)
+  local pool, names
+  if self:GetMode() == MODE_CONNECTIONS and self.repo.BuildConnectionsPool then
+    pool, names = self.repo:BuildConnectionsPool(selectedIds)
+  else
+    pool, names = self.repo:BuildPool(selectedIds, allowedCategories)
+  end
   if #pool == 0 then
     return nil
   end
@@ -449,10 +455,10 @@ function Game:GetCurrentWinnerCount()
   return modeState:GetWinnerCount()
 end
 
-function Game:_recordCorrectAnswer(sender, elapsed)
+function Game:_recordCorrectAnswer(sender, elapsed, pointsOverride)
   -- Centralized scoring hook used by mode implementations.
   local s = self.state
-  local points = s.currentQuestion and s.currentQuestion.points or DEFAULT_POINTS
+  local points = tonumber(pointsOverride) or (s.currentQuestion and s.currentQuestion.points) or DEFAULT_POINTS
   recordSessionWin(s, sender, points, elapsed)
   local teamName = select(1, self:_resolveTeamInfo(sender))
   if teamName then
@@ -467,7 +473,7 @@ function Game:HandleChatAnswer(msg, sender)
   -- Called from the core chat event handler while a question is open.
   local s = self.state
   local modeState = self:_modeState()
-  if not s.questionOpen or not s.currentQuestion or (modeState and modeState.pendingWinner) then
+  if not s.questionOpen or not s.currentQuestion then
     return nil
   end
   if not sender or sender == "" then
@@ -475,8 +481,15 @@ function Game:HandleChatAnswer(msg, sender)
   end
 
   -- Mode handlers may provide custom evaluation rules.
+  -- Modes with evaluateAnswer handle their own pending state (e.g., Connections
+  -- accepts multiple group solves before announcement).
   if modeState and modeState.handler and modeState.handler.evaluateAnswer then
     return modeState:EvaluateAnswer(self, sender, msg)
+  end
+
+  -- Standard modes block new answers once a winner is pending.
+  if modeState and modeState.pendingWinner then
+    return nil
   end
 
   local A = self.deps.answer
@@ -677,8 +690,23 @@ function Game:PerformPrimaryAction(command)
     return nil
   end
   local cmd = command or action.command
+  local modeState = self:_modeState()
+
+  -- Allow mode-specific custom commands (for example, Connections "show_words").
+  if command and modeState and modeState.handler and type(modeState.handler.onAdvance) == "function" then
+    local builtIn =
+      command == "announce_question" or
+      command == "announce_winner" or
+      command == "announce_no_winner" or
+      command == "end_game" or
+      command == "start_steal" or
+      command == "advance"
+    if not builtIn then
+      return modeState.handler.onAdvance(self, modeState, command)
+    end
+  end
+
   if action.command == "advance" or command == "advance" or cmd == "announce_incorrect" then
-    local modeState = self:_modeState()
     if modeState and modeState.handler and type(modeState.handler.onAdvance) == "function" then
       return modeState.handler.onAdvance(self, modeState, cmd)
     end

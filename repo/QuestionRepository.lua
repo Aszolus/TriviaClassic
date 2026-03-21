@@ -98,6 +98,34 @@ function Repo:BuildPool(selectedIds, allowedCategories)
   return questions, names
 end
 
+--- Registers a Connections-format set into this repository.
+---@param label string|nil Optional label to use if the set lacks a Title
+---@param connectionsTable table Raw Connections puzzle table
+function Repo:RegisterConnectionsSet(label, connectionsTable)
+  if TriviaClassic_Repo_ImportConnectionsSet then
+    return TriviaClassic_Repo_ImportConnectionsSet(self, label, connectionsTable)
+  end
+end
+
+--- Build a pool of Connections puzzles from selected set IDs.
+---@param selectedIds string[]
+---@return table[] puzzles, string[] setNames
+function Repo:BuildConnectionsPool(selectedIds)
+  if TriviaClassic_Repo_BuildConnectionsPool then
+    return TriviaClassic_Repo_BuildConnectionsPool(self, selectedIds)
+  end
+  return {}, {}
+end
+
+--- Get all Connections sets from the repository.
+---@return table[] sets
+function Repo:GetConnectionsSets()
+  if TriviaClassic_Repo_GetConnectionsSets then
+    return TriviaClassic_Repo_GetConnectionsSets(self)
+  end
+  return {}
+end
+
 function TriviaClassic_CreateRepo()
   return Repo:new()
 end

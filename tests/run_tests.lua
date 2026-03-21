@@ -52,6 +52,8 @@ dofile("tests/test_game_team_steal.lua")
 dofile("tests/test_game_head_to_head.lua")
 dofile("tests/test_presenter_flows.lua")
 dofile("tests/test_team_map.lua")
+dofile("tests/test_connections_answer.lua")
+dofile("tests/test_game_connections.lua")
 
 if failures > 0 then
   io.write("failures: " .. failures .. "\n")

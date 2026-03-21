@@ -110,6 +110,19 @@ end
 ---@param msg string
 function Chat:Send(msg)
   msg = tostring(msg or "")
+  -- WoW chat does not support embedded newlines; split multiline payloads.
+  if msg:find("[\r\n]") then
+    for line in msg:gmatch("[^\r\n]+") do
+      if line ~= "" then
+        self:Send(line)
+      end
+    end
+    return
+  end
+
+  -- Escape literal pipes so user text like "A | B" doesn't trip WoW chat escape parsing.
+  msg = msg:gsub("%|", "||")
+
   if #msg > MAX_CHAT_LEN then
     msg = msg:sub(1, MAX_CHAT_LEN - 3) .. "..."
   end
