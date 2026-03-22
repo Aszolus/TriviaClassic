@@ -19,6 +19,8 @@ TC_TEST("TriviaBot importer builds sets", function()
       Answers = { [1] = { "Answer One" }, [2] = { "Two" }, [3] = { "Three" }, [4] = { "Four" } },
       Points = { [1] = "2" },
       Hints = { [1] = { "Hint1" } },
+      Reveal = { [1] = "Reveal 1" },
+      Modes = { "TRUMP_QUOTE" },
     },
   }
 
@@ -34,6 +36,8 @@ TC_TEST("TriviaBot importer builds sets", function()
   TC_ASSERT_EQ(q1.answers[1], "answerone", "answers normalized")
   TC_ASSERT_EQ(q1.points, 2, "points parsed")
   TC_ASSERT_EQ(q1.hint, "Hint1", "hint stored")
+  TC_ASSERT_EQ(q1.reveal, "Reveal 1", "reveal stored")
+  TC_ASSERT_TRUE(set.modeKeys and set.modeKeys.TRUMP_QUOTE, "mode key stored")
 
   local q4 = set.questions[4]
   TC_ASSERT_EQ(q4.category, "General", "default category")

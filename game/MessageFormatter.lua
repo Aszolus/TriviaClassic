@@ -163,7 +163,7 @@ function F.formatWinners(winners, question, mode)
   end
 end
 
-function F.formatNoWinner(answersText)
+function F.formatNoWinner(answersText, _question)
   -- Used when time expires with no correct answers.
   if answersText and answersText ~= "" then
     return string.format("[Trivia] Time is up! No correct answers. Acceptable answers: %s", answersText)

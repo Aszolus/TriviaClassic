@@ -12,6 +12,14 @@ local function normalizeCategory(name)
   return TriviaClassic_Trim(name):lower()
 end
 
+local function normalizeModeKey(modeKey)
+  local text = TriviaClassic_Trim(modeKey or "")
+  if text == "" then
+    return nil
+  end
+  return text:upper()
+end
+
 --- Creates a new repository instance.
 ---@return Repo
 function Repo:new()
@@ -49,6 +57,36 @@ function Repo:GetAllSets()
   local list = {}
   for _, set in pairs(self.sets) do
     table.insert(list, set)
+  end
+  table.sort(list, function(a, b)
+    return a.title < b.title
+  end)
+  return list
+end
+
+--- Returns non-connections sets applicable to a given game mode.
+---@param modeKey string|nil
+---@return table[] sets
+function Repo:GetSetsForMode(modeKey)
+  local targetMode = normalizeModeKey(modeKey)
+  local list = {}
+  for _, set in pairs(self.sets) do
+    local include = false
+    if targetMode == "CONNECTIONS" then
+      include = set.isConnectionsSet == true
+    elseif set.isConnectionsSet then
+      include = false
+    else
+      local allowedModes = set.modeKeys
+      if targetMode == "TRUMP_QUOTE" then
+        include = allowedModes and allowedModes[targetMode] or false
+      else
+        include = (not allowedModes) or allowedModes[targetMode]
+      end
+    end
+    if include then
+      table.insert(list, set)
+    end
   end
   table.sort(list, function(a, b)
     return a.title < b.title

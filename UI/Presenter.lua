@@ -227,7 +227,7 @@ function Presenter:AnnounceNoWinner()
     answersText = table.concat(q.answers, ", ")
   end
   local F = getFormatter(self.trivia and self.trivia.game)
-  self.trivia.chat:Send(F.formatNoWinner(answersText))
+  self.trivia.chat:Send(F.formatNoWinner(answersText, q))
   return self.trivia:PerformPrimaryAction("announce_no_winner")
 end
 

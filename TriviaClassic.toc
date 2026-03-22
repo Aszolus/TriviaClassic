@@ -33,6 +33,7 @@ modes/AllCorrect.lua
 modes/Team.lua
 modes/TeamSteal.lua
 modes/HeadToHead.lua
+modes/TrumpQuote.lua
 modes/Connections.lua
 
 game/Game.lua
@@ -52,5 +53,6 @@ data/question_sets/TriviaQuestions.lua
 data/question_sets/LoreWalkersOfSilvermoon.lua
 data/question_sets/NostalgiaTrivia.lua
 data/question_sets/ChristmasQuestions.lua
+data/question_sets/TrumpQuoteCheck.lua
 
 data/connections_puzzles/ConnectionsPuzzles.lua

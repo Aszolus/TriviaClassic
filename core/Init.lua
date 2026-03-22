@@ -147,6 +147,9 @@ function TriviaClassic:GetSetsForMode(modeKey)
   if key == "CONNECTIONS" and self.repo and self.repo.GetConnectionsSets then
     return self.repo:GetConnectionsSets()
   end
+  if self.repo and self.repo.GetSetsForMode then
+    return self.repo:GetSetsForMode(key)
+  end
   return self:GetAllSets()
 end
 

@@ -7,6 +7,7 @@
 ---@field answers string[] Normalized acceptable answers
 ---@field displayAnswers any[]|nil Original display answers
 ---@field hint string|nil Optional hint text
+---@field reveal string|nil Optional reveal/context text shown when the round ends
 ---@field category string Display category name
 ---@field categoryKey string Lowercased category key
 ---@field points integer Points for this question

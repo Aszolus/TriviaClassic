@@ -64,6 +64,14 @@ function TriviaClassic_UI_BuildLayout(ui)
   setLabel:SetPoint("TOPLEFT", originX, originY)
   setLabel:SetText("Question Sets:")
 
+  local setSelectAllBtn = Button(optionsPage, "Select All", C.btnWidthMD, C.btnHeightSM)
+  setSelectAllBtn:SetPoint("LEFT", setLabel, "RIGHT", C.spacingMD, 0)
+  ui.setSelectAllBtn = setSelectAllBtn
+
+  local setClearBtn = Button(optionsPage, "Clear All", C.btnWidthMD, C.btnHeightSM)
+  setClearBtn:SetPoint("LEFT", setSelectAllBtn, "RIGHT", C.spacingSM, 0)
+  ui.setClearBtn = setClearBtn
+
   local setScroll = CreateFrame("ScrollFrame", "TriviaClassicSetScrollFrame", optionsPage, "UIPanelScrollFrameTemplate")
   setScroll:SetPoint("TOPLEFT", setLabel, "BOTTOMLEFT", 0, -C.spacingSM)
   setScroll:SetSize(C.leftWidth, C.setHeight)
@@ -89,6 +97,54 @@ function TriviaClassic_UI_BuildLayout(ui)
   end
   setScroll:SetScrollChild(setContent)
   ui.setContainer = setContent
+
+  local detailTitle = optionsPage:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  detailTitle:SetPoint("TOPLEFT", setScroll, "TOPRIGHT", C.controlGap + C.spacingMD, 0)
+  detailTitle:SetWidth(C.rightWidth)
+  detailTitle:SetJustifyH("LEFT")
+  detailTitle:SetText("Set Details")
+  ui.setDetailTitle = detailTitle
+
+  local detailName = optionsPage:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+  detailName:SetPoint("TOPLEFT", detailTitle, "BOTTOMLEFT", 0, -C.spacingSM)
+  detailName:SetWidth(C.rightWidth)
+  detailName:SetJustifyH("LEFT")
+  detailName:SetJustifyV("TOP")
+  detailName:SetText("")
+  ui.setDetailName = detailName
+
+  local detailBody = optionsPage:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  detailBody:SetPoint("TOPLEFT", detailName, "BOTTOMLEFT", 0, -C.spacingSM)
+  detailBody:SetWidth(C.rightWidth)
+  detailBody:SetJustifyH("LEFT")
+  detailBody:SetJustifyV("TOP")
+  detailBody:SetText("")
+  ui.setDetailBody = detailBody
+
+  local detailCategoryLabel = optionsPage:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  detailCategoryLabel:SetPoint("TOPLEFT", detailBody, "BOTTOMLEFT", 0, -C.spacingMD)
+  detailCategoryLabel:SetWidth(C.rightWidth)
+  detailCategoryLabel:SetJustifyH("LEFT")
+  detailCategoryLabel:SetText("Categories")
+  ui.setDetailCategoryLabel = detailCategoryLabel
+
+  local detailCategoryScroll = CreateFrame("ScrollFrame", "TriviaClassicSetDetailCategoryScrollFrame", optionsPage, "UIPanelScrollFrameTemplate")
+  detailCategoryScroll:SetPoint("TOPLEFT", detailCategoryLabel, "BOTTOMLEFT", 0, -C.spacingXS)
+  detailCategoryScroll:SetSize(C.rightWidth, 96)
+  ui.setDetailCategoryScroll = detailCategoryScroll
+
+  local detailCategoryContainer = CreateFrame("Frame", nil, detailCategoryScroll)
+  detailCategoryContainer:SetSize(C.rightWidth - 24, 1)
+  detailCategoryScroll:SetScrollChild(detailCategoryContainer)
+  ui.setDetailCategoryContainer = detailCategoryContainer
+
+  local detailCategoryHint = optionsPage:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  detailCategoryHint:SetPoint("TOPLEFT", detailCategoryScroll, "BOTTOMLEFT", 0, -C.spacingXS)
+  detailCategoryHint:SetWidth(C.rightWidth)
+  detailCategoryHint:SetJustifyH("LEFT")
+  detailCategoryHint:SetJustifyV("TOP")
+  detailCategoryHint:SetText("")
+  ui.setDetailCategoryHint = detailCategoryHint
 
   local channelLabel = optionsPage:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   channelLabel:SetPoint("TOPLEFT", setScroll, "BOTTOMLEFT", 0, -C.spacingMD)
@@ -140,6 +196,7 @@ function TriviaClassic_UI_BuildLayout(ui)
   local timerLabel = optionsPage:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   timerLabel:SetPoint("TOPLEFT", questionCountLabel, "BOTTOMLEFT", 0, -C.spacingMD)
   timerLabel:SetText("Timer (seconds):")
+  ui.timerLabel = timerLabel
 
   local timerInput = CreateFrame("EditBox", nil, optionsPage, "InputBoxTemplate")
   timerInput:SetSize(C.btnWidthSM, 20)
@@ -152,6 +209,7 @@ function TriviaClassic_UI_BuildLayout(ui)
   local stealTimerLabel = optionsPage:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   stealTimerLabel:SetPoint("TOPLEFT", timerLabel, "BOTTOMLEFT", 0, -C.spacingMD)
   stealTimerLabel:SetText("Steal timer (seconds):")
+  ui.stealTimerLabel = stealTimerLabel
 
   local stealTimerInput = CreateFrame("EditBox", nil, optionsPage, "InputBoxTemplate")
   stealTimerInput:SetSize(C.btnWidthSM, 20)
@@ -162,8 +220,9 @@ function TriviaClassic_UI_BuildLayout(ui)
   ui.stealTimerInput = stealTimerInput
 
   local modeLabel = optionsPage:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  modeLabel:SetPoint("TOPLEFT", timerLabel, "BOTTOMLEFT", 0, -C.spacingXL)
+  modeLabel:SetPoint("TOPLEFT", stealTimerLabel, "BOTTOMLEFT", 0, -C.spacingXL)
   modeLabel:SetText("Game mode:")
+  ui.modeLabel = modeLabel
 
   local modeDropDown = CreateFrame("Frame", "TriviaClassicModeDropDown", optionsPage, "UIDropDownMenuTemplate")
   modeDropDown:SetPoint("LEFT", modeLabel, "RIGHT", C.spacingXS, -2)

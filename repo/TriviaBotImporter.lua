@@ -8,6 +8,32 @@ local function normalizeCategory(name)
   return trim(name):lower()
 end
 
+local function normalizeModeKeys(rawMode, rawModes)
+  local map = {}
+
+  local function addMode(modeKey)
+    local text = trim(modeKey)
+    if text == "" then
+      return
+    end
+    map[text:upper()] = true
+  end
+
+  if type(rawMode) == "string" then
+    addMode(rawMode)
+  end
+
+  if type(rawModes) == "table" then
+    for _, modeKey in ipairs(rawModes) do
+      if type(modeKey) == "string" then
+        addMode(modeKey)
+      end
+    end
+  end
+
+  return next(map) and map or nil
+end
+
 local function normalizeAnswers(answerList)
   local normalized = {}
   local A = TriviaClassic_GetRuntime and TriviaClassic_GetRuntime().answer or nil
@@ -54,7 +80,7 @@ function TriviaClassic_Repo_ImportTriviaBotSet(self, label, triviaTable)
 
     local usedCategoryOrder, usedCategorySet = {}, {}
 
-    local function addQuestion(i, qText, rawAnswers, categoryIndex, pointsValue, hintsValue)
+    local function addQuestion(i, qText, rawAnswers, categoryIndex, pointsValue, hintsValue, revealValue)
       local categoryName
       if type(categoryIndex) == "number" then
         categoryName = categories and categories[categoryIndex]
@@ -82,6 +108,7 @@ function TriviaClassic_Repo_ImportTriviaBotSet(self, label, triviaTable)
         answers = normalizeAnswers(rawAnswers),
         displayAnswers = rawAnswers,
         hint = hintsValue and hintsValue[1],
+        reveal = revealValue,
         category = categoryName,
         categoryKey = categoryKey,
         points = tonumber(pointsValue) or 1,
@@ -97,7 +124,8 @@ function TriviaClassic_Repo_ImportTriviaBotSet(self, label, triviaTable)
           q["Answers"] or q.answers,
           q["Category"] or q.category,
           q["Points"] or q.points,
-          q["Hints"] or q.hints
+          q["Hints"] or q.hints,
+          q["Reveal"] or q.reveal
         )
       end
     else
@@ -121,7 +149,8 @@ function TriviaClassic_Repo_ImportTriviaBotSet(self, label, triviaTable)
           block["Answers"] and block["Answers"][i],
           block["Category"] and block["Category"][i],
           block["Points"] and block["Points"][i],
-          block["Hints"] and block["Hints"][i]
+          block["Hints"] and block["Hints"][i],
+          block["Reveal"] and block["Reveal"][i]
         )
       end
     end
@@ -176,6 +205,7 @@ function TriviaClassic_Repo_ImportTriviaBotSet(self, label, triviaTable)
       title = meta.title,
       description = meta.description,
       author = meta.author,
+      modeKeys = normalizeModeKeys(block["Mode"] or block.mode, block["Modes"] or block.modes),
       categories = catList,
       questions = questions,
     }

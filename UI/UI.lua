@@ -15,16 +15,236 @@ for _, mode in ipairs(gameModes) do
   modeLabels[mode.key] = mode.label
 end
 
-local function normalizeCategoryName(name)
-  return trim(name or ""):lower()
-end
-
 function UI:GetSelectableSets()
   local mode = self.gameModeKey or TriviaClassic:GetGameMode()
   if TriviaClassic.GetSetsForMode then
     return TriviaClassic:GetSetsForMode(mode) or {}
   end
   return TriviaClassic:GetAllSets() or {}
+end
+
+function UI:EnsureSetCategoryBucket(set)
+  self.selectedBySet = self.selectedBySet or {}
+  local setId = set and set.id
+  if not setId then
+    return nil
+  end
+  local bucket = self.selectedBySet[setId]
+  if not bucket then
+    bucket = { keys = {}, names = {} }
+    self.selectedBySet[setId] = bucket
+  end
+  return bucket
+end
+
+function UI:SelectAllCategoriesForSet(set)
+  if not set or not set.id then
+    return
+  end
+  local bucket = self:EnsureSetCategoryBucket(set)
+  if not bucket then
+    return
+  end
+  bucket.keys = {}
+  bucket.names = {}
+  for _, cat in ipairs(set.categories or {}) do
+    local catName = tostring(cat or "")
+    if catName ~= "" then
+      local key = trim(catName):lower()
+      bucket.names[catName] = true
+      bucket.keys[key] = true
+    end
+  end
+end
+
+function UI:EnsureDefaultCategorySelection(set)
+  if not set or not set.id or not set.categories or #set.categories == 0 then
+    return
+  end
+  local bucket = self:EnsureSetCategoryBucket(set)
+  if not bucket then
+    return
+  end
+  if next(bucket.keys or {}) == nil then
+    self:SelectAllCategoriesForSet(set)
+  end
+end
+
+function UI:CategorySelected(category, setId)
+  if not category then
+    return false
+  end
+  local set = self:FindSelectableSetById(setId)
+  if set then
+    self:EnsureDefaultCategorySelection(set)
+  end
+  local bucket = self.selectedBySet and self.selectedBySet[setId]
+  if not bucket or not bucket.keys then
+    return false
+  end
+  local key = trim(category):lower()
+  return bucket.keys[key] or false
+end
+
+function UI:GetSetEntryCount(set)
+  local mode = self.gameModeKey or TriviaClassic:GetGameMode()
+  if mode == "CONNECTIONS" then
+    return #(set and set.puzzles or {}), "puzzles"
+  end
+  return #(set and set.questions or {}), "questions"
+end
+
+function UI:FindSelectableSetById(setId)
+  if not setId then
+    return nil
+  end
+  for _, set in ipairs(self:GetSelectableSets()) do
+    if set.id == setId then
+      return set
+    end
+  end
+  return nil
+end
+
+function UI:RefreshSetCategoryFilters(set)
+  if not self.setDetailCategoryContainer then
+    return
+  end
+
+  self.setCategoryRows = self.setCategoryRows or {}
+  for _, row in ipairs(self.setCategoryRows) do
+    row:Hide()
+  end
+
+  if not set or not set.categories or #set.categories == 0 then
+    if self.setDetailCategoryHint then
+      self.setDetailCategoryHint:SetText("No categories available for this set.")
+    end
+    if self.setDetailCategoryContainer.SetHeight then
+      self.setDetailCategoryContainer:SetHeight(1)
+    end
+    return
+  end
+
+  self:EnsureDefaultCategorySelection(set)
+
+  if #set.categories <= 1 then
+    if self.setDetailCategoryHint then
+      self.setDetailCategoryHint:SetText("This set only has one category, so the set checkbox is the meaningful filter.")
+    end
+    if self.setDetailCategoryContainer.SetHeight then
+      self.setDetailCategoryContainer:SetHeight(1)
+    end
+    return
+  end
+
+  if self.setDetailCategoryHint then
+    self.setDetailCategoryHint:SetText("Uncheck categories to narrow this set.")
+  end
+
+  for index, catName in ipairs(set.categories) do
+    local row = self.setCategoryRows[index]
+    if not row then
+      row = TriviaClassic_UI_CreateCheckbox(self.setDetailCategoryContainer, "", 0, nil)
+      self.setCategoryRows[index] = row
+    end
+    row:Show()
+    row:ClearAllPoints()
+    row:SetPoint("TOPLEFT", 0, -((index - 1) * 20))
+    row.Text:SetText(tostring(catName))
+    row:SetChecked(self:CategorySelected(catName, set.id) and true or false)
+    row:SetScript("OnClick", function(selfBtn)
+      local bucket = self:EnsureSetCategoryBucket(set)
+      local key = trim(catName):lower()
+      if selfBtn:GetChecked() then
+        bucket.names[catName] = true
+        bucket.keys[key] = true
+      else
+        bucket.names[catName] = nil
+        bucket.keys[key] = nil
+      end
+      self:UpdateQuestionCount()
+      self:UpdateSetDetails()
+    end)
+  end
+  if self.setDetailCategoryContainer.SetHeight then
+    self.setDetailCategoryContainer:SetHeight(math.max(1, #set.categories * 20))
+  end
+  if self.setDetailCategoryScroll and self.setDetailCategoryScroll.SetVerticalScroll then
+    self.setDetailCategoryScroll:SetVerticalScroll(0)
+  end
+end
+
+function UI:SetSelectedSetDetail(setId)
+  self.selectedSetDetailId = setId
+  self:RefreshSetList()
+end
+
+function UI:UpdateSetDetails()
+  if not self.setDetailName or not self.setDetailBody then
+    return
+  end
+
+  local set = self:FindSelectableSetById(self.selectedSetDetailId)
+  if not set then
+    local sets = self:GetSelectableSets()
+    set = sets[1]
+    self.selectedSetDetailId = set and set.id or nil
+  end
+
+  if not set then
+    self.setDetailName:SetText("No set selected")
+    self.setDetailBody:SetText("Choose one or more question sets to build the game pool.")
+    if self.setDetailCategoryHint then
+      self.setDetailCategoryHint:SetText("")
+    end
+    self:RefreshSetCategoryFilters(nil)
+    return
+  end
+
+  self:EnsureDefaultCategorySelection(set)
+  local count, label = self:GetSetEntryCount(set)
+  local selectedCategories = 0
+  for _, cat in ipairs(set.categories or {}) do
+    if self:CategorySelected(cat, set.id) then
+      selectedCategories = selectedCategories + 1
+    end
+  end
+  local lines = {
+    string.format("%d %s", count, label),
+  }
+
+  if set.author and set.author ~= "" then
+    table.insert(lines, "Author: " .. tostring(set.author))
+  end
+  if set.categories and #set.categories > 0 then
+    table.insert(lines, string.format("%d of %d categories selected", selectedCategories, #set.categories))
+  end
+  if set.description and set.description ~= "" then
+    table.insert(lines, "")
+    table.insert(lines, tostring(set.description))
+  end
+
+  self.setDetailName:SetText(set.title or "Set")
+  self.setDetailBody:SetText(table.concat(lines, "\n"))
+  self:RefreshSetCategoryFilters(set)
+end
+
+function UI:SelectAllSets()
+  self.selectedSetIds = self.selectedSetIds or {}
+  for _, set in ipairs(self:GetSelectableSets()) do
+    self.selectedSetIds[set.id] = true
+    self:EnsureDefaultCategorySelection(set)
+  end
+  self:RefreshSetList()
+end
+
+function UI:ClearAllSets()
+  self.selectedSetIds = self.selectedSetIds or {}
+  for _, set in ipairs(self:GetSelectableSets()) do
+    self.selectedSetIds[set.id] = false
+  end
+  self:RefreshSetList()
 end
 
 function UI:RefreshPrimaryButton()
@@ -99,7 +319,29 @@ function UI:SetGameMode(key)
     UIDropDownMenu_SetText(self.modeDropDown, modeLabels[modeKey] or modeKey)
   end
   TriviaClassic:SetGameMode(modeKey)
+  self:UpdateModeOptionVisibility()
   self:RefreshSetList()
+end
+
+function UI:UpdateModeOptionVisibility()
+  local modeKey = self.gameModeKey or TriviaClassic:GetGameMode()
+  local showSteal = (modeKey == "TEAM_STEAL")
+
+  if self.stealTimerLabel then
+    if showSteal then self.stealTimerLabel:Show() else self.stealTimerLabel:Hide() end
+  end
+  if self.stealTimerInput then
+    if showSteal then self.stealTimerInput:Show() else self.stealTimerInput:Hide() end
+  end
+
+  if self.modeLabel then
+    self.modeLabel:ClearAllPoints()
+    if showSteal and self.stealTimerLabel then
+      self.modeLabel:SetPoint("TOPLEFT", self.stealTimerLabel, "BOTTOMLEFT", 0, -CONST.spacingXL)
+    elseif self.timerLabel then
+      self.modeLabel:SetPoint("TOPLEFT", self.timerLabel, "BOTTOMLEFT", 0, -CONST.spacingXL)
+    end
+  end
 end
 
 function UI:GetTimerSeconds()
@@ -199,59 +441,76 @@ function UI:RefreshSetList()
     end
   end
 
-  for _, item in ipairs(self.setItems or {}) do
+  for _, item in ipairs(self.setRows or {}) do
     item:Hide()
   end
 
-  self.setItems = {}
-  -- Initialize per-set selection storage if missing
-  self.selectedBySet = self.selectedBySet or {}
+  self.setRows = self.setRows or {}
   self.selectedSetIds = self.selectedSetIds or {}
   local sets = self:GetSelectableSets()
   local yOffset = 0
 
-  for _, set in ipairs(sets) do
+  if not self.selectedSetDetailId or not self:FindSelectableSetById(self.selectedSetDetailId) then
+    self.selectedSetDetailId = sets[1] and sets[1].id or nil
+  end
+
+  for index, set in ipairs(sets) do
     local setId = set.id
     local setTitle = set.title or "Set"
+    local isDetail = self.selectedSetDetailId == setId
     if self.selectedSetIds[setId] == nil then
       self.selectedSetIds[setId] = true
     end
-    local setCheck = TriviaClassic_UI_CreateCheckbox(self.setContainer, setTitle, -yOffset, function(checked)
-      self.selectedSetIds[setId] = checked and true or false
-      self:UpdateQuestionCount()
-    end)
-    setCheck:SetChecked(self.selectedSetIds[setId] and true or false)
-    table.insert(self.setItems, setCheck)
-    yOffset = yOffset + 22
+    self:EnsureDefaultCategorySelection(set)
+    local row = self.setRows[index]
+    if not row then
+      row = CreateFrame("Frame", nil, self.setContainer)
+      row:SetSize((CONST and CONST.leftWidth or 420) - 24, 24)
 
-    if set.categories then
-      -- Ensure a bucket exists for this set
-      local bucket = self.selectedBySet[setId]
-      if not bucket then
-        bucket = { keys = {}, names = {} }
-        self.selectedBySet[setId] = bucket
-      end
-      for _, cat in ipairs(set.categories) do
-        -- Important: capture the category value per-iteration to avoid Lua closure rebinding issues
-        local catName = cat
-        local catKey = normalizeCategoryName(catName)
-        local check = TriviaClassic_UI_CreateCheckbox(self.setContainer, "  - " .. catName, -yOffset, function(checked)
-          -- Track per-set selections
-          if checked then
-            bucket.names[catName] = true
-            bucket.keys[catKey] = true
-          else
-            bucket.names[catName] = nil
-            bucket.keys[catKey] = nil
-          end
-          self:UpdateQuestionCount()
-        end)
-        -- Checked state from per-set bucket
-        check:SetChecked(bucket.names[catName] or false)
-        table.insert(self.setItems, check)
-        yOffset = yOffset + 20
-      end
+      row.bg = row:CreateTexture(nil, "BACKGROUND")
+      row.bg:SetAllPoints(row)
+
+      row.check = CreateFrame("CheckButton", nil, row, "ChatConfigCheckButtonTemplate")
+      row.check:SetPoint("LEFT", row, "LEFT", 0, 0)
+
+      row.titleBtn = CreateFrame("Button", nil, row)
+      row.titleBtn:SetPoint("LEFT", row.check, "RIGHT", 2, 0)
+      row.titleBtn:SetPoint("RIGHT", row, "RIGHT", -58, 0)
+      row.titleBtn:SetHeight(24)
+      row.titleText = row.titleBtn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+      row.titleText:SetAllPoints(row.titleBtn)
+      row.titleText:SetJustifyH("LEFT")
+
+      row.countText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+      row.countText:SetPoint("RIGHT", row, "RIGHT", -4, 0)
+      row.countText:SetWidth(54)
+      row.countText:SetJustifyH("RIGHT")
+
+      self.setRows[index] = row
     end
+
+    row:Show()
+    row:ClearAllPoints()
+    row:SetPoint("TOPLEFT", 0, -yOffset)
+    row.bg:SetColorTexture(1, 0.82, 0, isDetail and 0.14 or 0)
+    row.check:SetChecked(self.selectedSetIds[setId] and true or false)
+    row.check:SetScript("OnClick", function(selfBtn)
+      self.selectedSetIds[setId] = selfBtn:GetChecked() and true or false
+      self.selectedSetDetailId = setId
+      self:UpdateQuestionCount()
+      self:RefreshSetList()
+    end)
+    row.titleText:SetFontObject(isDetail and GameFontHighlight or GameFontNormal)
+    row.titleText:SetText(setTitle)
+    row.titleBtn:SetScript("OnClick", function()
+      self.selectedSetDetailId = setId
+      self:RefreshSetList()
+    end)
+
+    local count, label = self:GetSetEntryCount(set)
+    local shortLabel = (label == "puzzles") and "pz" or "q"
+    row.countText:SetText(string.format("%d %s", count, shortLabel))
+    yOffset = yOffset + 26
   end
 
   -- Update content height so the scrollbar knows the scrollable range
@@ -260,19 +519,7 @@ function UI:RefreshSetList()
   end
 
   self:UpdateQuestionCount()
-end
-
-function UI:CategorySelected(category, setId)
-  -- Default-deny: if nothing selected for this set, do not include any questions
-  local bucket = self.selectedBySet and self.selectedBySet[setId]
-  if not bucket or (not bucket.keys or next(bucket.keys) == nil) then
-    return false
-  end
-  if not category then
-    return false
-  end
-  local key = normalizeCategoryName(category)
-  return (bucket.keys and bucket.keys[key]) or (bucket.names and (bucket.names[category] or bucket.names[category:lower()]))
+  self:UpdateSetDetails()
 end
 
 function UI:UpdateQuestionCount()
@@ -352,18 +599,20 @@ function UI:StartGame()
   -- Persist selected mode before starting
   local modeToStart = self.gameModeKey or TriviaClassic:GetGameMode()
   self:SetGameMode(modeToStart)
-  -- Build per-set categories map for all sets (default-deny when empty)
   local categoriesBySet = {}
   local selectedIds = {}
   for _, set in ipairs(self:GetSelectableSets()) do
     local selected = self.selectedSetIds == nil or self.selectedSetIds[set.id] ~= false
     if selected then
+      self:EnsureDefaultCategorySelection(set)
       table.insert(selectedIds, set.id)
       categoriesBySet[set.id] = {}
       local bucket = self.selectedBySet and self.selectedBySet[set.id]
       if bucket and bucket.keys then
         for key, checked in pairs(bucket.keys) do
-          if checked then categoriesBySet[set.id][key] = true end
+          if checked then
+            categoriesBySet[set.id][key] = true
+          end
         end
       end
     end
@@ -854,6 +1103,18 @@ function UI:BuildUI()
   end
   self:SyncTimerInput()
   self:ResetTimerDisplay(self:GetTimerSeconds())
+  self:UpdateModeOptionVisibility()
+
+  if self.setSelectAllBtn then
+    self.setSelectAllBtn:SetScript("OnClick", function()
+      self:SelectAllSets()
+    end)
+  end
+  if self.setClearBtn then
+    self.setClearBtn:SetScript("OnClick", function()
+      self:ClearAllSets()
+    end)
+  end
 
   self.startButton:SetScript("OnClick", function()
     self:StartGame()
