@@ -1,6 +1,7 @@
 -- Presenter flow tests (mode-agnostic). Avoid mode-specific logic here.
 dofile("core/Constants.lua")
 dofile("game/MessageFormatter.lua")
+dofile("game/ScoreboardService.lua")
 dofile("modes/Registry.lua")
 dofile("modes/Fastest.lua")
 dofile("game/Game.lua")
@@ -64,6 +65,9 @@ local function make_trivia(mode, questions, store)
     GetCurrentQuestion = function(self)
       return self.game:GetCurrentQuestion()
     end,
+    GetLeaderboard = function(self, limit)
+      return self.game:GetLeaderboard(limit)
+    end,
     GetGameMode = function(self)
       return self.game:GetMode()
     end,
@@ -119,4 +123,25 @@ TC_TEST("Presenter announce no-winner sends answer list", function()
   presenter:AnnounceNoWinner()
   local msg = chat.messages[#chat.messages]
   TC_ASSERT_TRUE(msg and msg:find("Acceptable answers") ~= nil, "no-winner message")
+end)
+
+TC_TEST("Presenter all-time scores sends persisted leaderboard lines", function()
+  local store = {
+    leaderboard = {
+      Alice = { points = 5, correct = 3 },
+      Bob = { points = 2, correct = 2 },
+    },
+    fastest = { name = "Alice", time = 1.23 },
+  }
+  local trivia, chat = make_trivia("FASTEST", {
+    { qid = "q1", question = "Q1", answers = { "ok" }, category = "General", categoryKey = "general", points = 1 },
+  }, store)
+  local presenter = TriviaClassic_UI_CreatePresenter(trivia)
+
+  presenter:ShowAllTimeScores()
+
+  TC_ASSERT_TRUE(#chat.messages >= 3, "header and leaderboard lines sent")
+  TC_ASSERT_TRUE(chat.messages[1]:find("All%-time scores:", 1) ~= nil, "all-time header sent")
+  TC_ASSERT_TRUE(chat.messages[2]:find("Alice %- 5 pts %(3 correct%)") ~= nil, "leaderboard row sent")
+  TC_ASSERT_TRUE(chat.messages[#chat.messages]:find("All%-time fastest: Alice %(1%.23s%)") ~= nil, "fastest line sent")
 end)

@@ -351,6 +351,7 @@ function TriviaClassic_UI_BuildLayout(ui)
   local sessionLabel = gamePage:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   sessionLabel:SetPoint("TOPLEFT", frame.InsetBg or gamePage, "TOPRIGHT", -C.rightWidth - C.padding, originY)
   sessionLabel:SetText("Current game scores:")
+  ui.sessionLabel = sessionLabel
 
   local sessionBoard = gamePage:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   sessionBoard:SetPoint("TOPLEFT", sessionLabel, "BOTTOMLEFT", 0, -C.spacingSM)

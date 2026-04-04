@@ -101,3 +101,40 @@ TC_TEST("Presenter no-winner message includes verdict and reveal in Trump Quote 
   TC_ASSERT_TRUE(msg and msg:find("FAKE", 1, true) ~= nil, "verdict included")
   TC_ASSERT_TRUE(msg and msg:find("Written for TriviaClassic", 1, true) ~= nil, "reveal included")
 end)
+
+TC_TEST("Presenter winner announcement stays single-line, preserves reveal, and omits realm names", function()
+  local questions = {
+    {
+      qid = "q1",
+      question = "Nobody knew that health care could be so complicated.",
+      answers = { "real" },
+      displayAnswers = { "REAL" },
+      reveal = "Real. Trump on health care, February 2017.",
+      category = "Trump Quote Check",
+      categoryKey = "trump quote check",
+      points = 1,
+    },
+  }
+  local trivia, chat, game = make_trivia(questions)
+  local presenter = TriviaClassic_UI_CreatePresenter(trivia)
+
+  presenter:StartGame(1, nil, { "Quote Check" }, "TRUMP_QUOTE")
+  presenter:AnnounceQuestion()
+
+  for i = 1, 20 do
+    game:HandleChatAnswer("real", "LongPlayerName" .. tostring(i) .. "-VeryLongRealmName")
+  end
+  game:MarkTimeout()
+
+  local before = #chat.messages
+  presenter:AnnounceWinner()
+
+  TC_ASSERT_EQ(#chat.messages, before + 1, "single winner message sent")
+  local msg = chat.messages[before + 1]
+  TC_ASSERT_TRUE(msg and msg:find("REAL", 1, true) ~= nil, "message includes verdict")
+  TC_ASSERT_TRUE(msg and msg:find("February 2017", 1, true) ~= nil, "message includes reveal")
+  TC_ASSERT_TRUE(msg and msg:find("20 correct final guesses", 1, true) ~= nil, "message includes count")
+  TC_ASSERT_TRUE(msg and msg:find("LongPlayerName1", 1, true) ~= nil, "message includes winner names")
+  TC_ASSERT_FALSE(msg and msg:find("VeryLongRealmName", 1, true) ~= nil, "realm names omitted")
+  TC_ASSERT_TRUE(msg and msg:find("+", 1, true) ~= nil, "message truncates with more-count when needed")
+end)

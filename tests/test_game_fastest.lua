@@ -56,3 +56,37 @@ TC_TEST("Game Fastest mode flow", function()
   TC_ASSERT_EQ(entry.points, 1, "leaderboard points")
   TC_ASSERT_EQ(entry.correct, 1, "leaderboard correct")
 end)
+
+TC_TEST("Game leaderboard returns persisted all-time rows and fastest", function()
+  local repo = make_repo()
+  local store = { leaderboard = {}, teams = { teams = {} } }
+  local runtime = TriviaClassic_GetRuntime()
+  local deps = {
+    clock = runtime.clock,
+    date = runtime.date,
+    answer = runtime.answer,
+  }
+  local game = TriviaClassic_CreateGame(repo, store, deps)
+
+  game:Start({ "set" }, 2, nil, "FASTEST")
+  game:NextQuestion()
+  __TC_ADVANCE_TIME(1)
+  game:HandleChatAnswer("ok", "Alice")
+  game:PerformPrimaryAction("announce_winner")
+
+  game:NextQuestion()
+  __TC_ADVANCE_TIME(2)
+  game:HandleChatAnswer("ok", "Bob")
+  game:PerformPrimaryAction("announce_winner")
+
+  local rows, fastestName, fastestTime = game:GetLeaderboard(10)
+  TC_ASSERT_EQ(#rows, 2, "leaderboard rows returned")
+  local names = {
+    [rows[1].name] = true,
+    [rows[2].name] = true,
+  }
+  TC_ASSERT_TRUE(names["Alice"] == true, "alice entry returned")
+  TC_ASSERT_TRUE(names["Bob"] == true, "bob entry returned")
+  TC_ASSERT_EQ(fastestName, "Alice", "fastest name returned")
+  TC_ASSERT_TRUE((fastestTime or 0) > 0, "fastest time returned")
+end)

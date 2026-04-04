@@ -19,6 +19,24 @@ local function clampMessage(prefix, body, suffix)
   return prefix .. text .. suffix
 end
 
+local function clampText(text)
+  local body = tostring(text or "")
+  if #body > MAX_CHAT_LEN then
+    local cut = math.max(0, MAX_CHAT_LEN - #ELLIPSIS)
+    body = body:sub(1, cut) .. ELLIPSIS
+  end
+  return body
+end
+
+local function shortenPlayerName(name)
+  local text = tostring(name or "?")
+  local short = text:match("^([^-]+)%-.+$")
+  if short and short ~= "" then
+    return short
+  end
+  return text
+end
+
 local function getNormalizedAnswer(game, value)
   local A = game and game.deps and game.deps.answer
   if A and A.normalize then
@@ -100,6 +118,40 @@ local function formatRevealSuffix(question)
     return " " .. reveal
   end
   return ""
+end
+
+local function buildCompactWinnerSummary(base, winners)
+  local names = {}
+  for _, row in ipairs(winners or {}) do
+    table.insert(names, shortenPlayerName(row.name))
+  end
+
+  local prefix = base .. ": "
+  local shown = {}
+  for i, name in ipairs(names) do
+    local trialNames = table.concat(shown, ", ")
+    if trialNames ~= "" then
+      trialNames = trialNames .. ", "
+    end
+    trialNames = trialNames .. name
+
+    local remaining = #names - i
+    local tail = (remaining > 0) and string.format(", +%d more", remaining) or ""
+    local candidate = prefix .. trialNames .. tail .. "."
+    if #candidate <= MAX_CHAT_LEN then
+      table.insert(shown, name)
+    else
+      break
+    end
+  end
+
+  if #shown == 0 then
+    return clampText(base .. ".")
+  end
+
+  local remaining = #names - #shown
+  local tail = (remaining > 0) and string.format(", +%d more", remaining) or ""
+  return prefix .. table.concat(shown, ", ") .. tail .. "."
 end
 
 local handler = {
@@ -245,14 +297,11 @@ handler.format = {
     if not winners or #winners == 0 then
       return handler.format.formatNoWinner(nil, question)
     end
-    local parts = {}
-    for _, row in ipairs(winners) do
-      table.insert(parts, string.format("%s (+%s pts)", row.name or "?", tostring(row.points or (question and question.points) or 1)))
-    end
-    return string.format("[Trivia] Time's up! %s. Correct final guesses: %s%s",
+    local summary = string.format("[Trivia] Time's up! %s.%s %d correct final guesses",
       verdictLabel(nil, question),
-      table.concat(parts, ", "),
-      formatRevealSuffix(question))
+      formatRevealSuffix(question),
+      #winners)
+    return buildCompactWinnerSummary(summary, winners)
   end,
 
   formatNoWinner = function(answersText, question)

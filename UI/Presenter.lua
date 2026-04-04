@@ -44,6 +44,23 @@ local function collectConnectionsWords(game, puzzle)
   return words
 end
 
+local function sendFormatted(chat, payload)
+  if not chat or payload == nil then
+    return
+  end
+  if type(payload) == "table" then
+    for _, msg in ipairs(payload) do
+      if msg and msg ~= "" then
+        chat:Send(msg)
+      end
+    end
+    return
+  end
+  if payload ~= "" then
+    chat:Send(payload)
+  end
+end
+
 --- Starts a game and broadcasts to chat.
 ---@param desiredCount integer|nil
 ---@param categoriesBySet table|nil Per-set map of allowed category keys
@@ -204,7 +221,7 @@ function Presenter:AnnounceWinner()
   local q = self.trivia:GetCurrentQuestion()
   if winners and #winners > 0 then
     local msg = F.formatWinners(winners, q, self.trivia:GetGameMode())
-    if msg then self.trivia.chat:Send(msg) end
+    sendFormatted(self.trivia.chat, msg)
     local result = self.trivia:PerformPrimaryAction("announce_winner")
     return result
   end

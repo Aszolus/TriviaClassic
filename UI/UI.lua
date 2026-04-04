@@ -406,21 +406,39 @@ function UI:ResetTimerDisplay(seconds)
   end
 end
 
-function UI:UpdateSessionBoard()
+function UI:UpdateScoreboardPanel()
   if not self.sessionBoard then
     return
   end
-  local rows, fastestName, fastestTime = TriviaClassic:GetSessionScoreboard()
+  local showAllTime = self.scoreboardView == "all_time"
+  local rows, fastestName, fastestTime
+  if showAllTime then
+    rows, fastestName, fastestTime = TriviaClassic:GetLeaderboard(12)
+  else
+    rows, fastestName, fastestTime = TriviaClassic:GetSessionScoreboard()
+  end
   local S = TriviaClassic_Scoreboard
   local text = S.formatUIPanel(rows, fastestName, fastestTime)
+  if self.sessionLabel then
+    self.sessionLabel:SetText(showAllTime and "All-time scores:" or "Current game scores:")
+  end
   self.sessionBoard:SetText(text)
 end
 
+function UI:UpdateSessionBoard()
+  self.scoreboardView = self.scoreboardView or "session"
+  self:UpdateScoreboardPanel()
+end
+
 function UI:ShowSessionScores()
+  self.scoreboardView = "session"
+  self:UpdateScoreboardPanel()
   if self.presenter then self.presenter:ShowSessionScores() end
 end
 
 function UI:ShowAllTimeScores()
+  self.scoreboardView = "all_time"
+  self:UpdateScoreboardPanel()
   if self.presenter then self.presenter:ShowAllTimeScores() end
 end
 
